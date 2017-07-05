@@ -23,14 +23,14 @@
     -->
 
     <extensions defaultExtensionNs="com.intellij">
-        <typedHandler implementation="com.jetbrains.typofixer.TypoFixTypedHandler"/>
-        <enterHandlerDelegate implementation="com.jetbrains.typofixer.TypoFixEnterHandler"/>
+        <typedHandler implementation="com.jetbrains.typofixer.event.handler.TypoFixTypedHandler"/>
+        <enterHandlerDelegate implementation="com.jetbrains.typofixer.event.handler.TypoFixEnterHandler"/>
     </extensions>
 
 
     <project-components>
         <component>
-            <implementation-class>com.jetbrains.typofixer.FuzzySearcher</implementation-class>
+            <implementation-class>com.jetbrains.typofixer.resolve.FuzzySearcher</implementation-class>
         </component>
     </project-components>
 
