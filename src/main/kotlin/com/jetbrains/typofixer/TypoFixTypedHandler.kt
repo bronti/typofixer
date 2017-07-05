@@ -34,7 +34,7 @@ class TypoFixTypedHandler: TypedHandlerDelegate() {
         // refresh psi (I'm not sure it is necessary)
         psiManager.commitDocument(editor.document)
 
-        val element = psiFile.findElementAt(caret.offset - 2)
+        val element = psiFile.findElementAt(caret.offset - 1)
 
         if (element != null) {
             checkedTypoResolve(element)
