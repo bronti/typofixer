@@ -17,7 +17,7 @@ plugins {
     id "org.jetbrains.intellij" version "0.2.13"
 }
 
-group 'com.jetbrains.yaveyn.typofixer'
+group 'com.jetbrains.typofixer'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
