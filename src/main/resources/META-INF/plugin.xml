@@ -27,4 +27,11 @@
         <enterHandlerDelegate implementation="com.jetbrains.typofixer.TypoFixEnterHandler"/>
     </extensions>
 
+
+    <project-components>
+        <component>
+            <implementation-class>com.jetbrains.typofixer.FuzzySearcher</implementation-class>
+        </component>
+    </project-components>
+
 </idea-plugin>

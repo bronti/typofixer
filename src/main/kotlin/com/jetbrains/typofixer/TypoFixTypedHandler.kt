@@ -37,7 +37,7 @@ class TypoFixTypedHandler: TypedHandlerDelegate() {
         val element = psiFile.findElementAt(caret.offset - 1)
 
         if (element != null) {
-            checkedTypoResolve(element)
+            checkedTypoResolve(element, editor.document, project)
         }
         return Result.CONTINUE
     }

@@ -1,6 +1,8 @@
 package com.jetbrains.typofixer
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.psi.JavaTokenType
 import com.intellij.psi.PsiElement
@@ -12,11 +14,15 @@ import com.intellij.psi.PsiReference
 
 // todo: 'tab' and closing '>' don't work
 
-// todo: smth.getTypoResolver()... how can I even do this?!
-fun checkedTypoResolve(element: PsiElement) {
+// todo: smth.getTypoResolver(language)... how can I even do this?!
+fun checkedTypoResolve(element: PsiElement, document: Document, project: Project) {
     if (isTypoResolverApplicable(element)) {
-        ApplicationManager.getApplication().invokeLater {
-            Messages.showInfoMessage("${element.node.elementType.javaClass.canonicalName},  $element", "")
+
+        val searcher = project.getComponent(FuzzySearcher::class.java)
+        val replacement = searcher.findClosest(element.text)
+
+        ApplicationManager.getApplication().runWriteAction {
+            document.replaceString(element.textRange.startOffset, element.textRange.endOffset, replacement)
         }
     }
 }

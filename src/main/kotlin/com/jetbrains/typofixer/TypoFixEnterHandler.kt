@@ -36,7 +36,7 @@ class TypoFixEnterHandler: EnterHandlerDelegate {
         val element = psiFile.findElementAt(caret.offset - 1)
 
         if (element != null) {
-            checkedTypoResolve(element)
+            checkedTypoResolve(element, editor.document, project)
         }
 
         return Result.Continue
