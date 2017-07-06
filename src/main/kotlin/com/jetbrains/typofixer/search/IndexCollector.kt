@@ -2,6 +2,7 @@ package com.jetbrains.typofixer.search
 
 import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
+import com.intellij.psi.PsiFile
 
 /**
  * @author bronti.
@@ -9,6 +10,8 @@ import com.intellij.lang.LanguageExtension
 interface IndexCollector {
 
     fun keyWords(): List<String>
+
+    fun localIdentifiers(psiFile: PsiFile): List<String>
 
     class Extension : LanguageExtension<IndexCollector>("com.jetbrains.typofixer.typoFixerIndexLanguageSupport") {
         companion object {

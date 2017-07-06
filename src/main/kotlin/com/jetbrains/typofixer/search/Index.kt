@@ -10,17 +10,15 @@ class Index(val signatureProvider: Signature) {
 
     private val index = HashMap<Int, HashSet<String>>()
 
-    init {
-
-    }
-
     fun get(signature: Int): Set<String> {
         return index[signature] ?: HashSet()
     }
 
     fun feed(psiFile: PsiFile) {
         index.clear()
-        IndexCollector.Extension.getIndexCollector(psiFile.language).keyWords().forEach { add(it) }
+        val collector = IndexCollector.Extension.getIndexCollector(psiFile.language)
+        collector.keyWords().forEach { add(it) }
+        collector.localIdentifiers(psiFile).forEach { add(it) }
     }
 
     private fun add(str: String) {

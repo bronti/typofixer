@@ -1,6 +1,6 @@
 package com.jetbrains.typofixer.lang
 
-import com.intellij.psi.PsiKeyword
+import com.intellij.psi.*
 import com.jetbrains.typofixer.search.IndexCollector
 
 /**
@@ -8,6 +8,21 @@ import com.jetbrains.typofixer.search.IndexCollector
  */
 class JavaIndexCollector : IndexCollector {
     override fun keyWords() = javaKeywords
+
+    override fun localIdentifiers(psiFile: PsiFile): List<String> {
+        val result = mutableListOf<String>()
+
+        val visitor = object : JavaRecursiveElementVisitor() {
+            override fun visitIdentifier(identifier: PsiIdentifier) {
+                if (identifier.parent !is PsiReference) {
+                    result.add(identifier.text)
+                }
+                super.visitIdentifier(identifier)
+            }
+        }
+        psiFile.accept(visitor)
+        return result
+    }
 }
 
 private val javaKeywords = listOf(
