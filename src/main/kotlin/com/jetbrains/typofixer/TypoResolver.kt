@@ -31,7 +31,7 @@ abstract class TypoResolver {
             val searcher = project.getComponent(DLSearcher::class.java)
 
             val oldText = element.text
-            val replacement = searcher.findClosest(oldText)
+            val replacement = searcher.findClosestInFile(oldText, psiFile)
 
             replacement ?: return
 
@@ -46,7 +46,7 @@ abstract class TypoResolver {
 
     abstract protected fun isTypoResolverApplicable(element: PsiElement): Boolean
 
-    class Extension : LanguageExtension<TypoResolver>("com.jetbrains.typofixer.typoFixerLanguageSupport") {
+    class Extension : LanguageExtension<TypoResolver>("com.jetbrains.typofixer.typoFixerResolverLanguageSupport") {
         companion object {
             val INSTANCE = TypoResolver.Extension()
 

@@ -1,6 +1,7 @@
 package com.jetbrains.typofixer.search
 
 import com.intellij.openapi.components.ProjectComponent
+import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
 import com.jetbrains.typofixer.search.signature.SimpleSignature
@@ -12,7 +13,7 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
 interface FuzzySearcher : ProjectComponent {
     val maxError: Int
     val index: Index
-    fun findClosest(str: String): String?
+    fun findClosestInFile(str: String, psiFile: PsiFile): String?
 }
 
 abstract class DLSearcherBase : FuzzySearcher {
@@ -24,7 +25,8 @@ abstract class DLSearcherBase : FuzzySearcher {
 
     private val distanceTo: (String) -> DistanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
 
-    override fun findClosest(str: String): String? {
+    override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
+        index.feed(psiFile)
         val distance = distanceTo(str)
         val candidates = getCandidates(str)
         val result = candidates.minBy { distance.measure(it) }

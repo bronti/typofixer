@@ -34,14 +34,21 @@
     </project-components>
 
     <extensionPoints>
-        <extensionPoint name="typoFixerLanguageSupport"
+        <extensionPoint name="typoFixerResolverLanguageSupport"
                         beanClass="com.intellij.lang.LanguageExtensionPoint">
             <with attribute="implementationClass" implements="com.jetbrains.typofixer.TypoResolver"/>
+        </extensionPoint>
+        <extensionPoint name="typoFixerIndexLanguageSupport"
+                        beanClass="com.intellij.lang.LanguageExtensionPoint">
+            <with attribute="implementationClass" implements="com.jetbrains.typofixer.search.IndexCollector"/>
         </extensionPoint>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.jetbrains.typofixer">
-        <typoFixerLanguageSupport implementationClass="com.jetbrains.typofixer.lang.JavaTypoResolver" language="JAVA"/>
+        <typoFixerResolverLanguageSupport implementationClass="com.jetbrains.typofixer.lang.JavaTypoResolver"
+                                          language="JAVA"/>
+        <typoFixerIndexLanguageSupport implementationClass="com.jetbrains.typofixer.lang.JavaIndexCollector"
+                                       language="JAVA"/>
     </extensions>
 
 </idea-plugin>
