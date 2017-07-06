@@ -41,7 +41,7 @@
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.jetbrains.typofixer">
-        <typoFixerLanguageSupport implementationClass="com.jetbrains.typofixer.JavaTypoResolver" language="JAVA"/>
+        <typoFixerLanguageSupport implementationClass="com.jetbrains.typofixer.lang.JavaTypoResolver" language="JAVA"/>
     </extensions>
 
 </idea-plugin>

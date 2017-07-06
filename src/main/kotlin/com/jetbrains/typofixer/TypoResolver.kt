@@ -5,7 +5,9 @@ import com.intellij.lang.LanguageExtension
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
-import com.intellij.psi.*
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.FuzzySearcher
 
 /**
@@ -49,18 +51,5 @@ abstract class TypoResolver {
                 return INSTANCE.forLanguage(language)
             }
         }
-    }
-}
-
-// todo: 'tab' doesn't work
-class JavaTypoResolver : TypoResolver() {
-    override fun afterIdentifierChar(c: Char) = c.isLetter() || c.isDigit() || c == '_'
-
-    override fun isTypoResolverApplicable(element: PsiElement): Boolean {
-        val elementType = element.node.elementType
-        val parent = element.parent
-
-        // todo: not sure whether it is ok to resolve a reference here
-        return elementType == JavaTokenType.IDENTIFIER && parent is PsiReference && parent.resolve() == null
     }
 }
