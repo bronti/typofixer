@@ -10,7 +10,7 @@ import com.jetbrains.typofixer.resolve.FuzzySearcher
  * @author bronti
  */
 
-// todo: 'tab' and closing '>' don't work
+// todo: 'tab' doesn't work
 
 // todo: LanguageExtensionPoint
 fun checkedTypoResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, project: Project, psiFile: PsiFile) {
@@ -25,18 +25,15 @@ fun checkedTypoResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, proj
 
     if (element != null && isTypoResolverApplicable(element)) {
         val searcher = project.getComponent(FuzzySearcher::class.java)
-        val replacement = searcher.findClosest(element.text)
+        val oldText = element.text
+        val replacement = searcher.findClosest(oldText)
 
         ApplicationManager.getApplication().runWriteAction {
             editor.document.replaceString(element.textRange.startOffset, element.textRange.endOffset, replacement)
         }
+        editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
     }
 }
-
-fun checkedTypoBeforeNextCharTypedResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, project: Project, psiFile: PsiFile) {
-    // todo: resolve left parents
-}
-
 
 fun isTypoResolverApplicable(element: PsiElement): Boolean {
     val elementType = element.node.elementType

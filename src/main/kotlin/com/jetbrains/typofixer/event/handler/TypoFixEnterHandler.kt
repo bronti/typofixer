@@ -14,9 +14,6 @@ import com.jetbrains.typofixer.checkedTypoResolve
  */
 class TypoFixEnterHandler: EnterHandlerDelegate {
 
-    // todo:
-    var firstAddedCharOffset: Int? = null
-
     override fun preprocessEnter(psiFile: PsiFile,
                                  editor: Editor,
                                  caretOffset: Ref<Int>,
@@ -28,16 +25,14 @@ class TypoFixEnterHandler: EnterHandlerDelegate {
         // todo: multiple caret. do nothing?
         if (caret.caretCount > 1) return Result.Continue
 
-        firstAddedCharOffset = caretOffset.get()
+        // todo: prevent second replacing (?)
+        checkedTypoResolve('\n', caretOffset.get(), editor, psiFile.project, psiFile)
+        caretOffset.set(editor.caretModel.offset)
 
         return Result.Continue
     }
 
     override fun postProcessEnter(psiFile: PsiFile, editor: Editor, dataContext: DataContext): Result {
-        if (firstAddedCharOffset != null) {
-            checkedTypoResolve('\n', firstAddedCharOffset!!, editor, psiFile.project, psiFile)
-            firstAddedCharOffset = null
-        }
         return Result.Continue
     }
 

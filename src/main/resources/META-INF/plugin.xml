@@ -23,10 +23,9 @@
     -->
 
     <extensions defaultExtensionNs="com.intellij">
-        <typedHandler implementation="com.jetbrains.typofixer.event.handler.TypoFixTypedHandler"/>
-        <enterHandlerDelegate implementation="com.jetbrains.typofixer.event.handler.TypoFixEnterHandler"/>
+        <typedHandler implementation="com.jetbrains.typofixer.event.handler.TypoFixTypedHandler" order="first"/>
+        <enterHandlerDelegate implementation="com.jetbrains.typofixer.event.handler.TypoFixEnterHandler" order="first"/>
     </extensions>
-
 
     <project-components>
         <component>
