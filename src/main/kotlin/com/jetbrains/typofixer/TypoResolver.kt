@@ -8,7 +8,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.search.FuzzySearcher
+import com.jetbrains.typofixer.search.DLSearcher
 
 /**
  * @author bronti
@@ -27,10 +27,13 @@ abstract class TypoResolver {
         val element = psiFile.findElementAt(nextCharOffset - 1)
 
         if (element != null && isTypoResolverApplicable(element)) {
-            val searcher = project.getComponent(FuzzySearcher::class.java)
+            // todo:
+            val searcher = project.getComponent(DLSearcher::class.java)
 
             val oldText = element.text
             val replacement = searcher.findClosest(oldText)
+
+            replacement ?: return
 
             ApplicationManager.getApplication().runWriteAction {
                 editor.document.replaceString(element.textRange.startOffset, element.textRange.endOffset, replacement)
