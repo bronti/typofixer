@@ -1,4 +1,4 @@
-package com.jetbrains.typofixer.resolve
+package com.jetbrains.typofixer.search
 
 import com.intellij.openapi.components.ProjectComponent
 

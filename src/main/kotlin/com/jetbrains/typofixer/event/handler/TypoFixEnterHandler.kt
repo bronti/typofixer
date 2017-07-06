@@ -7,7 +7,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.actionSystem.EditorActionHandler
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.checkedTypoResolve
+import com.jetbrains.typofixer.TypoResolver
 
 /**
  * @author bronti.
@@ -26,7 +26,7 @@ class TypoFixEnterHandler: EnterHandlerDelegate {
         if (caret.caretCount > 1) return Result.Continue
 
         // todo: prevent second replacing (?)
-        checkedTypoResolve('\n', caretOffset.get(), editor, psiFile.project, psiFile)
+        TypoResolver.Extension.getResolver(psiFile.language).checkedTypoResolve('\n', caretOffset.get(), editor, psiFile.project, psiFile)
         caretOffset.set(editor.caretModel.offset)
 
         return Result.Continue

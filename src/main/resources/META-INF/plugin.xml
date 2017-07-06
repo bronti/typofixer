@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>org.jetbrains.typofixer</id>
+    <id>com.jetbrains.typofixer</id>
     <name>my_plugin</name>
     <version>0.0.1</version>
     <vendor email="dummy" url="dummy">dummy</vendor>
@@ -29,8 +29,19 @@
 
     <project-components>
         <component>
-            <implementation-class>com.jetbrains.typofixer.resolve.FuzzySearcher</implementation-class>
+            <implementation-class>com.jetbrains.typofixer.search.FuzzySearcher</implementation-class>
         </component>
     </project-components>
+
+    <extensionPoints>
+        <extensionPoint name="typoFixerLanguageSupport"
+                        beanClass="com.intellij.lang.LanguageExtensionPoint">
+            <with attribute="implementationClass" implements="com.jetbrains.typofixer.TypoResolver"/>
+        </extensionPoint>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.jetbrains.typofixer">
+        <typoFixerLanguageSupport implementationClass="com.jetbrains.typofixer.JavaTypoResolver" language="JAVA"/>
+    </extensions>
 
 </idea-plugin>
