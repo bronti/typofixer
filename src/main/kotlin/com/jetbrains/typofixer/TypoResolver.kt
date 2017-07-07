@@ -32,13 +32,13 @@ private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFil
     if (element != null && langSupport.isTypoResolverApplicable(element)) {
         val searcher = project.getComponent(DLSearcherProvider::class.java).getSearcher()
 
-        val oldText = element.text
+        val oldText = element.text.substring(0, nextCharOffset - element.textOffset)
         val replacement = searcher.findClosestInFile(oldText, psiFile)
 
         replacement ?: return
 
         ApplicationManager.getApplication().runWriteAction {
-            editor.document.replaceString(element.textRange.startOffset, element.textRange.endOffset, replacement)
+            editor.document.replaceString(element.textOffset, element.textOffset + oldText.length, replacement)
         }
         editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
     }

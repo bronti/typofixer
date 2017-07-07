@@ -20,9 +20,15 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
         myFixture.checkResult("class\n<caret>")
     }
 
-    fun testReplacementInSolidText() {
+    fun testReplacementAfterTypedInSolidText() {
         myFixture.configureByText("Foo.java", "clas<caret>Some")
         myFixture.type(' ')
         myFixture.checkResult("class <caret>Some")
+    }
+
+    fun testReplacementAfterEnterInSolidText() {
+        myFixture.configureByText("Foo.java", "clas<caret>Some")
+        myFixture.type('\n')
+        myFixture.checkResult("class\n<caret>Some")
     }
 }
