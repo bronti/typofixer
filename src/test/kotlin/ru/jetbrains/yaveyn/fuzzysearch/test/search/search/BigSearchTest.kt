@@ -1,4 +1,4 @@
-package ru.jetbrains.yaveyn.fuzzysearch.test.search
+package ru.jetbrains.yaveyn.fuzzysearch.test.search.search
 
 import com.jetbrains.typofixer.search.DLPreciseSearcher
 import com.jetbrains.typofixer.search.DLSearcher

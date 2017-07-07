@@ -1,4 +1,4 @@
-package ru.jetbrains.yaveyn.fuzzysearch.test.search.distance
+package ru.jetbrains.yaveyn.fuzzysearch.test.search.search.distance
 
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.natpryce.hamkrest.assertion.assert
