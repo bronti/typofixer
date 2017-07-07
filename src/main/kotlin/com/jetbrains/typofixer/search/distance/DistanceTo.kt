@@ -18,8 +18,7 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
         if (str.isEmpty()) return Math.min(target.length, bigDistance)
         if (Math.abs(target.length - str.length) > maxError) return bigDistance
 
-        val left = if (target.length > str.length) str else target
-        val right = if (target.length > str.length) target else str
+        val (left, right) = if (target.length > str.length) Pair(str, target) else Pair(str, target)
 
         val gapSize = 2 * maxError + 1
 

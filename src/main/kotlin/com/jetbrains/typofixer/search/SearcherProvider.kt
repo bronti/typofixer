@@ -21,4 +21,7 @@ class DLSearcherProvider : SearcherProvider {
     private val index = Index(signature)
 
     override fun getSearcher() = DLSearcher(maxError, distanceTo, index)
+
+    override fun initComponent() {
+    }
 }

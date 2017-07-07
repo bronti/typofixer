@@ -22,11 +22,9 @@ class TypoFixEnterHandler: EnterHandlerDelegate {
                                  originalHandler: EditorActionHandler?): Result {
         val caret = editor.caretModel
 
-        // todo: multiple caret. do nothing?
         if (caret.caretCount > 1) return Result.Continue
 
-        // todo: prevent second replacing (?)
-        TypoResolver.Extension.getResolver(psiFile.language).checkedTypoResolve('\n', caretOffset.get(), editor, psiFile.project, psiFile)
+        TypoResolver.checkedTypoResolve('\n', editor, psiFile)
         caretOffset.set(editor.caretModel.offset)
 
         return Result.Continue

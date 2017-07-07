@@ -9,6 +9,7 @@ import com.jetbrains.typofixer.search.index.IndexCollector
 class JavaIndexCollector : IndexCollector {
     override fun keyWords() = javaKeywords
 
+    // todo: make it wright
     override fun localIdentifiers(psiFile: PsiFile): List<String> {
         val result = mutableListOf<String>()
 

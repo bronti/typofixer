@@ -15,7 +15,14 @@ import com.jetbrains.typofixer.search.DLSearcherProvider
  */
 
 abstract class TypoResolver {
-    fun checkedTypoResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, project: Project, psiFile: PsiFile) {
+
+    companion object {
+        fun checkedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile) {
+            TypoResolver.Extension.getResolver(psiFile.language).doCheckedTypoResolve(nextChar, editor.caretModel.offset, editor, psiFile.project, psiFile)
+        }
+    }
+
+    private fun doCheckedTypoResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, project: Project, psiFile: PsiFile) {
         if (afterIdentifierChar(nextChar)) return
 
         val psiManager = PsiDocumentManager.getInstance(project)
