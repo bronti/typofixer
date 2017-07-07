@@ -18,7 +18,7 @@ abstract class DLSearcherBase(val maxError: Int, val getDistanceTo: (String) -> 
     protected abstract fun getCandidates(str: String): Set<String>
 
     override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
-        index.feed(psiFile)
+        index.refreshLocal(psiFile)
         val distance = getDistanceTo(str)
         val candidates = getCandidates(str)
         val result = candidates.minBy { distance.measure(it) }
@@ -36,8 +36,8 @@ abstract class DLSearcherBase(val maxError: Int, val getDistanceTo: (String) -> 
     }
 
     protected fun getRange(str: String, maxError: Int): Set<String> {
-        // todo: signature?
-        return index.signatureProvider.signatureRange(str, maxError)
+        // todo: get?
+        return index.signature.getRange(str, maxError)
                 .map { index.get(it) }
                 .reduce { acc: Set<String>, curr -> acc.union(curr) }
     }

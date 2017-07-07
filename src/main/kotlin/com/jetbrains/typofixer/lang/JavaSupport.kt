@@ -1,7 +1,7 @@
 package com.jetbrains.typofixer.lang
 
 import com.intellij.psi.*
-import com.jetbrains.typofixer.search.index.IndexCollector
+import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 
 /**
  * @author bronti.
@@ -12,10 +12,10 @@ class JavaSupport : TypoFixerLanguageSupport {
     override fun isTypoResolverApplicable(element: PsiElement) =
             element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
 
-    override fun getIndexCollector() = JavaIndexCollector()
+    override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
 }
 
-class JavaIndexCollector : IndexCollector() {
+class JavaLocalDictionaryCollector : LocalDictionaryCollector {
     override fun keyWords() = javaKeywords
 
     // todo: make it right

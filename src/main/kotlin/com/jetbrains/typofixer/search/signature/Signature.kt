@@ -4,21 +4,21 @@ package com.jetbrains.typofixer.search.signature
  * @author bronti.
  */
 interface Signature {
-    fun signature(str: String): Int
-    fun signatureRange(str: String, maxError: Int): List<Int>
+    fun get(str: String): Int
+    fun getRange(str: String, maxError: Int): List<Int>
 }
 
 // todo: make language specific
 class SimpleSignature : Signature {
 
     // str should contain only a-zA-Z0-9_
-    override fun signature(str: String): Int {
+    override fun get(str: String): Int {
         fun index(c: Char) = charMap[c.toLowerCase()]!!
         return str.fold(0) { acc: Int, it -> if (inCharMap(it)) acc or (1 shl index(it)) else acc }
     }
 
-    override fun signatureRange(str: String, maxError: Int): List<Int> {
-        val sig = signature(str)
+    override fun getRange(str: String, maxError: Int): List<Int> {
+        val sig = get(str)
         return (0..maxError).flatMap { withKErrorsFromM(sig, it, 0) }
     }
 

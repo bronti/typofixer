@@ -4,6 +4,7 @@ import com.jetbrains.typofixer.search.index.Index
 import com.jetbrains.typofixer.search.signature.Signature
 import java.io.BufferedReader
 import java.util.zip.ZipFile
+import kotlin.streams.toList
 
 
 class FromZipTestIndexRetriever(private val signatureProvider: Signature) {
@@ -27,7 +28,7 @@ class FromZipTestIndexRetriever(private val signatureProvider: Signature) {
 
     private fun retrieveFromReaderToIndex(reader: BufferedReader, index: Index) {
         val words = reader.lines().flatMap { splitBy.split(it).filter { str -> word.matches(str) }.stream() }
-        words.forEach { index.add(it) }
+        index.updateLocal(words.toList())
     }
 
 }
