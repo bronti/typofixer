@@ -31,4 +31,16 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
         myFixture.type('\n')
         myFixture.checkResult("class\n<caret>Some")
     }
+
+    fun testReplacementInIdentifier() {
+        myFixture.configureByText("Foo.java", "class Some { voidd<caret>}")
+        myFixture.type(' ')
+        myFixture.checkResult("class Some { void <caret>}")
+    }
+
+    fun testReplacementInErrorElement() {
+        myFixture.configureByText("Foo.java", "innerface<caret>")
+        myFixture.type(' ')
+        myFixture.checkResult("interface <caret>")
+    }
 }
