@@ -1,6 +1,7 @@
 package com.jetbrains.typofixer.search.index
 
 import com.intellij.psi.PsiFile
+import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 
 /**
@@ -16,7 +17,7 @@ class Index(val signatureProvider: Signature) {
 
     fun feed(psiFile: PsiFile) {
         index.clear()
-        val collector = IndexCollector.Extension.getIndexCollector(psiFile.language)
+        val collector = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language).getIndexCollector()
         collector.keyWords().forEach { add(it) }
         collector.localIdentifiers(psiFile).forEach { add(it) }
     }

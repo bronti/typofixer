@@ -1,63 +1,45 @@
 package com.jetbrains.typofixer
 
-import com.intellij.lang.Language
-import com.intellij.lang.LanguageExtension
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.DLSearcherProvider
 
 /**
  * @author bronti
  */
 
-abstract class TypoResolver {
+fun checkedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile) {
+    val langSupport = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language)
+    doCheckedTypoResolve(nextChar, editor, psiFile, langSupport)
+}
 
-    companion object {
-        fun checkedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile) {
-            TypoResolver.Extension.getResolver(psiFile.language).doCheckedTypoResolve(nextChar, editor.caretModel.offset, editor, psiFile.project, psiFile)
+private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport) {
+    if (langSupport.identifierChar(nextChar)) return
+
+    val nextCharOffset = editor.caretModel.offset
+    val project = psiFile.project
+
+    val psiManager = PsiDocumentManager.getInstance(project)
+
+    // refresh psi
+    psiManager.commitDocument(editor.document)
+
+    val element = psiFile.findElementAt(nextCharOffset - 1)
+
+    if (element != null && langSupport.isTypoResolverApplicable(element)) {
+        val searcher = project.getComponent(DLSearcherProvider::class.java).getSearcher()
+
+        val oldText = element.text
+        val replacement = searcher.findClosestInFile(oldText, psiFile)
+
+        replacement ?: return
+
+        ApplicationManager.getApplication().runWriteAction {
+            editor.document.replaceString(element.textRange.startOffset, element.textRange.endOffset, replacement)
         }
-    }
-
-    private fun doCheckedTypoResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, project: Project, psiFile: PsiFile) {
-        if (afterIdentifierChar(nextChar)) return
-
-        val psiManager = PsiDocumentManager.getInstance(project)
-
-        // refresh psi
-        psiManager.commitDocument(editor.document)
-
-        val element = psiFile.findElementAt(nextCharOffset - 1)
-
-        if (element != null && isTypoResolverApplicable(element)) {
-            val searcher = project.getComponent(DLSearcherProvider::class.java).getSearcher()
-
-            val oldText = element.text
-            val replacement = searcher.findClosestInFile(oldText, psiFile)
-
-            replacement ?: return
-
-            ApplicationManager.getApplication().runWriteAction {
-                editor.document.replaceString(element.textRange.startOffset, element.textRange.endOffset, replacement)
-            }
-            editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
-        }
-    }
-
-    abstract protected fun afterIdentifierChar(c: Char): Boolean
-
-    abstract protected fun isTypoResolverApplicable(element: PsiElement): Boolean
-
-    class Extension : LanguageExtension<TypoResolver>("com.jetbrains.typofixer.typoFixerResolverLanguageSupport") {
-        companion object {
-            val INSTANCE = TypoResolver.Extension()
-
-            fun getResolver(language: Language): TypoResolver {
-                return INSTANCE.forLanguage(language)
-            }
-        }
+        editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
     }
 }

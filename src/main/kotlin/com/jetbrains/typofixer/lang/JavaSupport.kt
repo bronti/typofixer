@@ -6,10 +6,19 @@ import com.jetbrains.typofixer.search.index.IndexCollector
 /**
  * @author bronti.
  */
+class JavaSupport : TypoFixerLanguageSupport {
+    override fun identifierChar(c: Char) = c.isLetter() || c.isDigit() || c == '_'
+
+    override fun isTypoResolverApplicable(element: PsiElement) =
+            element.node.elementType == JavaTokenType.IDENTIFIER && element.parent is PsiReference
+
+    override fun getIndexCollector() = JavaIndexCollector()
+}
+
 class JavaIndexCollector : IndexCollector {
     override fun keyWords() = javaKeywords
 
-    // todo: make it wright
+    // todo: make it right
     override fun localIdentifiers(psiFile: PsiFile): List<String> {
         val result = mutableListOf<String>()
 
