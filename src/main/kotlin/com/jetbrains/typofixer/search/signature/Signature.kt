@@ -14,7 +14,7 @@ class SimpleSignature : Signature {
     // str should contain only a-zA-Z0-9_
     override fun signature(str: String): Int {
         fun index(c: Char) = charMap[c.toLowerCase()]!!
-        return str.fold(0) { acc: Int, it -> acc or (1 shl index(it)) }
+        return str.fold(0) { acc: Int, it -> if (inCharMap(it)) acc or (1 shl index(it)) else acc }
     }
 
     override fun signatureRange(str: String, maxError: Int): List<Int> {
@@ -68,6 +68,8 @@ class SimpleSignature : Signature {
                 '0' to 17,
                 '_' to 18
         )
+
+        fun inCharMap(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '_'
 
         val maxIndexForCharMap = 18
     }

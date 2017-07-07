@@ -20,6 +20,8 @@ class Index(val signatureProvider: Signature) {
         val collector = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language).getIndexCollector()
         collector.keyWords().forEach { add(it) }
         collector.localIdentifiers(psiFile).forEach { add(it) }
+        val projectIdentifiers = collector.projectIdentifiers(psiFile.project)
+        projectIdentifiers.forEach { add(it) }
     }
 
     fun add(str: String) {

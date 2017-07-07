@@ -15,7 +15,7 @@ class JavaSupport : TypoFixerLanguageSupport {
     override fun getIndexCollector() = JavaIndexCollector()
 }
 
-class JavaIndexCollector : IndexCollector {
+class JavaIndexCollector : IndexCollector() {
     override fun keyWords() = javaKeywords
 
     // todo: make it right
