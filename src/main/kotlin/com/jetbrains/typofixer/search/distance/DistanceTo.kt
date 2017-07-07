@@ -10,6 +10,7 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
     /*
      * returns distance if it is less or equals to maxError and maxError + 1 otherwise
      */
+    // todo: bigger identifiers should allow more mistakes (?)
     override fun measure(str: String): Int {
 
         val bigDistance = maxError + 1
