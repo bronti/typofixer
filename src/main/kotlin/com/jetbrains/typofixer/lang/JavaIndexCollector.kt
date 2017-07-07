@@ -1,7 +1,7 @@
 package com.jetbrains.typofixer.lang
 
 import com.intellij.psi.*
-import com.jetbrains.typofixer.search.IndexCollector
+import com.jetbrains.typofixer.search.index.IndexCollector
 
 /**
  * @author bronti.

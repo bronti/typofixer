@@ -1,33 +1,23 @@
 package com.jetbrains.typofixer.search
 
-import com.intellij.openapi.components.ProjectComponent
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
-import com.jetbrains.typofixer.search.signature.SimpleSignature
+import com.jetbrains.typofixer.search.index.Index
 
 /**
  * @author bronti.
  */
-
-interface FuzzySearcher : ProjectComponent {
-    val maxError: Int
-    val index: Index
+interface Searcher {
     fun findClosestInFile(str: String, psiFile: PsiFile): String?
 }
 
-abstract class DLSearcherBase : FuzzySearcher {
-
-    override val maxError: Int = 2
-    override val index = Index(SimpleSignature())
+abstract class DLSearcherBase(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) : Searcher {
 
     protected abstract fun getCandidates(str: String): Set<String>
 
-    private val distanceTo: (String) -> DistanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
-
     override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
         index.feed(psiFile)
-        val distance = distanceTo(str)
+        val distance = getDistanceTo(str)
         val candidates = getCandidates(str)
         val result = candidates.minBy { distance.measure(it) }
         return if (result == null || distance.measure(result) > maxError) null else result
@@ -41,6 +31,6 @@ abstract class DLSearcherBase : FuzzySearcher {
     }
 }
 
-class DLSearcher : DLSearcherBase() {
-    override fun getCandidates(str: String): Set<String> = getRange(str, maxError)
+class DLSearcher(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearcherBase(maxError, getDistanceTo, index) {
+    override fun getCandidates(str: String) = getRange(str, maxError)
 }

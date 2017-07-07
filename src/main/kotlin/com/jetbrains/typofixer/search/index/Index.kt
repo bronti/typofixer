@@ -1,4 +1,4 @@
-package com.jetbrains.typofixer.search
+package com.jetbrains.typofixer.search.index
 
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.signature.Signature

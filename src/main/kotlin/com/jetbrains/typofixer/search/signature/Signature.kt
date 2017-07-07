@@ -8,6 +8,7 @@ interface Signature {
     fun signatureRange(str: String, maxError: Int): List<Int>
 }
 
+// todo: make language specific
 class SimpleSignature : Signature {
 
     // str should contain only a-zA-Z0-9_

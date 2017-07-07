@@ -1,4 +1,4 @@
-package com.jetbrains.typofixer.search
+package com.jetbrains.typofixer.search.index
 
 import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
@@ -15,7 +15,7 @@ interface IndexCollector {
 
     class Extension : LanguageExtension<IndexCollector>("com.jetbrains.typofixer.typoFixerIndexLanguageSupport") {
         companion object {
-            val INSTANCE = IndexCollector.Extension()
+            val INSTANCE = Extension()
 
             fun getIndexCollector(language: Language): IndexCollector {
                 return INSTANCE.forLanguage(language)

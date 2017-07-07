@@ -10,7 +10,6 @@ import com.jetbrains.typofixer.TypoResolver
 /**
  * @author bronti.
  */
-// todo: 'tab' doesn't work
 class JavaTypoResolver : TypoResolver() {
     override fun afterIdentifierChar(c: Char) = c.isLetter() || c.isDigit() || c == '_'
 

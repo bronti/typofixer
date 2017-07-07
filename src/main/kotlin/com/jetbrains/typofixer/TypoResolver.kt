@@ -8,13 +8,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.search.DLSearcher
+import com.jetbrains.typofixer.search.DLSearcherProvider
 
 /**
  * @author bronti
  */
 
-// todo: LanguageExtensionPoint
 abstract class TypoResolver {
     fun checkedTypoResolve(nextChar: Char, nextCharOffset: Int, editor: Editor, project: Project, psiFile: PsiFile) {
         if (afterIdentifierChar(nextChar)) return
@@ -27,8 +26,7 @@ abstract class TypoResolver {
         val element = psiFile.findElementAt(nextCharOffset - 1)
 
         if (element != null && isTypoResolverApplicable(element)) {
-            // todo:
-            val searcher = project.getComponent(DLSearcher::class.java)
+            val searcher = project.getComponent(DLSearcherProvider::class.java).getSearcher()
 
             val oldText = element.text
             val replacement = searcher.findClosestInFile(oldText, psiFile)
