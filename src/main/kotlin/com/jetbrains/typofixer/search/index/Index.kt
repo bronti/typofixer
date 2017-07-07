@@ -21,7 +21,7 @@ class Index(val signatureProvider: Signature) {
         collector.localIdentifiers(psiFile).forEach { add(it) }
     }
 
-    private fun add(str: String) {
+    fun add(str: String) {
         val signature = signatureProvider.signature(str)
         if (index[signature] == null) {
             index[signature] = HashSet()
