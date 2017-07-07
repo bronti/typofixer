@@ -10,7 +10,7 @@ class JavaSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isLetter() || c.isDigit() || c == '_'
 
     override fun isTypoResolverApplicable(element: PsiElement) =
-            element.node.elementType == JavaTokenType.IDENTIFIER && element.parent is PsiReference
+            element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
 
     override fun getIndexCollector() = JavaIndexCollector()
 }
@@ -24,7 +24,7 @@ class JavaIndexCollector : IndexCollector() {
 
         val visitor = object : JavaRecursiveElementVisitor() {
             override fun visitIdentifier(identifier: PsiIdentifier) {
-                if (identifier.parent !is PsiReference) {
+                if (identifier.parent !is PsiReference && identifier.parent !is PsiErrorElement) {
                     result.add(identifier.text)
                 }
                 super.visitIdentifier(identifier)
