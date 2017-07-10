@@ -11,10 +11,8 @@ interface Signature {
 // todo: make language specific
 class SimpleSignature : Signature {
 
-    // str should contain only a-zA-Z0-9_
     override fun get(str: String): Int {
-        fun index(c: Char) = charMap[c.toLowerCase()]!!
-        return str.fold(0) { acc: Int, it -> if (inCharMap(it)) acc or (1 shl index(it)) else acc }
+        return str.fold(0) { acc: Int, it -> if (mappingExists(it)) acc or (1 shl charMapping(it)) else acc }
     }
 
     override fun getRange(str: String, maxError: Int): List<Int> {
@@ -24,12 +22,14 @@ class SimpleSignature : Signature {
 
     private fun withKErrorsFromM(signature: Int, k: Int, m: Int): List<Int> {
         if (k == 0) return listOf(signature)
-        if (m == maxIndexForCharMap) return listOf()
+        if (m == maxMapping) return listOf()
         return withKErrorsFromM(signature, k, m + 1) + withKErrorsFromM(signature xor (1 shl m), k - 1, m + 1)
     }
 
     companion object {
-        val charMap = hashMapOf(
+        fun charMapping(c: Char) = charMap[c.toLowerCase()]!!
+
+        private val charMap = hashMapOf(
                 'a' to 0,
                 'b' to 11,
                 'c' to 10,
@@ -66,11 +66,30 @@ class SimpleSignature : Signature {
                 '8' to 16,
                 '9' to 17,
                 '0' to 17,
-                '_' to 18
+                '!' to 13,
+                '@' to 13,
+                '#' to 14,
+                '$' to 14,
+                '%' to 15,
+                '^' to 15,
+                '&' to 16,
+                '*' to 16,
+                '_' to 18,
+                '-' to 18,
+                '+' to 18,
+                '=' to 18,
+                '<' to 19,
+                '>' to 19,
+                '?' to 20,
+                '/' to 20,
+                ':' to 21,
+                '\\' to 21,
+                '|' to 21,
+                '~' to 22
         )
 
-        fun inCharMap(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '_'
+        fun mappingExists(c: Char) = charMap[c.toLowerCase()] != null
 
-        val maxIndexForCharMap = 18
+        val maxMapping = 22
     }
 }
