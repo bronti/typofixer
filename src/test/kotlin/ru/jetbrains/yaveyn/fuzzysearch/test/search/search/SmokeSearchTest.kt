@@ -1,7 +1,7 @@
 package ru.jetbrains.yaveyn.fuzzysearch.test.search.search
 
-import com.jetbrains.typofixer.search.DLPreciseSearcher
-import com.jetbrains.typofixer.search.DLSearcher
+import com.jetbrains.typofixer.search.DLPreciseSearcherAlgorithm
+import com.jetbrains.typofixer.search.DLSearcherAlgorithm
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
 import com.jetbrains.typofixer.search.signature.SimpleSignature
@@ -15,8 +15,8 @@ class SmokeSearchTest {
 
     fun distanceProvider(maxError: Int) = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
 
-    fun searcherProvider(maxError: Int, index: Index) = DLSearcher(maxError, distanceProvider(maxError), index)
-    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearcher(maxError, distanceProvider(maxError), index)
+    fun searcherProvider(maxError: Int, index: Index) = DLSearcherAlgorithm(maxError, distanceProvider(maxError), index)
+    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearcherAlgorithm(maxError, distanceProvider(maxError), index)
 
     fun hasAll(strs: List<String>) = Matcher(List<String>::containsAll, strs)
 

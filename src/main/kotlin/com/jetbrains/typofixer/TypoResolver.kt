@@ -5,7 +5,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
-import com.jetbrains.typofixer.search.DLSearcherProvider
+import com.jetbrains.typofixer.search.DLSearcher
 
 /**
  * @author bronti
@@ -30,12 +30,9 @@ private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFil
     val element = psiFile.findElementAt(nextCharOffset - 1)
 
     if (element != null && langSupport.isTypoResolverApplicable(element)) {
-        val searcher = project.getComponent(DLSearcherProvider::class.java).getSearcher()
-
         val oldText = element.text.substring(0, nextCharOffset - element.textOffset)
-        val replacement = searcher.findClosestInFile(oldText, psiFile)
 
-        replacement ?: return
+        val replacement = project.getComponent(DLSearcher::class.java).findClosestInFile(oldText, psiFile) ?: return
 
         ApplicationManager.getApplication().runWriteAction {
             editor.document.replaceString(element.textOffset, element.textOffset + oldText.length, replacement)
