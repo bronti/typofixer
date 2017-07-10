@@ -1,8 +1,8 @@
 package ru.jetbrains.yaveyn.fuzzysearch.test.search.search
 
-import com.jetbrains.typofixer.search.DLPreciseSearcherAlgorithm
-import com.jetbrains.typofixer.search.DLSearcherAlgorithm
-import com.jetbrains.typofixer.search.SearcherAlgorithm
+import com.jetbrains.typofixer.search.DLPreciseSearchAlgorithm
+import com.jetbrains.typofixer.search.DLSearchAlgorithm
+import com.jetbrains.typofixer.search.SearchAlgorithm
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
 import com.jetbrains.typofixer.search.signature.SimpleSignature
@@ -21,8 +21,8 @@ class BigSearchTest {
 
     fun distanceProvider(maxError: Int) = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
 
-    fun searcherProvider(maxError: Int, index: Index) = DLSearcherAlgorithm(maxError, distanceProvider(maxError), index)
-    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearcherAlgorithm(maxError, distanceProvider(maxError), index)
+    fun searcherProvider(maxError: Int, index: Index) = DLSearchAlgorithm(maxError, distanceProvider(maxError), index)
+    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearchAlgorithm(maxError, distanceProvider(maxError), index)
 
 
     @Test
@@ -61,7 +61,7 @@ class BigSearchTest {
         assert.that(simplePrecisions[2], !equalTo(1.0))
     }
 
-    fun doFixedErrorPrecisionIntellijTest(maxError: Int, toSearch: String, searcher: SearcherAlgorithm, index: Index): Double {
+    fun doFixedErrorPrecisionIntellijTest(maxError: Int, toSearch: String, searcher: SearchAlgorithm, index: Index): Double {
         val preciseSearcher = preciseSearcherProvider(maxError, index)
 
         val preciseResult = preciseSearcher.simpleSearch(toSearch)

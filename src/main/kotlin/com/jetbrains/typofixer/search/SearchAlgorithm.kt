@@ -6,14 +6,14 @@ import com.jetbrains.typofixer.search.index.Index
 /**
  * @author bronti.
  */
-interface SearcherAlgorithm {
+interface SearchAlgorithm {
     fun findClosest(str: String): String?
     fun findAllClosest(str: String): List<String>
     fun simpleSearch(str: String): List<String>
     fun search(str: String): Map<Int, List<String>>
 }
 
-abstract class DLSearcherAlgorithmBase(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) : SearcherAlgorithm {
+abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) : SearchAlgorithm {
 
     protected abstract fun getCandidates(str: String): Set<String>
 
@@ -51,10 +51,10 @@ abstract class DLSearcherAlgorithmBase(val maxError: Int, val getDistanceTo: (St
     }
 }
 
-class DLSearcherAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearcherAlgorithmBase(maxError, getDistanceTo, index) {
+class DLSearchAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearchAlgorithmBase(maxError, getDistanceTo, index) {
     override fun getCandidates(str: String) = getRange(str, maxError)
 }
 
-class DLPreciseSearcherAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearcherAlgorithmBase(maxError, getDistanceTo, index) {
+class DLPreciseSearchAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearchAlgorithmBase(maxError, getDistanceTo, index) {
     override fun getCandidates(str: String): Set<String> = getRange(str, 2 * maxError)
 }

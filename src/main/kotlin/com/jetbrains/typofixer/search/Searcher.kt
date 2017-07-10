@@ -36,7 +36,7 @@ class DLSearcher(project: Project) : Searcher(project) {
     override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
-            DLSearcherAlgorithm(maxError, distanceTo, index).findClosest(str)
+            DLSearchAlgorithm(maxError, distanceTo, index).findClosest(str)
         } else null
     }
 
