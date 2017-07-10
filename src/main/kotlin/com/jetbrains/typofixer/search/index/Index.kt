@@ -7,6 +7,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.impl.java.stubs.index.JavaFieldNameIndex
 import com.intellij.psi.impl.java.stubs.index.JavaMethodNameIndex
 import com.intellij.psi.impl.java.stubs.index.JavaShortClassNameIndex
+import com.intellij.psi.search.GlobalSearchScope
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 
@@ -45,9 +46,20 @@ class Index(val signature: Signature) {
 
 private fun projectIdentifiers(project: Project): List<String> {
     return ApplicationManager.getApplication().runReadAction(Computable<List<String>> {
-        val classNames = JavaShortClassNameIndex.getInstance().getAllKeys(project)
         val methodNames = JavaMethodNameIndex.getInstance().getAllKeys(project)
         val fieldsNames = JavaFieldNameIndex.getInstance().getAllKeys(project)
-        classNames + methodNames + fieldsNames
+
+        val packages = mutableSetOf<String>()
+        val shortClassNameIndex = JavaShortClassNameIndex.getInstance()
+
+        // todo: optimize??? (make new index?)
+        val shortClassNames = shortClassNameIndex.getAllKeys(project)
+        for (name in shortClassNames) {
+            shortClassNameIndex
+                    .get(name, project, GlobalSearchScope.allScope(project))
+                    .flatMap { it.qualifiedName!!.split(".") }
+                    .forEach { packages.add(it) }
+        }
+        methodNames + fieldsNames + packages //126k
     })
 }

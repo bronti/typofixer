@@ -49,30 +49,31 @@ class DLSearcher(project: Project) : Searcher(project) {
 
     // todo: in background
     override fun initComponent() {
-        updateIndex()
 
         val connection = myProject.messageBus.connect(myProject)
 
-        connection.subscribe(ProjectTopics.PROJECT_ROOTS, object : ModuleRootListener {
-            override fun rootsChanged(event: ModuleRootEvent) {
-                updateIndex()
-                updateNeeded = false
-            }
-        })
+        DumbService.getInstance(myProject).smartInvokeLater {
+            connection.subscribe(ProjectTopics.PROJECT_ROOTS, object : ModuleRootListener {
+                override fun rootsChanged(event: ModuleRootEvent) {
+                    updateIndex()
+                }
+            })
 
-        connection.subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
-            val count = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
-            if (psiModificationCount != count) {
-                psiModificationCount = count
-                updateNeeded = true
-            }
-        })
+            connection.subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
+                val count = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
+                if (psiModificationCount != count) {
+                    psiModificationCount = count
+                    updateNeeded = true
+                }
+            })
 
-        connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
-            override fun selectionChanged(event: FileEditorManagerEvent) {
-                if (updateNeeded) updateIndex()
-                updateNeeded = false
-            }
-        })
+            connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+                override fun selectionChanged(event: FileEditorManagerEvent) {
+                    if (updateNeeded) updateIndex()
+                }
+            })
+        }
+
+        updateIndex()
     }
 }

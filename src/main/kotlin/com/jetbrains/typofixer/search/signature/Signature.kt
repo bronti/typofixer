@@ -12,7 +12,7 @@ interface Signature {
 class SimpleSignature : Signature {
 
     override fun get(str: String): Int {
-        return str.fold(0) { acc: Int, it -> if (mappingExists(it)) acc or (1 shl charMapping(it)) else acc }
+        return str.fold(0) { acc: Int, it -> acc or (1 shl charMapping(it)) }
     }
 
     override fun getRange(str: String, maxError: Int): List<Int> {
@@ -27,7 +27,7 @@ class SimpleSignature : Signature {
     }
 
     companion object {
-        fun charMapping(c: Char) = charMap[c.toLowerCase()]!!
+        fun charMapping(c: Char) = charMap[c.toLowerCase()] ?: maxMapping
 
         private val charMap = hashMapOf(
                 'a' to 0,
@@ -88,8 +88,6 @@ class SimpleSignature : Signature {
                 '~' to 22
         )
 
-        fun mappingExists(c: Char) = charMap[c.toLowerCase()] != null
-
-        val maxMapping = 22
+        val maxMapping = 23
     }
 }

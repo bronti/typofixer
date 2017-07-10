@@ -11,7 +11,7 @@ import com.natpryce.hamkrest.assertion.assert
 import org.junit.Ignore
 import org.junit.Test
 
-//@Ignore
+@Ignore
 class BigSearchTest {
 
     fun hasAll(strs: List<String>) = Matcher(List<String>::containsAll, strs)
