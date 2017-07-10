@@ -20,6 +20,12 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
         myFixture.checkResult("class\n<caret>")
     }
 
+    fun testReplacementAfterClosingParenthesis() {
+        myFixture.configureByText("Foo.java", "class Some {privvate<caret>}")
+        myFixture.type('}')
+        myFixture.checkResult("class Some {private}<caret>")
+    }
+
     fun testReplacementAfterTypedInSolidText() {
         myFixture.configureByText("Foo.java", "clas<caret>Some")
         myFixture.type(' ')
@@ -42,5 +48,29 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
         myFixture.configureByText("Foo.java", "innerface<caret>")
         myFixture.type(' ')
         myFixture.checkResult("interface <caret>")
+    }
+
+    fun testNoReplacementInsideIdentifier() {
+        myFixture.configureByText("Foo.java", "innerface<caret>")
+        myFixture.type('_')
+        myFixture.checkResult("innerface_<caret>")
+    }
+
+    fun testNoReplacementInTheBeginningOfADocument() {
+        myFixture.configureByText("Foo.java", "<caret>")
+        myFixture.type(' ')
+        myFixture.checkResult(" <caret>")
+    }
+
+    fun testReplacementWithShorterWord() {
+        myFixture.configureByText("Foo.java", "classss<caret>")
+        myFixture.type(' ')
+        myFixture.checkResult("class <caret>")
+    }
+
+    fun testReplacementWithLongerWord() {
+        myFixture.configureByText("Foo.java", "cla<caret>")
+        myFixture.type(' ')
+        myFixture.checkResult("class <caret>")
     }
 }
