@@ -17,9 +17,9 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
  * @author bronti.
  */
 
-// todo: merge with Searcher (?)
 abstract class SearcherProvider(project: Project) : AbstractProjectComponent(project) {
     abstract fun getSearcher(): Searcher
+    abstract fun getPreciseSearcher(): Searcher
 }
 
 class DLSearcherProvider(project: Project) : SearcherProvider(project) {
@@ -28,10 +28,11 @@ class DLSearcherProvider(project: Project) : SearcherProvider(project) {
     private val signature = SimpleSignature()
     private val distanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
     private val index = Index(signature)
-    private var updateNeeded = false
-    private var outOfCodeBlockModificationCount = 0L
+    private var updateNeeded = true
+    private var psiModificationCount = 0L
 
     override fun getSearcher() = DLSearcher(maxError, distanceTo, index)
+    override fun getPreciseSearcher() = DLPreciseSearcher(maxError, distanceTo, index)
 
     private fun updateIndex() {
         DumbService.getInstance(myProject).smartInvokeLater {
@@ -44,21 +45,27 @@ class DLSearcherProvider(project: Project) : SearcherProvider(project) {
     override fun initComponent() {
         updateIndex()
 
-        myProject.messageBus.connect(myProject).subscribe(ProjectTopics.PROJECT_ROOTS, object : ModuleRootListener {
-            override fun rootsChanged(event: ModuleRootEvent) = updateIndex()
+        val connection = myProject.messageBus.connect(myProject)
+
+        connection.subscribe(ProjectTopics.PROJECT_ROOTS, object : ModuleRootListener {
+            override fun rootsChanged(event: ModuleRootEvent) {
+                updateIndex()
+                updateNeeded = false
+            }
         })
 
-        myProject.messageBus.connect(myProject).subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
+        connection.subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
             val count = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
-            if (outOfCodeBlockModificationCount != count) {
-                outOfCodeBlockModificationCount = count
+            if (psiModificationCount != count) {
+                psiModificationCount = count
                 updateNeeded = true
             }
         })
 
-        myProject.messageBus.connect(myProject).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+        connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
             override fun selectionChanged(event: FileEditorManagerEvent) {
                 if (updateNeeded) updateIndex()
+                updateNeeded = false
             }
         })
     }
