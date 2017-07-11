@@ -31,4 +31,10 @@ class LocalIndexTest : LightPlatformCodeInsightFixtureTestCase() {
         myFixture.type(' ')
         myFixture.checkResult("class Some { int someField; void someMethod() { someField <caret>")
     }
+
+    fun testPackage() {
+        myFixture.configureByText("Foo.java", "package some.package; import some.packkage<caret>")
+        myFixture.type('.')
+        myFixture.checkResult("package some.package; import some.package.<caret>")
+    }
 }
