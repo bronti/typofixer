@@ -20,7 +20,7 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
 
 abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
     abstract fun findClosestInFile(str: String, psiFile: PsiFile): String?
-    abstract fun search(str: String, psiFile: PsiFile, precise: Boolean = false): Map<Int, List<String>>
+    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
 }
 
 class DLSearcher(project: Project) : Searcher(project) {
@@ -28,14 +28,16 @@ class DLSearcher(project: Project) : Searcher(project) {
     private val maxError = 2
     private val signature = SimpleSignature()
     private val distanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
-    private val index = Index(signature)
+    // todo: make private
+    val index = Index(signature)
     private var updateNeeded = true
     private var psiModificationCount = 0L
 
     private val simpleSearch = DLSearchAlgorithm(maxError, distanceTo, index)
     private val preciceSearch = DLPreciseSearchAlgorithm(maxError, distanceTo, index)
 
-    private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
+    // todo: make private
+    fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
     private fun canSearch() = !DumbService.isDumb(myProject)
 
     override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
@@ -45,9 +47,9 @@ class DLSearcher(project: Project) : Searcher(project) {
         } else null
     }
 
-    override fun search(str: String, psiFile: PsiFile, precise: Boolean): Map<Int, List<String>> {
+    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
         return if (canSearch()) {
-            index.refreshLocal(psiFile)
+            if (psiFile != null) index.refreshLocal(psiFile)
             getSearch(precise).search(str)
         } else mapOf()
     }

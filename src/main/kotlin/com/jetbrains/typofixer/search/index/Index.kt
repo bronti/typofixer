@@ -17,30 +17,63 @@ import com.jetbrains.typofixer.search.signature.Signature
 class Index(val signature: Signature) {
 
     private val localIndex = HashMap<Int, HashSet<String>>()
-    private val globalIndex = HashMap<Int, HashSet<String>>()
+    // todo: make private
+    val globalIndex = HashMap<Int, HashSet<String>>()
 
     private fun HashMap<Int, HashSet<String>>.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
-    private fun HashMap<Int, HashSet<String>>.add(str: String) {
+    private fun HashMap<Int, HashSet<String>>.add(str: String): Boolean {
         val signature = signature.get(str)
         this[signature] = this.getWithDefault(signature)
-        this[signature]!!.add(str)
+        return this[signature]!!.add(str)
     }
 
+    private fun HashMap<Int, HashSet<String>>.contains(str: String): Boolean {
+        val signature = signature.get(str)
+        return if (this[signature] == null) false else this[signature]!!.contains(str)
+    }
+
+    var localSize = 0
+        private set
+    var globalSize = 0
+        private set
+
+    val size: Int
+        get() = localSize + globalSize
+
     fun get(signature: Int): Set<String> = localIndex.getWithDefault(signature) + globalIndex.getWithDefault(signature)
+    fun contains(str: String) = localIndex.contains(str) || globalIndex.contains(str)
 
     fun refreshLocal(psiFile: PsiFile) {
-        localIndex.clear()
+        clearLocal()
         val collector = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language).getLocalDictionaryCollector()
         updateLocal(collector.keyWords())
         updateLocal(collector.localIdentifiers(psiFile))
     }
 
     // not private because of tests (todo: do something about it)
-    fun updateLocal(words: List<String>) = words.forEach { localIndex.add(it) }
+    fun updateLocal(words: List<String>) {
+        words.forEach { if (localIndex.add(it)) ++localSize }
+    }
 
     fun refreshGlobal(project: Project) {
+        clearGlobal()
+        val identifiers = projectIdentifiers(project)
+        identifiers.forEach { if (globalIndex.add(it)) ++globalSize }
+    }
+
+    fun clear() {
+        clearLocal()
+        clearGlobal()
+    }
+
+    private fun clearLocal() {
+        localIndex.clear()
+        localSize = 0
+    }
+
+    private fun clearGlobal() {
         globalIndex.clear()
-        projectIdentifiers(project).forEach { globalIndex.add(it) }
+        globalSize = 0
     }
 }
 

@@ -15,7 +15,8 @@ interface SearchAlgorithm {
 
 abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) : SearchAlgorithm {
 
-    protected abstract fun getCandidates(str: String): Set<String>
+    // todo: make protected
+    abstract fun getCandidates(str: String): Set<String>
 
     override fun findClosest(str: String): String? {
         val distance = getDistanceTo(str)
