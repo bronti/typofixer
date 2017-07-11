@@ -20,6 +20,7 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
 
 abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
     abstract fun findClosestInFile(str: String, psiFile: PsiFile): String?
+    abstract fun search(str: String, psiFile: PsiFile, precise: Boolean = false): Map<Int, List<String>>
 }
 
 class DLSearcher(project: Project) : Searcher(project) {
@@ -31,13 +32,24 @@ class DLSearcher(project: Project) : Searcher(project) {
     private var updateNeeded = true
     private var psiModificationCount = 0L
 
+    private val simpleSearch = DLSearchAlgorithm(maxError, distanceTo, index)
+    private val preciceSearch = DLPreciseSearchAlgorithm(maxError, distanceTo, index)
+
+    private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
     private fun canSearch() = !DumbService.isDumb(myProject)
 
     override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
-            DLSearchAlgorithm(maxError, distanceTo, index).findClosest(str)
+            getSearch(false).findClosest(str)
         } else null
+    }
+
+    override fun search(str: String, psiFile: PsiFile, precise: Boolean): Map<Int, List<String>> {
+        return if (canSearch()) {
+            index.refreshLocal(psiFile)
+            getSearch(precise).search(str)
+        } else mapOf()
     }
 
     private fun updateIndex() {
