@@ -2,8 +2,7 @@ package ru.jetbrains.yaveyn.fuzzysearch.test.search.big
 
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Computable
-import com.intellij.testFramework.PsiTestUtil
-import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
+import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.jetbrains.typofixer.search.DLSearcher
 import org.junit.Test
 import java.io.File
@@ -12,7 +11,7 @@ import java.io.File
 /**
  * @author bronti.
  */
-class SearchPrecisionTest : LightPlatformCodeInsightFixtureTestCase() {
+class SearchPrecisionTest {
 
     private val testDataDirPath = "./testData/"
     private val projectForTestingPath = "projectfortesting-1.0-SNAPSHOT.jar"
@@ -31,20 +30,22 @@ class SearchPrecisionTest : LightPlatformCodeInsightFixtureTestCase() {
     }
 
     private fun doTest(str: String, dependencyPaths: List<File>, precs: List<Double>) {
+        val myFixture = IdeaTestFixtureFactory.getFixtureFactory().createFixtureBuilder("prjct").fixture
+        myFixture.setUp()
 
-        myFixture.configureByText("File.java", "")
+        val psiFile = null
         val myProject = myFixture.project
-        val psiFile = myFixture.file
 
-        dependencyPaths.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+//        dependencyPaths.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+
         println(myProject.name)
         println(myProject.basePath)
 
-        var indexSize: Int = 0
+        var globalIndexSize: Int = 0
         val (preciseResult, result) = DumbService.getInstance(myProject).runReadActionInSmartMode(Computable {
             val searcher = myProject.getComponent(DLSearcher::class.java)
             searcher.index.refreshGlobal(myProject)
-            indexSize = searcher.index.globalSize
+            globalIndexSize = searcher.index.globalSize
             val preciseResult = searcher.search(str, psiFile, true)
             val result = searcher.search(str, psiFile)
             Pair(preciseResult, result)
@@ -53,7 +54,8 @@ class SearchPrecisionTest : LightPlatformCodeInsightFixtureTestCase() {
         println(myProject.getComponent(DLSearcher::class.java).index.contains("UniqueLikeASnowflake"))
         println(myProject.getComponent(DLSearcher::class.java).index.contains("privateMethod666"))
 
-        println("index size: $indexSize")
+        // global index size is 560319 but should be zero
+        println("index size: $globalIndexSize")
         println("index size: ${myProject.getComponent(DLSearcher::class.java).index.globalSize}")
         println("${myProject.getComponent(DLSearcher::class.java).getSearch(true).getCandidates(str).size}")
         println("${myProject.getComponent(DLSearcher::class.java).getSearch(false).getCandidates(str).size}")
