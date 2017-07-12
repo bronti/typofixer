@@ -1,0 +1,18 @@
+index size: 560321
+1 char length(max): 16
+2 char length(max): 65
+3 char length(max): 45
+java: 3
+howe: 1
+strr: 36
+parn: 28
+oloo: 6
+javv: 2
+java: 2
+goto: 4
+hzwe: 1
+langg: 7
+retrun: 17
+Stirng: 156
+biggest: 154
+morebiggest: 830

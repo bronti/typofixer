@@ -19,7 +19,7 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
  */
 
 abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
-    abstract fun findClosestInFile(str: String, psiFile: PsiFile): String?
+    abstract fun findClosest(str: String, psiFile: PsiFile?): String?
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
     abstract fun forceIndexRefreshing(): Unit
 }
@@ -45,7 +45,7 @@ class DLSearcher(project: Project) : Searcher(project) {
     fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
     private fun canSearch() = !DumbService.isDumb(myProject)
 
-    override fun findClosestInFile(str: String, psiFile: PsiFile): String? {
+    override fun findClosest(str: String, psiFile: PsiFile?): String? {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
             getSearch(false).findClosest(str)
@@ -58,7 +58,7 @@ class DLSearcher(project: Project) : Searcher(project) {
 
     override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
         return if (canSearch()) {
-            if (psiFile != null) index.refreshLocal(psiFile)
+            index.refreshLocal(psiFile)
             getSearch(precise).search(str)
         } else mapOf()
     }

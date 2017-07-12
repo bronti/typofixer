@@ -10,6 +10,7 @@ import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
 import com.jetbrains.typofixer.search.DLSearcher
 import org.junit.Test
 import java.io.File
+import kotlin.system.measureTimeMillis
 
 
 /**
@@ -19,9 +20,9 @@ class BigSearchTest {
 
     private val testDataDir = File("testData")
     private val currentTestResultsDir = File(File(testDataDir, "testResults"), DLSearcher.VERSION.toString())
-    private var resultLoggingNeeded = !currentTestResultsDir.exists()
 
     private val precisionResults = File(currentTestResultsDir, "precision.txt")
+    private val timeResults = File(currentTestResultsDir, "time.txt")
 
     private val myProject: Project
     private val projectBuilder = IdeaTestFixtureFactory.getFixtureFactory().createFixtureBuilder("prjct")
@@ -30,8 +31,6 @@ class BigSearchTest {
 
     private val ANSI_RESET = "\u001B[0m"
     private val ANSI_RED = "\u001B[31m"
-
-    private val words = listOf("k", "l", "z", "in", "on", "zp", "jva", "tst", "zqp", "java", "goto", "hzwe", "langg", "retrun", "Stirng", "biggest", "morebiggest")
 
     init {
         myFixture.testDataPath = testDataDir.canonicalPath
@@ -48,22 +47,55 @@ class BigSearchTest {
         // 560422
         println("index size: ${searcher.index.size}")
 
-        if (resultLoggingNeeded) {
+        if (!currentTestResultsDir.exists()) {
             currentTestResultsDir.mkdir()
-            precisionResults.createNewFile()
         }
     }
 
     @Test
     fun testPrecision() {
+        val resultLoggingNeeded = !precisionResults.exists()
+        if (resultLoggingNeeded) {
+            precisionResults.createNewFile()
+            precisionResults.appendText("index size: ${searcher.index.size}\n")
+        }
         // todo: clear index (??)
         // todo: generate words
         // todo: different lengths
-        words.forEach { doPrecisionTest(it, listOf(1.0, 1.0, 0.8, 0.8)) }
-        resultLoggingNeeded = false
+        val words = listOf("k", "l", "z", "in", "on", "zp", "jva", "tst", "zqp", "java", "goto", "hzwe", "langg", "retrun", "Stirng", "biggest", "morebiggest")
+        words.forEach { doPrecisionTest(it, listOf(1.0, 1.0, 0.8, 0.8), resultLoggingNeeded) }
     }
 
-    private fun doPrecisionTest(str: String, precs: List<Double>) {
+    @Test
+    fun testTime() {
+        val resultLoggingNeeded = !timeResults.exists()
+        if (resultLoggingNeeded) {
+            timeResults.createNewFile()
+            timeResults.appendText("index size: ${searcher.index.size}\n")
+        }
+        val chars = ('a'..'z').map { it.toString() }
+        val chars2 = chars.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
+        val chars3 = chars2.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
+
+        fun maxTime(words: List<String>) = words.map { doTimeTest(it) }.max()!!
+
+        fun flush(title: String, millis: Long) {
+            val output = title + ": " + millis.toString()
+            println(output)
+            if (resultLoggingNeeded) {
+                timeResults.appendText(output + "\n")
+            }
+        }
+
+        flush("1 char length(max)", maxTime(chars))
+        flush("2 char length(max)", maxTime(chars2))
+        flush("3 char length(max)", maxTime(chars3))
+
+        val words = listOf("java", "howe", "strr", "parn", "oloo", "javv", "java", "goto", "hzwe", "langg", "retrun", "Stirng", "biggest", "morebiggest")
+        words.forEach { flush(it, doTimeTest(it)) }
+    }
+
+    private fun doPrecisionTest(str: String, precs: List<Double>, resultLoggingNeeded: Boolean) {
         val (preciseResult, result) = DumbService.getInstance(myProject).runReadActionInSmartMode(Computable {
             val psiFile = null
             val preciseResult = searcher.search(str, psiFile, true)
@@ -75,10 +107,19 @@ class BigSearchTest {
         assert(searcher.index.contains("privateMethod666"))
 
 //        println("index size: ${searcher.index.size}")
-        checkPrecision(preciseResult, result, str, precs)
+        checkPrecision(preciseResult, result, str, precs, resultLoggingNeeded)
     }
 
-    private fun checkPrecision(preciseResult: Map<Int, List<String>>, result: Map<Int, List<String>>, word: String, precs: List<Double>) {
+    private fun doTimeTest(str: String): Long {
+        return DumbService.getInstance(myProject).runReadActionInSmartMode(Computable {
+            measureTimeMillis({ searcher.findClosest(str, null) })
+        })
+    }
+
+    private fun checkPrecision(preciseResult: Map<Int, List<String>>,
+                               result: Map<Int, List<String>>,
+                               word: String, precs: List<Double>,
+                               resultLoggingNeeded: Boolean) {
         fun handle(getSize: (Map<Int, List<String>>) -> Int,
                    expectedPrecision: Double,
                    toOutput: (String) -> String): String {

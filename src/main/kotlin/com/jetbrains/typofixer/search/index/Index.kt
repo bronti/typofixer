@@ -43,8 +43,9 @@ class Index(val signature: Signature) {
     fun get(signature: Int): Set<String> = localIndex.getWithDefault(signature) + globalIndex.getWithDefault(signature)
     fun contains(str: String) = localIndex.contains(str) || globalIndex.contains(str)
 
-    fun refreshLocal(psiFile: PsiFile) {
+    fun refreshLocal(psiFile: PsiFile?) {
         clearLocal()
+        psiFile ?: return
         val collector = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language).getLocalDictionaryCollector()
         updateLocal(collector.keyWords())
         updateLocal(collector.localIdentifiers(psiFile))
