@@ -21,9 +21,14 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
 abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
     abstract fun findClosestInFile(str: String, psiFile: PsiFile): String?
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
+    abstract fun forceIndexRefreshing(): Unit
 }
 
 class DLSearcher(project: Project) : Searcher(project) {
+
+    companion object {
+        val VERSION = 0
+    }
 
     private val maxError = 2
     private val signature = SimpleSignature()
@@ -45,6 +50,10 @@ class DLSearcher(project: Project) : Searcher(project) {
             index.refreshLocal(psiFile)
             getSearch(false).findClosest(str)
         } else null
+    }
+
+    override fun forceIndexRefreshing() {
+        index.refreshGlobal(myProject)
     }
 
     override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
