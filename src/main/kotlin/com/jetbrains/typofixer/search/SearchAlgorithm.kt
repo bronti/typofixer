@@ -22,6 +22,7 @@ abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (Stri
         val distance = getDistanceTo(str)
         // todo: stop after 0
         // todo: start from closest signature
+        // todo: prioritize keywords
         val result = getCandidates(str).minBy { distance.measure(it) } ?: return null
         return if (distance.measure(result) > maxError) null else result
     }
