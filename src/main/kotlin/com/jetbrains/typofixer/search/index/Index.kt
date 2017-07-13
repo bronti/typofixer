@@ -94,6 +94,7 @@ private fun projectIdentifiers(project: Project): List<String> {
                     .flatMap { it.qualifiedName!!.split(".") }
                     .forEach { packages.add(it) }
         }
+        // todo: debug packages
         methodNames + fieldsNames + packages //126k
     })
 }

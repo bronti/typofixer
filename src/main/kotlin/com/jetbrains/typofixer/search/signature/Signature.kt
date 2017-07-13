@@ -13,7 +13,7 @@ class SimpleSignature : Signature {
 
     override fun get(str: String): Int {
         val base = str.fold(0) { acc: Int, it -> acc or (1 shl charMapping(it)) }
-        val length = Math.max(lengthUpperBound - 1, str.length)
+        val length = Math.min(lengthUpperBound - 1, str.length)
         return combine(base, length)
     }
 
@@ -33,8 +33,8 @@ class SimpleSignature : Signature {
 
         // todo: optimize size of result
         for (baseError in (0..maxError)) {
-            for (lengthError in (0..maxError - baseError)) {
-                val bases = withKErrorsFromM(base, baseError, 0).distinct()
+            val bases = withKErrorsFromM(base, baseError, 0).distinct()
+            for (lengthError in (0..maxError)) {
                 if (length - lengthError > 0) {
                     result.addAll(bases.map { combine(it, length - lengthError) })
                 }
@@ -48,7 +48,7 @@ class SimpleSignature : Signature {
 
     private fun withKErrorsFromM(base: Int, k: Int, m: Int): List<Int> {
         if (k == 0) return listOf(base)
-        if (m == maxMapping) return listOf()
+        if (m == maxMapping + 1) return listOf()
         return withKErrorsFromM(base, k, m + 1) + withKErrorsFromM(base xor (1 shl m), k - 1, m + 1)
     }
 

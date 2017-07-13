@@ -8,6 +8,7 @@ import com.jetbrains.typofixer.search.index.Index
  */
 interface SearchAlgorithm {
     fun findClosest(str: String): String?
+    fun findClosestWithInfo(str: String): Pair<String?, Int>
     fun findAllClosest(str: String): List<String>
     fun simpleSearch(str: String): List<String>
     fun search(str: String): Map<Int, List<String>>
@@ -24,6 +25,13 @@ abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (Stri
         // todo: start from closest signature
         val result = getCandidates(str).minBy { distance.measure(it) } ?: return null
         return if (distance.measure(result) > maxError) null else result
+    }
+
+    override fun findClosestWithInfo(str: String): Pair<String?, Int> {
+        val distance = getDistanceTo(str)
+        val candidates = getCandidates(str)
+        val result = candidates.minBy { distance.measure(it) } ?: return Pair(null, candidates.size)
+        return if (distance.measure(result) > maxError) Pair(null, candidates.size) else Pair(result, candidates.size)
     }
 
     override fun findAllClosest(str: String): List<String> {

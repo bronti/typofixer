@@ -22,6 +22,7 @@ class BigSearchTest {
     private val currentTestResultsDir = File(File(testDataDir, "testResults"), DLSearcher.VERSION.toString())
 
     private val precisionResults = File(currentTestResultsDir, "precision.txt")
+    private val refreshingResults = File(currentTestResultsDir, "refreshing.txt")
     private val timeResults = File(currentTestResultsDir, "time.txt")
 
     private val myProject: Project
@@ -45,7 +46,6 @@ class BigSearchTest {
         searcher = myProject.getComponent(DLSearcher::class.java)
         searcher.forceIndexRefreshing()
         // 560422
-        println("index size: ${searcher.index.size}")
 
         if (!currentTestResultsDir.exists()) {
             currentTestResultsDir.mkdir()
@@ -53,34 +53,57 @@ class BigSearchTest {
     }
 
     @Test
+    fun testRefreshGlobalIndex() {
+        val result = measureTimeMillis({ searcher.forceIndexRefreshing() })
+//        val result = measureTimeMillis({ (1..10).forEach{searcher.forceIndexRefreshing()} }).toDouble() / 10.0
+        val resultLoggingNeeded = !refreshingResults.exists()
+        if (resultLoggingNeeded) {
+            refreshingResults.createNewFile()
+            refreshingResults.appendText("$result\n")
+            refreshingResults.appendText("index size: ${searcher.index.size}")
+        }
+        println("index size: ${searcher.index.size}")
+        println(result)
+    }
+
+    @Test
+            //    @Ignore
     fun testPrecision() {
         val resultLoggingNeeded = !precisionResults.exists()
         if (resultLoggingNeeded) {
             precisionResults.createNewFile()
             precisionResults.appendText("index size: ${searcher.index.size}\n")
         }
+        println("index size: ${searcher.index.size}")
         // todo: clear index (??)
         // todo: generate words
         // todo: different lengths
-        val words = listOf("k", "l", "z", "in", "on", "zp", "jva", "tst", "zqp", "java", "goto", "hzwe", "langg", "retrun", "Stirng", "biggest", "morebiggest")
+        val words = listOf("k", "l", "z", "in", "on", "zp", "jva", "tst", "zqp", "java", "goto", "hzwe", "langg", "retrun", "Stirng")
         words.forEach { doPrecisionTest(it, listOf(1.0, 1.0, 0.8, 0.8), resultLoggingNeeded) }
     }
 
     @Test
+            //    @Ignore
     fun testTime() {
         val resultLoggingNeeded = !timeResults.exists()
         if (resultLoggingNeeded) {
             timeResults.createNewFile()
             timeResults.appendText("index size: ${searcher.index.size}\n")
         }
+        println("index size: ${searcher.index.size}")
         val chars = ('a'..'z').map { it.toString() }
         val chars2 = chars.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
         val chars3 = chars2.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
 
-        fun maxTime(words: List<String>) = words.map { doTimeTest(it) }.max()!!
+        fun maxTime(words: List<String>): Pair<Long, Int> {
+            val results = words.map { doTimeTest(it) }
+            val maxTime = results.maxBy { it.first }!!.first
+            val maxCandidates = results.maxBy { it.second }!!.second
+            return Pair(maxTime, maxCandidates)
+        }
 
-        fun flush(title: String, millis: Long) {
-            val output = title + ": " + millis.toString()
+        fun flush(title: String, pr: Pair<Long, Int>) {
+            val output = title + ": " + pr.toString()
             println(output)
             if (resultLoggingNeeded) {
                 timeResults.appendText(output + "\n")
@@ -110,10 +133,12 @@ class BigSearchTest {
         checkPrecision(preciseResult, result, str, precs, resultLoggingNeeded)
     }
 
-    private fun doTimeTest(str: String): Long {
-        return DumbService.getInstance(myProject).runReadActionInSmartMode(Computable {
-            measureTimeMillis({ searcher.findClosest(str, null) })
+    private fun doTimeTest(str: String): Pair<Long, Int> {
+        var candidates: Int = 0
+        val time = DumbService.getInstance(myProject).runReadActionInSmartMode(Computable {
+            measureTimeMillis({ candidates = searcher.findClosestWithInfo(str, null).second })
         })
+        return Pair(time, candidates)
     }
 
     private fun checkPrecision(preciseResult: Map<Int, List<String>>,

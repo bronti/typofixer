@@ -1,18 +1,18 @@
-index size: 560321
-1 char length(max): 16
-2 char length(max): 65
-3 char length(max): 45
-java: 3
-howe: 1
-strr: 36
-parn: 28
-oloo: 6
-javv: 2
-java: 2
-goto: 4
-hzwe: 1
-langg: 7
-retrun: 17
-Stirng: 156
-biggest: 154
-morebiggest: 830
+index size: 550687
+1 char length(max): (26, 2168)
+2 char length(max): (23, 4785)
+3 char length(max): (61, 10605)
+java: (3, 783)
+howe: (2, 846)
+strr: (42, 10605)
+parn: (31, 9207)
+oloo: (6, 1950)
+javv: (3, 783)
+java: (3, 783)
+goto: (4, 1894)
+hzwe: (0, 148)
+langg: (7, 2469)
+retrun: (18, 8863)
+Stirng: (186, 34274)
+biggest: (173, 34274)
+morebiggest: (1318, 125641)
