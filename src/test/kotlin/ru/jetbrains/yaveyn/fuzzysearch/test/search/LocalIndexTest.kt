@@ -15,7 +15,7 @@ class LocalIndexTest : LightPlatformCodeInsightFixtureTestCase() {
     }
 
     fun testClass() {
-        myFixture.configureByText("Foo.java", "class Some { Som<caret> }")
+        myFixture.configureByText("Foo.java", "class Some { Somee<caret> }")
         myFixture.type(' ')
         myFixture.checkResult("class Some { Some <caret> }")
     }
