@@ -2,12 +2,14 @@ package com.jetbrains.typofixer.search
 
 import com.intellij.ProjectTopics
 import com.intellij.openapi.components.AbstractProjectComponent
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
@@ -27,7 +29,8 @@ abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
 class DLSearcher(project: Project) : Searcher(project) {
 
     companion object {
-        val VERSION = 0
+        // signature with length
+        val VERSION = 1
     }
 
     private val maxError = 2
@@ -93,6 +96,13 @@ class DLSearcher(project: Project) : Searcher(project) {
             connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
                 override fun selectionChanged(event: FileEditorManagerEvent) {
                     if (updateNeeded) updateIndex()
+                }
+
+                // todo:
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
+                }
+
+                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {
                 }
             })
         }
