@@ -63,7 +63,7 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
     }
 
     fun testReplacementWithShorterWord() {
-        myFixture.configureByText("Foo.java", "interfaceee<caret>")
+        myFixture.configureByText("Foo.java", "interfacell<caret>")
         myFixture.type(' ')
         myFixture.checkResult("interface <caret>")
     }

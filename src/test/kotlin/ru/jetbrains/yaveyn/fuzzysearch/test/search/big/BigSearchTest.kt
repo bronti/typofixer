@@ -41,7 +41,7 @@ class BigSearchTest {
         myProject = myFixture.project
 
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.toList()
-        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+//        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
 
         searcher = myProject.getComponent(DLSearcher::class.java)
         searcher.forceIndexRefreshing()
@@ -54,8 +54,8 @@ class BigSearchTest {
 
     @Test
     fun testRefreshGlobalIndex() {
-        val result = measureTimeMillis({ searcher.forceIndexRefreshing() })
-//        val result = measureTimeMillis({ (1..10).forEach{searcher.forceIndexRefreshing()} }).toDouble() / 10.0
+        val times = 50
+        val result = measureTimeMillis({ (1..times).forEach{searcher.forceIndexRefreshing()} }).toDouble() / times.toDouble()
         val resultLoggingNeeded = !refreshingResults.exists()
         if (resultLoggingNeeded) {
             refreshingResults.createNewFile()
@@ -78,7 +78,8 @@ class BigSearchTest {
         // todo: clear index (??)
         // todo: generate words
         // todo: different lengths
-        val words = listOf("k", "l", "z", "in", "on", "zp", "jva", "tst", "zqp", "java", "goto", "hzwe", "langg", "retrun", "Stirng")
+        val words = listOf("k", "l", "z", "in", "on", "zp", "jva", "tst",
+                "zqp", "java", "goto", "hzwe", "langg", "retrun", "Stirng")
         words.forEach { doPrecisionTest(it, listOf(1.0, 1.0, 0.8, 0.8), resultLoggingNeeded) }
     }
 
@@ -114,7 +115,12 @@ class BigSearchTest {
         flush("2 char length(max)", maxTime(chars2))
         flush("3 char length(max)", maxTime(chars3))
 
-        val words = listOf("java", "howe", "strr", "parn", "oloo", "javv", "java", "goto", "hzwe", "langg", "retrun", "Stirng", "biggest", "morebiggest")
+        val words = listOf("java", "howe", "strr", "parn", "oloo", "javv", "java",
+                "goto", "hzwe", "langg", "retrun", "Stirng", "biggest",
+                "morebiggest", "sequentialLighhtFixturreOneTime",
+                "ClassWithVeryUglyName", "worstCaseScennario", "hubaDubaDoodle",
+                "pinkHairForever", "imOutOfStupidNames", "bananza", "willBeNextDoctorWhoAWoman",
+                "colorPane", "myFixture")
         words.forEach { flush(it, doTimeTest(it)) }
     }
 
