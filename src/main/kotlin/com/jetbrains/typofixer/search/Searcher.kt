@@ -30,8 +30,8 @@ abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
 class DLSearcher(project: Project) : Searcher(project) {
 
     companion object {
-        // signature with length
-        val VERSION = 1
+        // signature with length + char frequency + improved range
+        val VERSION = 3
     }
 
     private val maxError = 2
