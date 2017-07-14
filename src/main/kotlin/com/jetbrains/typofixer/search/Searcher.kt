@@ -28,8 +28,8 @@ abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
 open class DLSearcher(project: Project) : Searcher(project) {
 
     companion object {
-        // signature with length + char frequency + improved range
-        val VERSION = 3
+        // signature with length + char frequency + improved range + clever choosing from index
+        val VERSION = 4
     }
 
     private val maxError = 2
@@ -54,11 +54,11 @@ open class DLSearcher(project: Project) : Searcher(project) {
         } else null
     }
 
-    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Int> {
+    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Pair<Int, Int>> {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
             getSearch(false).findClosestWithInfo(str)
-        } else Pair(null, 0)
+        } else Pair(null, Pair(-1, -1))
     }
 
     fun forceGlobalIndexRefreshing() {

@@ -17,20 +17,7 @@ import com.jetbrains.typofixer.search.signature.Signature
 class Index(val signature: Signature) {
 
     private val localIndex = HashMap<Int, HashSet<String>>()
-    // todo: make private
-    val globalIndex = HashMap<Int, HashSet<String>>()
-
-    private fun HashMap<Int, HashSet<String>>.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
-    private fun HashMap<Int, HashSet<String>>.add(str: String): Boolean {
-        val signature = signature.get(str)
-        this[signature] = this.getWithDefault(signature)
-        return this[signature]!!.add(str)
-    }
-
-    private fun HashMap<Int, HashSet<String>>.contains(str: String): Boolean {
-        val signature = signature.get(str)
-        return if (this[signature] == null) false else this[signature]!!.contains(str)
-    }
+    private val globalIndex = HashMap<Int, HashSet<String>>()
 
     var localSize = 0
         private set
@@ -75,6 +62,19 @@ class Index(val signature: Signature) {
     private fun clearGlobal() {
         globalIndex.clear()
         globalSize = 0
+    }
+
+    private fun HashMap<Int, HashSet<String>>.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
+
+    private fun HashMap<Int, HashSet<String>>.add(str: String): Boolean {
+        val signature = signature.get(str)
+        this[signature] = this.getWithDefault(signature)
+        return this[signature]!!.add(str)
+    }
+
+    private fun HashMap<Int, HashSet<String>>.contains(str: String): Boolean {
+        val signature = signature.get(str)
+        return if (this[signature] == null) false else this[signature]!!.contains(str)
     }
 }
 

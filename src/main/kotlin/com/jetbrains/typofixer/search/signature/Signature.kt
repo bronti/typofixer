@@ -3,10 +3,13 @@ package com.jetbrains.typofixer.search.signature
 /**
  * @author bronti.
  */
+
 interface Signature {
     fun get(str: String): Int
-    fun getRange(str: String, maxError: Int): List<Int>
+    fun getRange(str: String, maxError: Int): Array<HashSet<Int>>
 }
+
+private typealias Mutation = (Int, Int) -> Int
 
 class SimpleSignature : Signature {
 
@@ -27,48 +30,67 @@ class SimpleSignature : Signature {
     }
 
     // should return nonempty collection
-    override fun getRange(str: String, maxError: Int): List<Int> {
-        val (base, length) = split(get(str))
-        val result = HashSet<Int>()
+    // todo: test it directly!!!
+    override fun getRange(str: String, maxError: Int): Array<HashSet<Int>> {
+        fun errorsToMinRealError(baseError: Int, lengthError: Int): Int {
+            return if (lengthError >= baseError) lengthError else (baseError + lengthError + 1) / 2
+        }
 
-        val basesPlus = HashSet<Int>(listOf(base))
-        val basesMinus = HashSet<Int>(listOf(base))
+        val signature = get(str)
+        val (base, length) = split(signature)
 
-        // works for maxError <= 2... (otherwise to big range)
-        for (lengthError in (0..maxError)) {
-            if (lengthError != 0) {
-                basesPlus
-                        .map { mutateBase(it, { bs, m -> bs or (1 shl m)}) }
-                        .forEach { basesPlus.addAll(it) }
-                basesMinus
-                        .map { mutateBase(it, { bs, m -> bs and (1 shl m).inv()}) }
-                        .forEach { basesMinus.addAll(it) }
-            }
-            val maxBaseError = maxError - lengthError
-            if (length - lengthError > 0) {
-                val bases = HashSet<Int>(basesMinus)
-                for (k in 1..maxBaseError) {
-                    bases.map { bs ->
-                        (0..(baseShift - 1)).map { bs xor (1 shl it) }
-                    }.forEach { bases.addAll(it) }
-                }
-                result.addAll(bases.map { combine(it, length - lengthError) })
-            }
-            if (length + lengthError < lengthUpperBound) {
-                val bases = HashSet<Int>(basesPlus)
-                for (k in 1..maxBaseError) {
-                    bases.map { bs ->
-                        (0..(baseShift - 1)).map { bs xor (1 shl it) }
-                    }.forEach { bases.addAll(it) }
-                }
-                result.addAll(bases.map { combine(it, length + lengthError) })
+        val result = Array(maxError + 1) { HashSet<Int>() }
+        result[0].add(signature)
+
+        val positivelyMutatedBases = Array(maxError + 1) { HashSet<Int>() }
+        val negativelyMutatedBases = Array(maxError + 1) { HashSet<Int>() }
+
+        fun updateBases(bases: Array<HashSet<Int>>, mutate: Mutation, maxIndex: Int) {
+            bases[0].add(base)
+            for (index in 1..maxIndex) {
+                bases[index - 1]
+                        .flatMap { mutateBase(it, mutate) }
+                        .filter { it !in bases[index - 1] }
+                        .forEach { bases[index].add(it) }
             }
         }
-        return result.toList()
+
+        val positiveMutation = { bs: Int, shift: Int -> bs or (1 shl shift) }
+        val negativeMutation = { bs: Int, shift: Int -> bs and (1 shl shift).inv() }
+        val bidirectionalMutation = { bs: Int, shift: Int -> bs xor (1 shl shift) }
+
+        updateBases(positivelyMutatedBases, positiveMutation, maxError)
+        updateBases(negativelyMutatedBases, negativeMutation, maxError)
+
+        // works for maxError <= 2... (otherwise too big range)
+        for (lengthError in (0..maxError)) {
+            val maxBaseError = maxError - lengthError
+
+            fun updateResultsForLengthError(newLength: Int, startingBases: Array<HashSet<Int>>) {
+                val bases = Array(maxBaseError + 1) { HashSet<Int>(startingBases[it]) }
+                updateBases(bases, bidirectionalMutation, maxBaseError)
+                bases.forEachIndexed { baseError, bss ->
+                    result[errorsToMinRealError(baseError, lengthError)].addAll(bss.map { combine(it, newLength) })
+                }
+            }
+
+            if (length - lengthError > 0) {
+                updateResultsForLengthError(length - lengthError, negativelyMutatedBases)
+            }
+            if (length + lengthError < lengthUpperBound) {
+                updateResultsForLengthError(length + lengthError, positivelyMutatedBases)
+            }
+        }
+        return result
     }
 
-    private fun mutateBase(base: Int, mutate: (Int, Int) -> Int) = HashSet((0..(baseShift - 1)).map { mutate(base, it) })
-
+    private fun mutateBase(base: Int, mutate: (Int, Int) -> Int): HashSet<Int> {
+        return HashSet((0..(baseShift - 1))
+                .mapNotNull {
+                    val mutated = mutate(base, it)
+                    if (mutated == base) null else mutated
+                })
+    }
 
     companion object {
         private val lengthUpperBound = 1 shl 7
