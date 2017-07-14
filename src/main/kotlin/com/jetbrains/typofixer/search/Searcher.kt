@@ -22,12 +22,10 @@ import com.jetbrains.typofixer.search.signature.SimpleSignature
 
 abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
     abstract fun findClosest(str: String, psiFile: PsiFile?): String?
-    abstract fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Int>
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
-    abstract fun forceIndexRefreshing(): Unit
 }
 
-class DLSearcher(project: Project) : Searcher(project) {
+open class DLSearcher(project: Project) : Searcher(project) {
 
     companion object {
         // signature with length + char frequency + improved range
@@ -56,15 +54,19 @@ class DLSearcher(project: Project) : Searcher(project) {
         } else null
     }
 
-    override fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Int> {
+    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Int> {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
             getSearch(false).findClosestWithInfo(str)
         } else Pair(null, 0)
     }
 
-    override fun forceIndexRefreshing() {
+    fun forceGlobalIndexRefreshing() {
         index.refreshGlobal(myProject)
+    }
+
+    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
+        index.refreshLocal(psiFile)
     }
 
     override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {

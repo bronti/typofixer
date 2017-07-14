@@ -1,4 +1,4 @@
-package ru.jetbrains.yaveyn.fuzzysearch.test.search.big
+package ru.jetbrains.yaveyn.fuzzysearch.test.search.quality
 
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -8,6 +8,7 @@ import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
 import com.jetbrains.typofixer.search.DLSearcher
+import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -16,7 +17,8 @@ import kotlin.system.measureTimeMillis
 /**
  * @author bronti.
  */
-class BigSearchTest {
+@Ignore
+class GlobalQualityTest {
 
     private val testDataDir = File("testData")
     private val currentTestResultsDir = File(File(testDataDir, "testResults"), DLSearcher.VERSION.toString())
@@ -41,10 +43,10 @@ class BigSearchTest {
         myProject = myFixture.project
 
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.toList()
-//        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
 
         searcher = myProject.getComponent(DLSearcher::class.java)
-        searcher.forceIndexRefreshing()
+        searcher.forceGlobalIndexRefreshing()
         // 560422
 
         if (!currentTestResultsDir.exists()) {
@@ -55,7 +57,7 @@ class BigSearchTest {
     @Test
     fun testRefreshGlobalIndex() {
         val times = 50
-        val result = measureTimeMillis({ (1..times).forEach{searcher.forceIndexRefreshing()} }).toDouble() / times.toDouble()
+        val result = measureTimeMillis({ (1..times).forEach { searcher.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
         val resultLoggingNeeded = !refreshingResults.exists()
         if (resultLoggingNeeded) {
             refreshingResults.createNewFile()
