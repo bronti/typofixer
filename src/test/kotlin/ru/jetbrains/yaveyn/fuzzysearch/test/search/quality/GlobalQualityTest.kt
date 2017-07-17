@@ -8,7 +8,6 @@ import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
 import com.jetbrains.typofixer.search.DLSearcher
-import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -17,7 +16,7 @@ import kotlin.system.measureTimeMillis
 /**
  * @author bronti.
  */
-@Ignore
+//@Ignore
 class GlobalQualityTest {
 
     private val testDataDir = File("testData")
@@ -98,14 +97,14 @@ class GlobalQualityTest {
         val chars2 = chars.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
         val chars3 = chars2.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
 
-        fun maxTime(words: List<String>): Pair<Long, Int> {
+        fun maxTime(words: List<String>): Pair<Long, Pair<Int, Int>> {
             val results = words.map { doTimeTest(it) }
             val maxTime = results.maxBy { it.first }!!.first
-            val maxCandidates = results.maxBy { it.second }!!.second
+            val maxCandidates = results.maxBy { it.second.first }!!.second
             return Pair(maxTime, maxCandidates)
         }
 
-        fun flush(title: String, pr: Pair<Long, Int>) {
+        fun flush(title: String, pr: Pair<Long, Pair<Int, Int>>) {
             val output = title + ": " + pr.toString()
             println(output)
             if (resultLoggingNeeded) {
@@ -141,8 +140,8 @@ class GlobalQualityTest {
         checkPrecision(preciseResult, result, str, precs, resultLoggingNeeded)
     }
 
-    private fun doTimeTest(str: String): Pair<Long, Int> {
-        var candidates: Int = 0
+    private fun doTimeTest(str: String): Pair<Long, Pair<Int, Int>> {
+        var candidates: Pair<Int, Int> = Pair(0, 0)
         val time = DumbService.getInstance(myProject).runReadActionInSmartMode(Computable {
             measureTimeMillis({ candidates = searcher.findClosestWithInfo(str, null).second })
         })

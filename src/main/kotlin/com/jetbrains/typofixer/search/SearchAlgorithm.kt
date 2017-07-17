@@ -41,7 +41,7 @@ abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (Stri
             }
             result = newResult
         }
-        return Pair(result, Pair(candidatesCount, realCandidatesCount))
+        return Pair(result, Pair(realCandidatesCount, candidatesCount))
     }
 
     override fun findAllClosest(str: String): List<String> {
