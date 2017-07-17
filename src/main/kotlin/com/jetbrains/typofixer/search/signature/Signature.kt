@@ -40,45 +40,52 @@ class SimpleSignature : Signature {
         val (base, length) = split(signature)
 
         val result = Array(maxError + 1) { HashSet<Int>() }
-        result[0].add(signature)
 
-        val positivelyMutatedBases = Array(maxError + 1) { HashSet<Int>() }
-        val negativelyMutatedBases = Array(maxError + 1) { HashSet<Int>() }
-
-        fun updateBases(bases: Array<HashSet<Int>>, mutate: Mutation, maxIndex: Int) {
-            bases[0].add(base)
+        fun basesWithMutation(maxIndex: Int, startingBases: HashSet<Int>, mutate: Mutation): Array<HashSet<Int>> {
+            val bases = Array(maxIndex + 1) { HashSet<Int>() }
+            bases[0] = startingBases
             for (index in 1..maxIndex) {
                 bases[index - 1]
                         .flatMap { mutateBase(it, mutate) }
                         .filter { it !in bases[index - 1] }
                         .forEach { bases[index].add(it) }
             }
+            return bases
         }
 
         val positiveMutation = { bs: Int, shift: Int -> bs or (1 shl shift) }
         val negativeMutation = { bs: Int, shift: Int -> bs and (1 shl shift).inv() }
         val bidirectionalMutation = { bs: Int, shift: Int -> bs xor (1 shl shift) }
 
-        updateBases(positivelyMutatedBases, positiveMutation, maxError)
-        updateBases(negativelyMutatedBases, negativeMutation, maxError)
+        fun baseMutationsWithFirstKMutations(mutation: Mutation): List<Array<HashSet<Int>>> {
+            val basicMutations = basesWithMutation(maxError, hashSetOf(base), mutation)
+            return basicMutations.mapIndexed { baseError, bases ->
+                basesWithMutation(maxError - baseError, bases, bidirectionalMutation)
+            }
+        }
 
-        // works for maxError <= 2... (otherwise too big range)
+        val forBiggerLength = baseMutationsWithFirstKMutations(positiveMutation)
+        val forLessLength = baseMutationsWithFirstKMutations(negativeMutation)
+
+        // works for maxError <= 2 (3?) ... (otherwise too big range)
         for (lengthError in (0..maxError)) {
             val maxBaseError = maxError - lengthError
 
-            fun updateResultsForLengthError(newLength: Int, startingBases: Array<HashSet<Int>>) {
-                val bases = Array(maxBaseError + 1) { HashSet<Int>(startingBases[it]) }
-                updateBases(bases, bidirectionalMutation, maxBaseError)
-                bases.forEachIndexed { baseError, bss ->
-                    result[errorsToMinRealError(baseError, lengthError)].addAll(bss.map { combine(it, newLength) })
+            fun updateResultsForLengthError(newLength: Int, allBases: List<Array<HashSet<Int>>>) {
+                for (startingBaseError in 0..lengthError) {
+                    val bases = allBases[startingBaseError]
+                    for (bidirectionalError in 0..maxBaseError) {
+                        result[errorsToMinRealError(startingBaseError + bidirectionalError, lengthError)]
+                                .addAll(bases[bidirectionalError].map { combine(it, newLength) })
+                    }
                 }
             }
 
             if (length - lengthError > 0) {
-                updateResultsForLengthError(length - lengthError, negativelyMutatedBases)
+                updateResultsForLengthError(length - lengthError, forLessLength)
             }
             if (length + lengthError < lengthUpperBound) {
-                updateResultsForLengthError(length + lengthError, positivelyMutatedBases)
+                updateResultsForLengthError(length + lengthError, forBiggerLength)
             }
         }
         return result
