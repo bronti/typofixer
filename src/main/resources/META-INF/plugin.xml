@@ -13,6 +13,8 @@
     ]]>
     </change-notes>
 
+    <depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
+
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
     <idea-version since-build="162"/>
 
@@ -34,15 +36,13 @@
     </project-components>
 
     <extensionPoints>
-        <extensionPoint name="typoFixerLanguageSupport"
-                        beanClass="com.intellij.lang.LanguageExtensionPoint">
+        <extensionPoint name="typoFixerLanguageSupport" beanClass="com.intellij.lang.LanguageExtensionPoint">
             <with attribute="implementationClass" implements="com.jetbrains.typofixer.lang.TypoFixerLanguageSupport"/>
         </extensionPoint>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.jetbrains.typofixer">
-        <typoFixerLanguageSupport implementationClass="com.jetbrains.typofixer.lang.JavaSupport"
-                                  language="JAVA"/>
+        <typoFixerLanguageSupport implementationClass="com.jetbrains.typofixer.lang.JavaSupport" language="JAVA"/>
     </extensions>
 
 </idea-plugin>

@@ -7,34 +7,36 @@ import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
  * @author bronti.
  */
 class JavaSupport : TypoFixerLanguageSupport {
-    override fun identifierChar(c: Char) = c.isLetter() || c.isDigit() || c == '_'
+    override fun identifierChar(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '_'
 
     override fun isTypoResolverApplicable(element: PsiElement) =
             element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
-}
 
-class JavaLocalDictionaryCollector : LocalDictionaryCollector {
-    override fun keyWords() = javaKeywords
 
-    // todo: make it right
-    override fun localIdentifiers(psiFile: PsiFile): List<String> {
-        val result = mutableListOf<String>()
+    class JavaLocalDictionaryCollector : LocalDictionaryCollector {
+        override fun keyWords() = javaKeywords
 
-        val visitor = object : JavaRecursiveElementVisitor() {
-            override fun visitIdentifier(identifier: PsiIdentifier) {
-                if (identifier.parent !is PsiReference && identifier.parent !is PsiErrorElement) {
-                    result.add(identifier.text)
+        // todo: make it right
+        override fun localIdentifiers(psiFile: PsiFile): List<String> {
+            val result = mutableListOf<String>()
+
+            val visitor = object : JavaRecursiveElementVisitor() {
+                override fun visitIdentifier(identifier: PsiIdentifier) {
+                    if (identifier.parent !is PsiReference && identifier.parent !is PsiErrorElement) {
+                        result.add(identifier.text)
+                    }
+                    super.visitIdentifier(identifier)
                 }
-                super.visitIdentifier(identifier)
             }
+            psiFile.accept(visitor)
+            return result
         }
-        psiFile.accept(visitor)
-        return result
     }
 }
 
+// JavaLexer.KEYWORDS and JavaLexer.JAVA9_KEYWORDS are private :(
 private val javaKeywords = listOf(
         PsiKeyword.ABSTRACT,
         PsiKeyword.ASSERT,
