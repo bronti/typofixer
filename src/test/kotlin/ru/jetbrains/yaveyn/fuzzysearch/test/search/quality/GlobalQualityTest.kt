@@ -100,12 +100,12 @@ class GlobalQualityTest {
         fun maxTime(words: List<String>): Pair<Long, Pair<Int, Int>> {
             val results = words.map { doTimeTest(it) }
             val maxTime = results.maxBy { it.first }!!.first
-            val maxCandidates = results.maxBy { it.second.first }!!.second
+            val maxCandidates = Pair(results.maxBy { it.second.first }!!.second.first, results.maxBy { it.second.second }!!.second.second)
             return Pair(maxTime, maxCandidates)
         }
 
         fun flush(title: String, pr: Pair<Long, Pair<Int, Int>>) {
-            val output = title + ": " + pr.toString()
+            val output = "$title. time: ${pr.first} candidates: ${pr.second}"
             println(output)
             if (resultLoggingNeeded) {
                 timeResults.appendText(output + "\n")

@@ -6,7 +6,7 @@ package com.jetbrains.typofixer.search.signature
 
 interface Signature {
     fun get(str: String): Int
-    fun getRange(str: String, maxError: Int): Array<HashSet<Int>>
+    fun getRange(str: String, maxError: Int): List<HashSet<Int>>
 }
 
 private typealias Mutation = (Int, Int) -> Int
@@ -14,9 +14,14 @@ private typealias Mutation = (Int, Int) -> Int
 class SimpleSignature : Signature {
 
     override fun get(str: String): Int {
+        val (base, length) = getRaw(str)
+        return combine(base, length)
+    }
+
+    private fun getRaw(str: String): Pair<Int, Int> {
         val base = str.fold(0) { acc: Int, it -> acc or charMask(it) }
         val length = Math.min(lengthUpperBound - 1, str.length)
-        return combine(base, length)
+        return Pair(base, length)
     }
 
     private fun combine(base: Int, length: Int): Int {
@@ -30,53 +35,62 @@ class SimpleSignature : Signature {
     }
 
     // should return nonempty collection
+    override fun getRange(str: String, maxError: Int): List<HashSet<Int>> {
+        val (base, length) = getRaw(str)
+        return doGetRange(base, length, maxError, this::combine)
+    }
+
+    fun getRawRange(base: Int, length: Int, maxError: Int): List<HashSet<Pair<Int, Int>>> {
+        return doGetRange(base, length, maxError, ::Pair)
+    }
+
     // todo: test it directly!!!
-    override fun getRange(str: String, maxError: Int): Array<HashSet<Int>> {
+    // todo: kill it
+    private fun <T> doGetRange(base: Int, length: Int, maxError: Int, makeResult: (Int, Int) -> T): List<HashSet<T>> {
         fun errorsToMinRealError(baseError: Int, lengthError: Int): Int {
             return if (lengthError >= baseError) lengthError else (baseError + lengthError + 1) / 2
         }
 
-        val signature = get(str)
-        val (base, length) = split(signature)
+        val result = Array(maxError + 1) { HashSet<T>() }
 
-        val result = Array(maxError + 1) { HashSet<Int>() }
-
-        fun basesWithMutation(maxIndex: Int, startingBases: HashSet<Int>, mutate: Mutation): Array<HashSet<Int>> {
+        fun basesWithMutation(maxIndex: Int, startingBases: HashSet<Int>, mutate: Mutation): List<HashSet<Int>> {
             val bases = Array(maxIndex + 1) { HashSet<Int>() }
             bases[0] = startingBases
+            val restricted = hashSetOf<Int>()
             for (index in 1..maxIndex) {
+                restricted.addAll(bases[index - 1])
                 bases[index - 1]
                         .flatMap { mutateBase(it, mutate) }
-                        .filter { it !in bases[index - 1] }
+                        .filter { it !in restricted }
                         .forEach { bases[index].add(it) }
             }
-            return bases
+            return bases.toList()
         }
 
         val positiveMutation = { bs: Int, shift: Int -> bs or (1 shl shift) }
         val negativeMutation = { bs: Int, shift: Int -> bs and (1 shl shift).inv() }
         val bidirectionalMutation = { bs: Int, shift: Int -> bs xor (1 shl shift) }
 
-        fun baseMutationsWithFirstKMutations(mutation: Mutation): List<Array<HashSet<Int>>> {
+        fun baseMutationsWithFirstK(mutation: Mutation): List<List<HashSet<Int>>> {
             val basicMutations = basesWithMutation(maxError, hashSetOf(base), mutation)
             return basicMutations.mapIndexed { baseError, bases ->
                 basesWithMutation(maxError - baseError, bases, bidirectionalMutation)
             }
         }
 
-        val forBiggerLength = baseMutationsWithFirstKMutations(positiveMutation)
-        val forLessLength = baseMutationsWithFirstKMutations(negativeMutation)
+        val forBiggerLength = baseMutationsWithFirstK(positiveMutation)
+        val forLessLength = baseMutationsWithFirstK(negativeMutation)
 
         // works for maxError <= 2 (3?) ... (otherwise too big range)
         for (lengthError in (0..maxError)) {
-            val maxBaseError = maxError - lengthError
+            val maxBidirectionalError = maxError - lengthError
 
-            fun updateResultsForLengthError(newLength: Int, allBases: List<Array<HashSet<Int>>>) {
+            fun updateResultsForLengthError(newLength: Int, allBases: List<List<HashSet<Int>>>) {
                 for (startingBaseError in 0..lengthError) {
                     val bases = allBases[startingBaseError]
-                    for (bidirectionalError in 0..maxBaseError) {
-                        result[errorsToMinRealError(startingBaseError + bidirectionalError, lengthError)]
-                                .addAll(bases[bidirectionalError].map { combine(it, newLength) })
+                    for (bidirectionalBaseError in 0..maxBidirectionalError) {
+                        result[errorsToMinRealError(startingBaseError + bidirectionalBaseError, lengthError)]
+                                .addAll(bases[bidirectionalBaseError].map { makeResult(it, newLength) })
                     }
                 }
             }
@@ -88,11 +102,17 @@ class SimpleSignature : Signature {
                 updateResultsForLengthError(length + lengthError, forBiggerLength)
             }
         }
-        return result
+        // todo: get rid of it?..
+        for (error in result.indices.reversed()) {
+            for (smallerError in 0..error-1) {
+                result[error] = result[error].filter { it !in result[smallerError] }.toHashSet()
+            }
+        }
+        return result.toList()
     }
 
     private fun mutateBase(base: Int, mutate: (Int, Int) -> Int): HashSet<Int> {
-        return HashSet((0..(baseShift - 1))
+        return HashSet((0..baseShift)
                 .mapNotNull {
                     val mutated = mutate(base, it)
                     if (mutated == base) null else mutated

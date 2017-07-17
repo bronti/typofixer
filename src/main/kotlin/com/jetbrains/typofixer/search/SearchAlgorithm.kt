@@ -31,15 +31,20 @@ abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (Stri
         val candidates = getClassifiedCandidates(str)
         val candidatesCount = candidates.map { it.size }.sum()
         var realCandidatesCount = 0
-        // todo: start from closest signature
+        // todo: refactor
         var result: String? = null
-        for (error in candidates.indices) {
+        for (error in 0..maxError) {
+            if (result != null && distance.measure(result) <= error) {
+                break
+            }
             val newResult = candidates[error].minBy { distance.measure(it) }
             realCandidatesCount += candidates[error].size
-            if (newResult != null && distance.measure(newResult) == error) {
-                return Pair(newResult, Pair(candidatesCount, realCandidatesCount))
+            if (result == null || (newResult != null && distance.measure(newResult) < distance.measure(result))) {
+                result = newResult
             }
-            result = newResult
+        }
+        if (result != null && distance.measure(result) > maxError) {
+            result = null
         }
         return Pair(result, Pair(realCandidatesCount, candidatesCount))
     }
@@ -73,5 +78,6 @@ class DLSearchAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, in
 }
 
 class DLPreciseSearchAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearchAlgorithmBase(maxError, getDistanceTo, index) {
+    // todo: optimize precise
     override fun getClassifiedCandidates(str: String) = getRange(str, 2 * maxError)
 }
