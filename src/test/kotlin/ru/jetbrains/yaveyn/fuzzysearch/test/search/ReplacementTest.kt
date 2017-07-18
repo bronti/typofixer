@@ -9,13 +9,13 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
 class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
 
     fun testReplacementAfterTyped() {
-        myFixture.configureByText("Foo.java", "clas<caret>")
+        myFixture.configureByText("Foo.java", "clasa<caret>")
         myFixture.type(' ')
         myFixture.checkResult("class <caret>")
     }
 
     fun testReplacementAfterEnter() {
-        myFixture.configureByText("Foo.java", "clas<caret>")
+        myFixture.configureByText("Foo.java", "clasa<caret>")
         myFixture.type('\n')
         myFixture.checkResult("class\n<caret>")
     }
@@ -27,13 +27,13 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
     }
 
     fun testReplacementAfterTypedInSolidText() {
-        myFixture.configureByText("Foo.java", "clas<caret>Some")
+        myFixture.configureByText("Foo.java", "clasa<caret>Some")
         myFixture.type(' ')
         myFixture.checkResult("class <caret>Some")
     }
 
     fun testReplacementAfterEnterInSolidText() {
-        myFixture.configureByText("Foo.java", "clas<caret>Some")
+        myFixture.configureByText("Foo.java", "clasa<caret>Some")
         myFixture.type('\n')
         myFixture.checkResult("class\n<caret>Some")
     }

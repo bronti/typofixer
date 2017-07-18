@@ -9,7 +9,7 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
 class LocalIndexTest : LightPlatformCodeInsightFixtureTestCase() {
 
     fun testKeyword() {
-        myFixture.configureByText("Foo.java", "clas<caret>")
+        myFixture.configureByText("Foo.java", "clasa<caret>")
         myFixture.type(' ')
         myFixture.checkResult("class <caret>")
     }
