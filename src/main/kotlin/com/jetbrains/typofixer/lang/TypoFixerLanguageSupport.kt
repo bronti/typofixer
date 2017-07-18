@@ -9,6 +9,9 @@ import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
  * @author bronti.
  */
 interface TypoFixerLanguageSupport {
+    companion object {
+        fun getSupport(language: Language) = TypoFixerLanguageSupport.Extension.getSupport(language)
+    }
 
     fun identifierChar(c: Char): Boolean
 
@@ -16,7 +19,7 @@ interface TypoFixerLanguageSupport {
 
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
 
-    class Extension : LanguageExtension<TypoFixerLanguageSupport>("com.jetbrains.typofixer.typoFixerLanguageSupport") {
+    private class Extension : LanguageExtension<TypoFixerLanguageSupport>("com.jetbrains.typofixer.typoFixerLanguageSupport") {
         companion object {
             val INSTANCE = TypoFixerLanguageSupport.Extension()
 

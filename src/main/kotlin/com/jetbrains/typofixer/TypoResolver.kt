@@ -12,7 +12,7 @@ import com.jetbrains.typofixer.search.DLSearcher
  */
 
 fun checkedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile) {
-    val langSupport = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language)
+    val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)
     if (langSupport != null) doCheckedTypoResolve(nextChar, editor, psiFile, langSupport)
 }
 
