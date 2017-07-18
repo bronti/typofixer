@@ -45,7 +45,8 @@ open class DLSearcher(project: Project) : Searcher(project) {
 
     // todo: make private
     fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
-    private fun canSearch() = !DumbService.isDumb(myProject)
+
+    private fun canSearch() = !DumbService.isDumb(myProject) && index.usable
 
     override fun findClosest(str: String, psiFile: PsiFile?): String? {
         return if (canSearch()) {
@@ -61,10 +62,10 @@ open class DLSearcher(project: Project) : Searcher(project) {
         } else Pair(null, Pair(-1, -1))
     }
 
+    // todo: deriving class for test (?)
     fun forceGlobalIndexRefreshing() {
         index.refreshGlobal(myProject)
     }
-
     fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
         index.refreshLocal(psiFile)
     }
@@ -77,10 +78,9 @@ open class DLSearcher(project: Project) : Searcher(project) {
     }
 
     private fun updateIndex() {
-        DumbService.getInstance(myProject).smartInvokeLater {
-            index.refreshGlobal(myProject)
-            updateNeeded = false
-        }
+        // non blocking ?
+        index.refreshGlobal(myProject)
+        updateNeeded = false
     }
 
     // todo: in background

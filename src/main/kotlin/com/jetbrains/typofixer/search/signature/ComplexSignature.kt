@@ -51,7 +51,7 @@ class ComplexSignature : SignatureBase() {
             val restricted = ArrayList<HashSet<Int>>(maxError + 1)
             return basicMutations.mapIndexed { basicMutationCount, bases ->
                 val toReturn = basesWithMutation(maxError - basicMutationCount, bases, bidirectionalMutation, restricted)
-                restricted.dropLast(1)
+                if (restricted.isNotEmpty()) restricted.removeAt(restricted.size - 1)
                 restricted.forEachIndexed { index, set -> set.addAll(toReturn[index]) }
                 toReturn
             }
