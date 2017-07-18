@@ -4,7 +4,7 @@ import com.jetbrains.typofixer.search.DLPreciseSearchAlgorithm
 import com.jetbrains.typofixer.search.DLSearchAlgorithm
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
-import com.jetbrains.typofixer.search.signature.SimpleSignature
+import com.jetbrains.typofixer.search.signature.ComplexSignature
 import com.natpryce.hamkrest.Matcher
 import com.natpryce.hamkrest.and
 import com.natpryce.hamkrest.assertion.assert
@@ -22,7 +22,7 @@ class SmokeSearchTest {
 
     @Test
     fun simpleTest() {
-        val index = Index(SimpleSignature())
+        val index = Index(ComplexSignature())
         index.updateLocal(listOf("alabama", "Alabama", "alab", "ala", "bububum"))
 
         val searcher = searcherProvider(3, index)
@@ -32,7 +32,7 @@ class SmokeSearchTest {
 
     @Test
     fun preciseSearcherTest() {
-        val index = Index(SimpleSignature())
+        val index = Index(ComplexSignature())
         index.updateLocal(listOf("aceg", "aikm"))
 
         val preciseSearcher = preciseSearcherProvider(3, index)
@@ -42,7 +42,7 @@ class SmokeSearchTest {
 
     @Test
     fun notPreciseSearcherTest() {
-        val index = Index(SimpleSignature())
+        val index = Index(ComplexSignature())
         index.updateLocal(listOf("aceg", "aikm"))
 
         val searcher = searcherProvider(3, index)

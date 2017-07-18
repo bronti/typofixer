@@ -1,9 +1,9 @@
 package ru.jetbrains.yaveyn.fuzzysearch.test.search.signature
 
-import com.jetbrains.typofixer.search.signature.SimpleSignature
+import com.jetbrains.typofixer.search.signature.ComplexSignature
 import com.natpryce.hamkrest.*
-import org.junit.Test
 import com.natpryce.hamkrest.assertion.assert
+import org.junit.Test
 
 
 fun bitCount(diff: Int) = (0..31).map { 1 shl it }.map { diff and it }.filter { it > 0 }.count()
@@ -22,7 +22,7 @@ class RangeTest {
 
     @Test
     fun testZeroError() {
-        val signature = SimpleSignature()
+        val signature = ComplexSignature()
 
         fun check(base: Int, length: Int) {
             assert.that(signature.getRawRange(base, length, 0).flatten(), hasSize(equalTo(1)) and hasElement(Pair(base, length)))
@@ -35,7 +35,7 @@ class RangeTest {
 
     @Test
     fun testZeroErrorWithBiggerMaxError() {
-        val signature = SimpleSignature()
+        val signature = ComplexSignature()
         fun getError0(base: Int, length: Int) = signature.getRawRange(base, length, 1)[0]
 
         fun checkError0(base: Int, length: Int) {
@@ -49,7 +49,7 @@ class RangeTest {
 
     @Test
     fun testOneError() {
-        val signature = SimpleSignature()
+        val signature = ComplexSignature()
         fun getError1(base: Int, length: Int) = signature.getRawRange(base, length, 1)[1].toList()
 
         fun checkEqualLength(base: Int, length: Int) {
@@ -82,7 +82,7 @@ class RangeTest {
 
     @Test
     fun testOneErrorWithBiggerMaxError() {
-        val signature = SimpleSignature()
+        val signature = ComplexSignature()
         fun getError1(base: Int, length: Int) = signature.getRawRange(base, length, 2)[1].toList()
 
         fun checkEqualLength(base: Int, length: Int) {
@@ -97,7 +97,7 @@ class RangeTest {
             assert.that(range, allElements(hasBase(thisFarFrom(base, 1) or thisFarFrom(base, 0))))
             if (length <= 1) assert.that(range.withBase(base), hasSize(equalTo(1)))
             else assert.that(range.withBase(base), hasSize(equalTo(2)))
-            val rangeNonEqualBases = range.filter {it.first != base }
+//            val rangeNonEqualBases = range.filter {it.first != base }
             // todo: size
         }
 

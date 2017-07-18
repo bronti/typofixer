@@ -5,7 +5,7 @@ import com.jetbrains.typofixer.search.DLSearchAlgorithm
 import com.jetbrains.typofixer.search.SearchAlgorithm
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
-import com.jetbrains.typofixer.search.signature.SimpleSignature
+import com.jetbrains.typofixer.search.signature.ComplexSignature
 import com.natpryce.hamkrest.*
 import com.natpryce.hamkrest.assertion.assert
 import org.junit.Ignore
@@ -17,7 +17,7 @@ class BigSearchTest {
     fun hasAll(strs: List<String>) = Matcher(List<String>::containsAll, strs)
 
     val pathToIntellij = "./testData/intellij-community-master.zip"
-    val simpleIndex = FromZipTestIndexRetriever(SimpleSignature()).retrieve(pathToIntellij)
+    val simpleIndex = FromZipTestIndexRetriever(ComplexSignature()).retrieve(pathToIntellij)
 
     fun distanceProvider(maxError: Int) = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
 
