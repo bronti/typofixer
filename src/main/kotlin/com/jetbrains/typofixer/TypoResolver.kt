@@ -1,6 +1,8 @@
 package com.jetbrains.typofixer
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.CommandProcessor
+import com.intellij.openapi.command.UndoConfirmationPolicy
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
@@ -20,22 +22,26 @@ private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFil
     if (langSupport.identifierChar(nextChar)) return
 
     val nextCharOffset = editor.caretModel.offset
+    val document = editor.document
     val project = psiFile.project
-
     val psiManager = PsiDocumentManager.getInstance(project)
 
     // refresh psi
-    psiManager.commitDocument(editor.document)
+    psiManager.commitDocument(document)
 
     val element = psiFile.findElementAt(nextCharOffset - 1)
 
     if (element != null && langSupport.isTypoResolverApplicable(element)) {
-        val oldText = element.text.substring(0, nextCharOffset - element.textOffset)
+        val elementStartOffset = element.textOffset
+        val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
 
         val replacement = project.getComponent(DLSearcher::class.java).findClosest(oldText, psiFile) ?: return
 
+        // todo: fix ctrl + z
         ApplicationManager.getApplication().runWriteAction {
-            editor.document.replaceString(element.textOffset, element.textOffset + oldText.length, replacement)
+            CommandProcessor.getInstance().executeCommand(project, {
+                document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
+            }, null, document, UndoConfirmationPolicy.DEFAULT, document)
         }
         editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
     }

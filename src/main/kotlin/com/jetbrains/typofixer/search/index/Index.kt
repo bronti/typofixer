@@ -51,8 +51,7 @@ class Index(val signature: Signature) {
     fun refreshLocal(psiFile: PsiFile?) {
         clearLocal()
         psiFile ?: return
-        val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector()
-        collector ?: return
+        val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
         updateLocal(collector.keyWords())
         updateLocal(collector.localIdentifiers(psiFile))
     }
@@ -62,7 +61,6 @@ class Index(val signature: Signature) {
         words.forEach { addToLocalIndex(it) }
     }
 
-    // todo: what should happen is is called two times simultaneously (?)
     fun refreshGlobal(project: Project) {
         // todo: concurrency
         usable = false
