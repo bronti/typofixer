@@ -9,9 +9,12 @@ interface Signature {
     fun getRange(str: String, maxError: Int): List<HashSet<Int>>
 }
 
-private typealias Mutation = (Int, Int) -> Int
 
-class SimpleSignature : Signature {
+// works only for maxError <= 2!! too big range otherwise
+abstract class SignatureBase : Signature {
+
+    abstract protected fun <T> doGetRange(base: Int, length: Int, maxError: Int, makeResult: (Int, Int) -> T)
+            : List<HashSet<T>>
 
     override fun get(str: String): Int {
         val (base, length) = getRaw(str)
@@ -44,87 +47,12 @@ class SimpleSignature : Signature {
         return doGetRange(base, length, maxError, ::Pair)
     }
 
-    // todo: test it directly!!!
-    // todo: kill it
-    private fun <T> doGetRange(base: Int, length: Int, maxError: Int, makeResult: (Int, Int) -> T): List<HashSet<T>> {
-        fun errorsToMinRealError(baseError: Int, lengthError: Int): Int {
-            return if (lengthError >= baseError) lengthError else (baseError + lengthError + 1) / 2
-        }
-
-        val result = Array(maxError + 1) { HashSet<T>() }
-
-        fun basesWithMutation(maxIndex: Int, startingBases: HashSet<Int>, mutate: Mutation): List<HashSet<Int>> {
-            val bases = Array(maxIndex + 1) { HashSet<Int>() }
-            bases[0] = startingBases
-            val restricted = hashSetOf<Int>()
-            for (index in 1..maxIndex) {
-                restricted.addAll(bases[index - 1])
-                bases[index - 1]
-                        .flatMap { mutateBase(it, mutate) }
-                        .filter { it !in restricted }
-                        .forEach { bases[index].add(it) }
-            }
-            return bases.toList()
-        }
-
-        val positiveMutation = { bs: Int, shift: Int -> bs or (1 shl shift) }
-        val negativeMutation = { bs: Int, shift: Int -> bs and (1 shl shift).inv() }
-        val bidirectionalMutation = { bs: Int, shift: Int -> bs xor (1 shl shift) }
-
-        fun baseMutationsWithFirstK(mutation: Mutation): List<List<HashSet<Int>>> {
-            val basicMutations = basesWithMutation(maxError, hashSetOf(base), mutation)
-            return basicMutations.mapIndexed { baseError, bases ->
-                basesWithMutation(maxError - baseError, bases, bidirectionalMutation)
-            }
-        }
-
-        val forBiggerLength = baseMutationsWithFirstK(positiveMutation)
-        val forLessLength = baseMutationsWithFirstK(negativeMutation)
-
-        // works for maxError <= 2 (3?) ... (otherwise too big range)
-        for (lengthError in (0..maxError)) {
-            val maxBidirectionalError = maxError - lengthError
-
-            fun updateResultsForLengthError(newLength: Int, allBases: List<List<HashSet<Int>>>) {
-                for (startingBaseError in 0..lengthError) {
-                    val bases = allBases[startingBaseError]
-                    for (bidirectionalBaseError in 0..maxBidirectionalError) {
-                        result[errorsToMinRealError(startingBaseError + bidirectionalBaseError, lengthError)]
-                                .addAll(bases[bidirectionalBaseError].map { makeResult(it, newLength) })
-                    }
-                }
-            }
-
-            if (length - lengthError > 0) {
-                updateResultsForLengthError(length - lengthError, forLessLength)
-            }
-            if (length + lengthError < lengthUpperBound) {
-                updateResultsForLengthError(length + lengthError, forBiggerLength)
-            }
-        }
-        // todo: get rid of it?..
-        for (error in result.indices.reversed()) {
-            for (smallerError in 0..error-1) {
-                result[error] = result[error].filter { it !in result[smallerError] }.toHashSet()
-            }
-        }
-        return result.toList()
-    }
-
-    private fun mutateBase(base: Int, mutate: (Int, Int) -> Int): HashSet<Int> {
-        return HashSet((0..baseShift)
-                .mapNotNull {
-                    val mutated = mutate(base, it)
-                    if (mutated == base) null else mutated
-                })
-    }
-
     companion object {
-        private val lengthUpperBound = 1 shl 7
+        protected @JvmStatic val lengthUpperBound = 1 shl 7
 
-        fun charMask(c: Char) = CHAR_MASK[c.toLowerCase()] ?: (baseShift - 1)
+        protected fun charMask(c: Char) = CHAR_MASK[c.toLowerCase()] ?: (baseShift - 1)
 
-        private val CHAR_MASK = hashMapOf(
+        protected val CHAR_MASK = hashMapOf(
                 'a' to (1 shl 2),
                 'b' to (1 shl 11),
                 'c' to (1 shl 12),
@@ -186,6 +114,6 @@ class SimpleSignature : Signature {
         )
 
         val baseShift = 24
-        val BASE_MASK = ((1 shl baseShift) - 1)
+        protected val BASE_MASK = ((1 shl baseShift) - 1)
     }
 }

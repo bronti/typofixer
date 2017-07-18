@@ -14,7 +14,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
-import com.jetbrains.typofixer.search.signature.SimpleSignature
+import com.jetbrains.typofixer.search.signature.ComplexSignature
 
 /**
  * @author bronti.
@@ -33,7 +33,7 @@ open class DLSearcher(project: Project) : Searcher(project) {
     }
 
     private val maxError = 2
-    private val signature = SimpleSignature()
+    private val signature = ComplexSignature()
     private val distanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
     // todo: make private
     val index = Index(signature)
