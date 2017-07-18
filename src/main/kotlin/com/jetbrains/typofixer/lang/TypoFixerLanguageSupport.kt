@@ -20,7 +20,7 @@ interface TypoFixerLanguageSupport {
         companion object {
             val INSTANCE = TypoFixerLanguageSupport.Extension()
 
-            fun getSupport(language: Language): TypoFixerLanguageSupport {
+            fun getSupport(language: Language): TypoFixerLanguageSupport? {
                 return INSTANCE.forLanguage(language)
             }
         }

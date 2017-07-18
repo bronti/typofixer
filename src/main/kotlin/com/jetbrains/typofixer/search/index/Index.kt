@@ -51,7 +51,8 @@ class Index(val signature: Signature) {
     fun refreshLocal(psiFile: PsiFile?) {
         clearLocal()
         psiFile ?: return
-        val collector = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language).getLocalDictionaryCollector()
+        val collector = TypoFixerLanguageSupport.Extension.getSupport(psiFile.language)?.getLocalDictionaryCollector()
+        collector ?: return
         updateLocal(collector.keyWords())
         updateLocal(collector.localIdentifiers(psiFile))
     }
