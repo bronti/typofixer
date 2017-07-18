@@ -8,6 +8,7 @@ import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
 import com.jetbrains.typofixer.search.DLSearcher
+import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -42,7 +43,7 @@ class GlobalQualityTest {
         myProject = myFixture.project
 
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.toList()
-        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+//        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
 
         searcher = myProject.getComponent(DLSearcher::class.java)
         searcher.forceGlobalIndexRefreshing()
@@ -54,6 +55,7 @@ class GlobalQualityTest {
     }
 
     @Test
+//    @Ignore
     fun testRefreshGlobalIndex() {
         val times = 50
         val result = measureTimeMillis({ (1..times).forEach { searcher.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
@@ -68,7 +70,7 @@ class GlobalQualityTest {
     }
 
     @Test
-            //    @Ignore
+    @Ignore
     fun testPrecision() {
         val resultLoggingNeeded = !precisionResults.exists()
         if (resultLoggingNeeded) {
@@ -85,7 +87,7 @@ class GlobalQualityTest {
     }
 
     @Test
-            //    @Ignore
+    @Ignore
     fun testTime() {
         val resultLoggingNeeded = !timeResults.exists()
         if (resultLoggingNeeded) {
