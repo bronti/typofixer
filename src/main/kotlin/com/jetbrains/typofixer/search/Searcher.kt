@@ -37,8 +37,9 @@ open class DLSearcher(project: Project) : Searcher(project) {
     private val distanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
     // todo: make private
     val index = Index(signature)
-    private var updateNeeded = true
-    private var psiModificationCount = 0L
+
+    private var lastPsiModificationCount = 0L
+    private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
 
     private val simpleSearch = DLSearchAlgorithm(maxError, distanceTo, index)
     private val preciceSearch = DLPreciseSearchAlgorithm(maxError, distanceTo, index)
@@ -77,13 +78,12 @@ open class DLSearcher(project: Project) : Searcher(project) {
         } else mapOf()
     }
 
+
     private fun updateIndex() {
-        // non blocking ?
+        lastPsiModificationCount = freshPsiModificationCount()
         index.refreshGlobal(myProject)
-        updateNeeded = false
     }
 
-    // todo: in background
     override fun initComponent() {
 
         val connection = myProject.messageBus.connect(myProject)
@@ -95,17 +95,19 @@ open class DLSearcher(project: Project) : Searcher(project) {
                 }
             })
 
-            connection.subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
-                val count = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
-                if (psiModificationCount != count) {
-                    psiModificationCount = count
-                    updateNeeded = true
-                }
-            })
+//            connection.subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
+//                val count = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
+//                if (psiModificationCount != count) {
+//                    psiModificationCount = count
+//                    updateNeeded = true
+//                }
+//            })
 
             connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
                 override fun selectionChanged(event: FileEditorManagerEvent) {
-                    if (updateNeeded) updateIndex()
+                    if (freshPsiModificationCount() != lastPsiModificationCount) {
+                        updateIndex()
+                    }
                 }
 
                 // todo:
