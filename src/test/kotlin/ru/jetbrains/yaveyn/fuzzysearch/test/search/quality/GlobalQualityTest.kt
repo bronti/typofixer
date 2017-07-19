@@ -3,10 +3,10 @@ package ru.jetbrains.yaveyn.fuzzysearch.test.search.quality
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
-import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
+import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.DLSearcher
 import org.junit.Ignore
 import org.junit.Test
@@ -45,7 +45,7 @@ class GlobalQualityTest {
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.toList()
 //        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
 
-        searcher = myProject.getComponent(DLSearcher::class.java)
+        searcher = myProject.getComponent(TypoFixerComponent::class.java).searcher
         searcher.forceGlobalIndexRefreshing()
         // 560422
 

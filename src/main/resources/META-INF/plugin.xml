@@ -30,7 +30,7 @@
 
     <project-components>
         <component>
-            <implementation-class>com.jetbrains.typofixer.search.DLSearcher</implementation-class>
+            <implementation-class>com.jetbrains.typofixer.TypoFixerComponent</implementation-class>
         </component>
     </project-components>
 

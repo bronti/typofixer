@@ -1,7 +1,6 @@
 package com.jetbrains.typofixer.search
 
 import com.intellij.ProjectTopics
-import com.intellij.openapi.components.AbstractProjectComponent
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -20,12 +19,21 @@ import com.jetbrains.typofixer.search.signature.ComplexSignature
  * @author bronti.
  */
 
-abstract class Searcher(project: Project) : AbstractProjectComponent(project) {
+abstract class Searcher {
+
+    enum class Status {
+        DUMB_MODE,
+        INDEX_REFRESHING,
+        ACTIVE
+    }
+
     abstract fun findClosest(str: String, psiFile: PsiFile?): String?
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
+    abstract fun getStatus(): Status
 }
 
-open class DLSearcher(project: Project) : Searcher(project) {
+open class DLSearcher(val project: Project) : Searcher() {
+
 
     companion object {
         // signature with length + char frequency + improved range + clever choosing from index
@@ -39,56 +47,15 @@ open class DLSearcher(project: Project) : Searcher(project) {
     val index = Index(signature)
 
     private var lastPsiModificationCount = 0L
-    private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
+    private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(project).outOfCodeBlockModificationCount
 
     private val simpleSearch = DLSearchAlgorithm(maxError, distanceTo, index)
     private val preciceSearch = DLPreciseSearchAlgorithm(maxError, distanceTo, index)
 
-    // todo: make private
-    fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
+    init {
+        val connection = project.messageBus.connect(project)
 
-    private fun canSearch() = !DumbService.isDumb(myProject) && index.usable
-
-    override fun findClosest(str: String, psiFile: PsiFile?): String? {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(false).findClosest(str)
-        } else null
-    }
-
-    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Pair<Int, Int>> {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(false).findClosestWithInfo(str)
-        } else Pair(null, Pair(-1, -1))
-    }
-
-    // todo: deriving class for test (?)
-    fun forceGlobalIndexRefreshing() {
-        index.refreshGlobal(myProject)
-    }
-    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
-        index.refreshLocal(psiFile)
-    }
-
-    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(precise).search(str)
-        } else mapOf()
-    }
-
-
-    private fun updateIndex() {
-        lastPsiModificationCount = freshPsiModificationCount()
-        index.refreshGlobal(myProject)
-    }
-
-    override fun initComponent() {
-
-        val connection = myProject.messageBus.connect(myProject)
-
-        DumbService.getInstance(myProject).smartInvokeLater {
+        DumbService.getInstance(project).smartInvokeLater {
             connection.subscribe(ProjectTopics.PROJECT_ROOTS, object : ModuleRootListener {
                 override fun rootsChanged(event: ModuleRootEvent) {
                     updateIndex()
@@ -119,7 +86,49 @@ open class DLSearcher(project: Project) : Searcher(project) {
             })
         }
 
-        // todo: not sure if it is necessary here
+// todo: not sure if it is necessary here
 //        updateIndex()
+    }
+
+    override fun getStatus() = if (DumbService.isDumb(project)) Status.DUMB_MODE else if (index.usable) Status.ACTIVE else Status.INDEX_REFRESHING
+    private fun canSearch() = getStatus() == Status.ACTIVE
+
+    // todo: make private
+    fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
+
+
+    override fun findClosest(str: String, psiFile: PsiFile?): String? {
+        return if (canSearch()) {
+            index.refreshLocal(psiFile)
+            getSearch(false).findClosest(str)
+        } else null
+    }
+
+    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Pair<Int, Int>> {
+        return if (canSearch()) {
+            index.refreshLocal(psiFile)
+            getSearch(false).findClosestWithInfo(str)
+        } else Pair(null, Pair(-1, -1))
+    }
+
+    // todo: deriving class for test (?)
+    fun forceGlobalIndexRefreshing() {
+        index.refreshGlobal(project)
+    }
+    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
+        index.refreshLocal(psiFile)
+    }
+
+    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
+        return if (canSearch()) {
+            index.refreshLocal(psiFile)
+            getSearch(precise).search(str)
+        } else mapOf()
+    }
+
+
+    private fun updateIndex() {
+        lastPsiModificationCount = freshPsiModificationCount()
+        index.refreshGlobal(project)
     }
 }

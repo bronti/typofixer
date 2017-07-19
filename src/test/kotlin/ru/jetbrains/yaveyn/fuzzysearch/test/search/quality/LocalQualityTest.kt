@@ -3,6 +3,7 @@ package ru.jetbrains.yaveyn.fuzzysearch.test.search.quality
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Computable
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
+import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.DLSearcher
 import org.junit.Test
 import java.io.File
@@ -27,7 +28,7 @@ class LocalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
 
     @Test
     fun testLocalRefreshing() {
-        val searcher = project.getComponent(DLSearcher::class.java)!!
+        val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
         val resultLoggingNeeded = !localTimeResults.exists()
         if (resultLoggingNeeded) {
             localTimeResults.createNewFile()

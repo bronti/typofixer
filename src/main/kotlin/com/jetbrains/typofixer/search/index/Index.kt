@@ -10,6 +10,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.impl.java.stubs.index.JavaShortClassNameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
+import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 
@@ -66,6 +67,7 @@ class Index(val signature: Signature) {
         val refreshingTask = CollectProjectNames(project)
         // todo: concurrency
         usable = false
+        project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
         lastGlobalRefreshingTask = refreshingTask
         clearGlobal()
         DumbService.getInstance(project).smartInvokeLater {
@@ -130,6 +132,7 @@ class Index(val signature: Signature) {
             if (isCurrentRefreshingTask()) {
                 // todo: lock here
                 usable = true
+                project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
             }
             done = true
         }
