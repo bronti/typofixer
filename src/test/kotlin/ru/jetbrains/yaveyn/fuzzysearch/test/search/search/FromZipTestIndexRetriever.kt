@@ -28,7 +28,7 @@ class FromZipTestIndexRetriever(private val signatureProvider: Signature) {
 
     private fun retrieveFromReaderToIndex(reader: BufferedReader, index: Index) {
         val words = reader.lines().flatMap { splitBy.split(it).filter { str -> word.matches(str) }.stream() }
-        index.updateLocal(words.toList())
+        index.addAllToLocalIndex(words.toList())
     }
 
 }

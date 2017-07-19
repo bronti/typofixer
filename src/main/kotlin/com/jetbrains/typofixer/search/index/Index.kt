@@ -33,6 +33,11 @@ class Index(val signature: Signature) {
         if (localIndex.add(word)) ++localSize
     }
 
+    // not private because of tests (todo: do something about it)
+    fun addAllToLocalIndex(words: List<String>) {
+        words.forEach { addToLocalIndex(it) }
+    }
+
     var usable = true
         private set
 
@@ -44,30 +49,28 @@ class Index(val signature: Signature) {
     val size: Int
         get() = localSize + globalSize
 
-    fun get(signature: Int): Set<String>
-            = localIndex.getWithDefault(signature) + globalIndex.getWithDefault(signature)
+    private var lastGlobalRefreshingTask: CollectProjectNames? = null
+
+    fun get(signature: Int) = localIndex.getWithDefault(signature) + globalIndex.getWithDefault(signature)
     fun contains(str: String) = localIndex.contains(str) || globalIndex.contains(str)
 
     fun refreshLocal(psiFile: PsiFile?) {
         clearLocal()
         psiFile ?: return
         val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
-        updateLocal(collector.keyWords())
-        updateLocal(collector.localIdentifiers(psiFile))
-    }
-
-    // not private because of tests (todo: do something about it)
-    fun updateLocal(words: List<String>) {
-        words.forEach { addToLocalIndex(it) }
+        addAllToLocalIndex(collector.keyWords())
+        addAllToLocalIndex(collector.localIdentifiers(psiFile))
     }
 
     fun refreshGlobal(project: Project) {
+        val refreshingTask = CollectProjectNames(project)
         // todo: concurrency
         usable = false
+        lastGlobalRefreshingTask = refreshingTask
         clearGlobal()
         DumbService.getInstance(project).smartInvokeLater {
             if (project.isInitialized) {
-                ProgressIndicatorUtils.scheduleWithWriteActionPriority(CollectProjectNames(project))
+                ProgressIndicatorUtils.scheduleWithWriteActionPriority(refreshingTask)
             }
         }
     }
@@ -75,11 +78,13 @@ class Index(val signature: Signature) {
 
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
-        var methodNamesCollected = false
-        var fieldNamesCollected = false
-        var classNamesCollected = false
-        var classesToCollectPackageNames = ArrayList<String>()
-        var done = false
+        private fun isCurrentRefreshingTask() = this === lastGlobalRefreshingTask
+
+        private var methodNamesCollected = false
+        private var fieldNamesCollected = false
+        private var classNamesCollected = false
+        private var classesToCollectPackageNames = ArrayList<String>()
+        private var done = false
 
         override fun runBackgroundProcess(indicator: ProgressIndicator): Continuation? {
             return DumbService.getInstance(project).runReadActionInSmartMode(Computable<Continuation?> {
@@ -93,22 +98,28 @@ class Index(val signature: Signature) {
 
             val cache = PsiShortNamesCache.getInstance(project)
 
-            if (!methodNamesCollected) {
+            fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
+                if (isCurrentRefreshingTask() && !isCollected) {
+                    collect()
+                }
+            }
+
+            checkedCollect(methodNamesCollected) {
                 addAllToGlobalIndex(cache.allMethodNames.toList())
                 methodNamesCollected = true
             }
 
-            if (!fieldNamesCollected) {
+            checkedCollect(fieldNamesCollected) {
                 addAllToGlobalIndex(cache.allFieldNames.toList())
                 fieldNamesCollected = true
             }
 
-            if (!classNamesCollected) {
+            checkedCollect(classNamesCollected) {
                 classesToCollectPackageNames.addAll(cache.allClassNames)
                 classNamesCollected = true
             }
 
-            while (classesToCollectPackageNames.isNotEmpty()) {
+            while (isCurrentRefreshingTask() && classesToCollectPackageNames.isNotEmpty()) {
                 val name = classesToCollectPackageNames.last()
                 JavaShortClassNameIndex.getInstance()
                         .get(name, project, GlobalSearchScope.allScope(project))
@@ -116,7 +127,10 @@ class Index(val signature: Signature) {
                         .forEach { addToGlobalIndex(it) }
                 classesToCollectPackageNames.removeAt(classesToCollectPackageNames.size - 1)
             }
-            usable = true
+            if (isCurrentRefreshingTask()) {
+                // todo: lock here
+                usable = true
+            }
             done = true
         }
 

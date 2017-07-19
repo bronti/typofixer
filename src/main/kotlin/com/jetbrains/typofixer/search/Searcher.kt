@@ -117,6 +117,7 @@ open class DLSearcher(project: Project) : Searcher(project) {
             })
         }
 
-        updateIndex()
+        // todo: not sure if it is necessary here
+//        updateIndex()
     }
 }
