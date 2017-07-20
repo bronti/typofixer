@@ -7,7 +7,7 @@ import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
  * @author bronti.
  */
 class JavaSupport : TypoFixerLanguageSupport {
-    override fun identifierChar(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '_'
+    override fun identifierChar(c: Char) = c.isJavaIdentifierPart()
 
     override fun isTypoResolverApplicable(element: PsiElement) =
             element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)

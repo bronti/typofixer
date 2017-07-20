@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
  */
 
 class KotlinSupport : TypoFixerLanguageSupport {
-    override fun identifierChar(c: Char) = c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c == '_'
+    override fun identifierChar(c: Char) = c.isJavaIdentifierPart() // || c == '`'
 
     override fun isTypoResolverApplicable(element: PsiElement) =
             element.node.elementType == KtTokens.IDENTIFIER &&
