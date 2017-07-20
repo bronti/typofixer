@@ -10,7 +10,11 @@ class JavaSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isJavaIdentifierPart()
 
     override fun isTypoResolverApplicable(element: PsiElement) =
-            element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
+            element.node.elementType == JavaTokenType.IDENTIFIER && element.parent is PsiReference
+//            element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
+    // todo: ask somebody
+    // I believe that there is no point in replacing PsiErrorElement
+    // because if it was possible to put identifier or keyword in this place there would be PsiReference instead of PsiErrorElement
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
 

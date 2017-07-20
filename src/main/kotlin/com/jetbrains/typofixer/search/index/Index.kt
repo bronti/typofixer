@@ -90,18 +90,20 @@ class Index(val signature: Signature) {
 
         override fun runBackgroundProcess(indicator: ProgressIndicator): Continuation? {
             return DumbService.getInstance(project).runReadActionInSmartMode(Computable<Continuation?> {
-                doCollect()
+                doCollect(indicator)
                 null
             })
         }
 
-        private fun doCollect() {
+        private fun doCollect(indicator: ProgressIndicator) {
             if (!project.isInitialized) return
 
             val cache = PsiShortNamesCache.getInstance(project)
 
+            fun canProceed() = !indicator.isCanceled && isCurrentRefreshingTask()
+
             fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
-                if (isCurrentRefreshingTask() && !isCollected) {
+                if (!indicator.isCanceled && isCurrentRefreshingTask() && !isCollected) {
                     collect()
                 }
             }
@@ -121,7 +123,7 @@ class Index(val signature: Signature) {
                 classNamesCollected = true
             }
 
-            while (isCurrentRefreshingTask() && classesToCollectPackageNames.isNotEmpty()) {
+            while (canProceed() && classesToCollectPackageNames.isNotEmpty()) {
                 val name = classesToCollectPackageNames.last()
                 JavaShortClassNameIndex.getInstance()
                         .get(name, project, GlobalSearchScope.allScope(project))
@@ -129,12 +131,12 @@ class Index(val signature: Signature) {
                         .forEach { addToGlobalIndex(it) }
                 classesToCollectPackageNames.removeAt(classesToCollectPackageNames.size - 1)
             }
-            if (isCurrentRefreshingTask()) {
+            if (canProceed()) {
                 // todo: lock here
                 usable = true
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
             }
-            done = true
+            if (!indicator.isCanceled) done = true
         }
 
         override fun onCanceled(p0: ProgressIndicator) {
