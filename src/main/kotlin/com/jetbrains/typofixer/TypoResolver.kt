@@ -3,7 +3,10 @@ package com.jetbrains.typofixer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.UndoConfirmationPolicy
+import com.intellij.openapi.command.undo.BasicUndoableAction
+import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
@@ -41,12 +44,29 @@ private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFil
         if (replacement == oldText) return
 
         // todo: fix ctrl + z
-        ApplicationManager.getApplication().runWriteAction {
-            CommandProcessor.getInstance().executeCommand(project, {
+        val undoManager = UndoManager.getInstance(project)
+        CommandProcessor.getInstance().executeCommand(project, {
+            val fixTypo = object : BasicUndoableAction() {
+                override fun undo() {
+                    document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
+                }
+
+                override fun redo() {
+                    document.replaceString(elementStartOffset, elementStartOffset + replacement.length, oldText)
+                }
+            }
+            ApplicationManager.getApplication().runWriteAction {
                 document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
-                editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
-            }, null, document, UndoConfirmationPolicy.DEFAULT, document)
-        }
+            }
+            editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
+            undoManager.undoableActionPerformed(fixTypo)
+        }, null, document, UndoConfirmationPolicy.DEFAULT, document)
+
+//        CommandProcessor.getInstance().executeCommand(project, {
+//            document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
+//            editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
+//        }, null, document, UndoConfirmationPolicy.DEFAULT, document)
+
         // todo: make language specific
         psiManager.commitDocument(document)
         val newElement = psiFile.findElementAt(elementStartOffset)
@@ -65,12 +85,13 @@ private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFil
 
                     // todo: undo command
                     ApplicationManager.getApplication().invokeLater {
-                        ApplicationManager.getApplication().runWriteAction {
-                            CommandProcessor.getInstance().executeCommand(project, {
-                                document.replaceString(elementStartOffset, elementStartOffset + replacement.length, oldText)
-                                //                            editor.caretModel.moveToOffset(...))
-                            }, null, document, UndoConfirmationPolicy.DEFAULT, document)
-                        }
+                        //                        ApplicationManager.getApplication().runWriteAction {
+//                            CommandProcessor.getInstance().executeCommand(project, {
+//                                document.replaceString(elementStartOffset, elementStartOffset + replacement.length, oldText)
+//                                //                            editor.caretModel.moveToOffset(...))
+//                            }, null, document, UndoConfirmationPolicy.DEFAULT, document)
+//                        }
+                        UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).getSelectedEditor(psiFile.virtualFile))
                     }
                 }
             }.start()
