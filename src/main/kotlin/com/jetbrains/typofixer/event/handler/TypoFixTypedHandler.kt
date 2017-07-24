@@ -5,7 +5,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.checkedTypoResolve
+import com.jetbrains.typofixer.TypoResolver
 
 /**
  * @author bronti
@@ -19,7 +19,7 @@ class TypoFixTypedHandler: TypedHandlerDelegate() {
         // todo: multiple caret. do nothing?
         if (editor.caretModel.caretCount > 1) return Result.CONTINUE
 
-        checkedTypoResolve(c, editor, psiFile)
+        TypoResolver(c, editor, psiFile).resolve()
 
         return Result.CONTINUE
     }

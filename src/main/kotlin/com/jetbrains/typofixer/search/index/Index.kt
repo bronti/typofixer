@@ -125,6 +125,7 @@ class Index(val signature: Signature) {
 
             while (canProceed() && classesToCollectPackageNames.isNotEmpty()) {
                 val name = classesToCollectPackageNames.last()
+                // todo: language specific (?)
                 JavaShortClassNameIndex.getInstance()
                         .get(name, project, GlobalSearchScope.allScope(project))
                         .flatMap { (it.qualifiedName ?: it.name ?: "").split(".") }

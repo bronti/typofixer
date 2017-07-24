@@ -3,98 +3,117 @@ package com.jetbrains.typofixer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.UndoConfirmationPolicy
+import com.intellij.openapi.command.impl.CommandMerger
+import com.intellij.openapi.command.impl.EditorChangeAction
 import com.intellij.openapi.command.undo.BasicUndoableAction
 import com.intellij.openapi.command.undo.UndoManager
+import com.intellij.openapi.command.undo.UnexpectedUndoException
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorBundle
+import com.intellij.openapi.editor.impl.event.DocumentEventImpl
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiErrorElement
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiReference
+import com.intellij.openapi.project.Project
+import com.intellij.psi.*
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 
 /**
  * @author bronti
  */
 
-fun checkedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile) {
-    val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)
-    if (langSupport != null) doCheckedTypoResolve(nextChar, editor, psiFile, langSupport)
-}
+class TypoResolver {
+    private val nextChar: Char
+    private val editor: Editor
+    private val psiFile: PsiFile
+    private val project: Project
+    private val document: Document
 
-private fun doCheckedTypoResolve(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport) {
-    if (langSupport.identifierChar(nextChar)) return
+    private val langSupport: TypoFixerLanguageSupport?
+    private var needToResolve: Boolean
 
-    val nextCharOffset = editor.caretModel.offset
-    val document = editor.document
-    val project = psiFile.project
-    val psiManager = PsiDocumentManager.getInstance(project)
+    private var elementStartOffset: Int? = null
+    private var oldText: String? = null
+    private var replacement: String? = null
 
-    // refresh psi
-    psiManager.commitDocument(document)
+    constructor(nextChar: Char, editor: Editor, psiFile: PsiFile) {
+        this.nextChar = nextChar
+        this.editor = editor
+        this.psiFile = psiFile
+        document = editor.document
+        project = psiFile.project
 
-    val element = psiFile.findElementAt(nextCharOffset - 1)
+        langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)
+        needToResolve = langSupport != null && !langSupport.identifierChar(nextChar)
 
-    if (element != null && langSupport.isTypoResolverApplicable(element)) {
-        val elementStartOffset = element.textOffset
-        val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+        if (!needToResolve) return
+
+        val nextCharOffset = editor.caretModel.offset
+        PsiDocumentManager.getInstance(project).commitDocument(document)
+        val element = psiFile.findElementAt(nextCharOffset - 1)
+
+        if (element == null || !langSupport!!.isTypoResolverApplicable(element)) {
+            needToResolve = false
+            return
+        }
+
+        elementStartOffset = element.textOffset
+        oldText = element.text.substring(0, nextCharOffset - elementStartOffset!!)
 
         val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-        val replacement = searcher.findClosest(oldText, psiFile) ?: return
-        if (replacement == oldText) return
+        replacement = searcher.findClosest(oldText!!, psiFile)
+        if (replacement == null || replacement == oldText) {
+            needToResolve = false
+        }
+    }
+
+    fun resolve() {
+        if (!needToResolve) return
 
         // todo: fix ctrl + z
-        val undoManager = UndoManager.getInstance(project)
-        CommandProcessor.getInstance().executeCommand(project, {
-            val fixTypo = object : BasicUndoableAction() {
-                override fun undo() {
-                    document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
-                }
+        // todo: see EditorComponentImpl.replaceText (?)
 
-                override fun redo() {
-                    document.replaceString(elementStartOffset, elementStartOffset + replacement.length, oldText)
-                }
-            }
+        fun retrieveElementWithText(text: String): PsiElement? {
+            PsiDocumentManager.getInstance(project).commitDocument(document)
+            val element = psiFile.findElementAt(elementStartOffset!!)
+            if (element == null || element.text.substring(0, text.length) != text) return null
+            return element
+        }
+
+        retrieveElementWithText(oldText!!) ?: return
+
+        val commandProcessor = CommandProcessor.getInstance()
+        commandProcessor.markCurrentCommandAsGlobal(project)
+        commandProcessor.executeCommand(project, {
             ApplicationManager.getApplication().runWriteAction {
-                document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
+                document.replaceString(elementStartOffset!!, elementStartOffset!! + oldText!!.length, replacement!!)
             }
-            editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
-            undoManager.undoableActionPerformed(fixTypo)
-        }, null, document, UndoConfirmationPolicy.DEFAULT, document)
+        }, "Resolve Typo", null, UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION, document)
 
-//        CommandProcessor.getInstance().executeCommand(project, {
-//            document.replaceString(elementStartOffset, elementStartOffset + oldText.length, replacement)
-//            editor.caretModel.moveToOffset(nextCharOffset + replacement.length - oldText.length)
-//        }, null, document, UndoConfirmationPolicy.DEFAULT, document)
+        editor.caretModel.moveToOffset(elementStartOffset!! + replacement!!.length)
+
 
         // todo: make language specific
-        psiManager.commitDocument(document)
-        val newElement = psiFile.findElementAt(elementStartOffset)
-        if (newElement != null && newElement.text.substring(0, replacement.length) == replacement) {
-            val newParent = newElement.parent
+        PsiDocumentManager.getInstance(project).commitDocument(document)
+        val newElement = retrieveElementWithText(replacement!!) ?: return
+        val newParentElement = newElement.parent
 
-            // todo: write action priority
-            Thread {
-                // document, newElement
-                var parentIsUnresolved = false
-                ApplicationManager.getApplication().runReadAction {
-                    parentIsUnresolved = newParent.isValid && newParent is PsiReference && newParent.resolve() == null
-                }
-                if (newParent is PsiErrorElement // <- as far as I can tell it's not likely to happen
-                        || parentIsUnresolved) {
+        // todo: write action priority (?)
+        Thread {
+            var parentIsUnresolved = false
+            ApplicationManager.getApplication().runReadAction {
+                parentIsUnresolved = newParentElement.isValid && newParentElement is PsiReference && newParentElement.resolve() == null
+            }
+            if (newParentElement is PsiErrorElement // <- as far as I can tell it's not likely to happen
+                    || parentIsUnresolved) {
 
-                    // todo: undo command
-                    ApplicationManager.getApplication().invokeLater {
-                        //                        ApplicationManager.getApplication().runWriteAction {
-//                            CommandProcessor.getInstance().executeCommand(project, {
-//                                document.replaceString(elementStartOffset, elementStartOffset + replacement.length, oldText)
-//                                //                            editor.caretModel.moveToOffset(...))
-//                            }, null, document, UndoConfirmationPolicy.DEFAULT, document)
-//                        }
-                        UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).getSelectedEditor(psiFile.virtualFile))
-                    }
+                ApplicationManager.getApplication().invokeLater {
+                    commandProcessor.executeCommand(project, {
+                        ApplicationManager.getApplication().runWriteAction {
+                            document.replaceString(elementStartOffset!!, elementStartOffset!! + replacement!!.length, oldText!!)
+                        }
+                    }, null, document, UndoConfirmationPolicy.DEFAULT, document)
                 }
-            }.start()
-        }
+            }
+        }.start()
     }
 }

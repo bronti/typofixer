@@ -7,7 +7,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.actionSystem.EditorActionHandler
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.checkedTypoResolve
+import com.jetbrains.typofixer.TypoResolver
 
 /**
  * @author bronti.
@@ -24,7 +24,7 @@ class TypoFixEnterHandler: EnterHandlerDelegate {
 
         if (caret.caretCount > 1) return Result.Continue
 
-        checkedTypoResolve('\n', editor, psiFile)
+        TypoResolver('\n', editor, psiFile).resolve()
         caretOffset.set(editor.caretModel.offset)
 
         return Result.Continue
