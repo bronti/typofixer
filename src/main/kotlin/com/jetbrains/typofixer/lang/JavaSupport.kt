@@ -13,18 +13,13 @@ class JavaSupport : TypoFixerLanguageSupport {
 
     override fun isTypoResolverApplicable(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
-        return element.node.elementType == JavaTokenType.IDENTIFIER && element.parent is PsiReference
-//            element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
-        // todo: ask somebody
-        // I believe that there is no point in replacing PsiErrorElement
-        // because if it was possible to put identifier or keyword in this place there would be PsiReference instead of PsiErrorElement
+        return element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
     }
 
     override fun isTypoNotFixed(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         val parent = element.parent
-        return (parent is PsiErrorElement  // <- as far as I can tell it's not likely to happen
-                || parent is PsiReference && parent.resolve() == null)
+        return (parent is PsiErrorElement || parent is PsiReference && parent.resolve() == null)
     }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()

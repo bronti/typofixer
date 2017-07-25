@@ -7,7 +7,10 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiReference
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 import org.jetbrains.kotlin.idea.references.KtReference
+// todo bug: cannot resolve mainReference
 import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.idea.references.unwrappedTargets
+import org.jetbrains.kotlin.idea.references.canBePsiMethodReference
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -24,16 +27,15 @@ class KotlinSupport : TypoFixerLanguageSupport {
     override fun isTypoResolverApplicable(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         return element.node.elementType == KtTokens.IDENTIFIER &&
-                (element.parent is KtReferenceExpression || element.parent is KtReference)
+                (element.parent is KtReferenceExpression || element.parent is KtReference || element.parent is PsiErrorElement)
         // todo bug: KtReference not in index !!!!
-                // || element.parent is PsiErrorElement)
     }
 
     override fun isTypoNotFixed(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         val parent = element.parent
-        return (parent is PsiErrorElement  // <- same as in java
-                || parent is KtReferenceExpression && parent.mainReference.resolve() == null  // todo: sure?
+        return (parent is PsiErrorElement
+                || parent is KtReferenceExpression && parent.references.all { it.resolve() == null }  // todo: sure?
                 || parent is KtReference && parent.resolve() == null)
     }
 

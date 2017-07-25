@@ -24,7 +24,7 @@ apply plugin: 'java'
 apply plugin: 'kotlin'
 
 intellij {
-    version 'LATEST-EAP-SNAPSHOT'
+    version 'IC-2017.2'
     plugins = ["org.jetbrains.kotlin:$kotlin_plugin_version"]
 }
 
