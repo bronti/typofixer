@@ -107,11 +107,8 @@ class TypoResolver(
         var resolveFinished = false
         while (!resolveFinished) {
             resolveFinished = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
-                val parent = element.parent
                 ProgressIndicatorProvider.checkCanceled()
-                result = parent.isValid &&
-                        (parent is PsiErrorElement  // <- as far as I can tell it's not likely to happen
-                                || parent is PsiReference && parent.resolve() == null)
+                result = element.isValid && langSupport!!.isTypoNotFixed(element)
             }, indicator)
         }
         return result

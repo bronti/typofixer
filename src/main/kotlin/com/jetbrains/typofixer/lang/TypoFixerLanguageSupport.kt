@@ -17,6 +17,8 @@ interface TypoFixerLanguageSupport {
 
     fun isTypoResolverApplicable(element: PsiElement): Boolean
 
+    fun isTypoNotFixed(element: PsiElement): Boolean
+
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
 
     private class Extension : LanguageExtension<TypoFixerLanguageSupport>("com.jetbrains.typofixer.typoFixerLanguageSupport") {

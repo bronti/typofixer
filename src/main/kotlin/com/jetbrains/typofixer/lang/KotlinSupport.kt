@@ -1,10 +1,13 @@
 package com.jetbrains.typofixer.lang
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiReference
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -18,11 +21,21 @@ import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 class KotlinSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isJavaIdentifierPart() // || c == '`'
 
-    override fun isTypoResolverApplicable(element: PsiElement) =
-            element.node.elementType == KtTokens.IDENTIFIER &&
-                    (element.parent is KtReferenceExpression ||
-                            element.parent is KtReference ||
-                            element.parent is PsiErrorElement)
+    override fun isTypoResolverApplicable(element: PsiElement): Boolean {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        return element.node.elementType == KtTokens.IDENTIFIER &&
+                (element.parent is KtReferenceExpression || element.parent is KtReference)
+        // todo bug: KtReference not in index !!!!
+                // || element.parent is PsiErrorElement)
+    }
+
+    override fun isTypoNotFixed(element: PsiElement): Boolean {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        val parent = element.parent
+        return (parent is PsiErrorElement  // <- same as in java
+                || parent is KtReferenceExpression && parent.mainReference.resolve() == null  // todo: sure?
+                || parent is KtReference && parent.resolve() == null)
+    }
 
     override fun getLocalDictionaryCollector() = KotlinLocalDictionaryCollector()
 
