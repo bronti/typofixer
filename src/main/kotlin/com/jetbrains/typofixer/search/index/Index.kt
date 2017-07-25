@@ -126,10 +126,10 @@ class Index(val signature: Signature) {
             while (canProceed() && classesToCollectPackageNames.isNotEmpty()) {
                 val name = classesToCollectPackageNames.last()
                 // todo: language specific (?)
-                JavaShortClassNameIndex.getInstance()
-                        .get(name, project, GlobalSearchScope.allScope(project))
+                cache.getClassesByName(name, GlobalSearchScope.allScope(project))
                         .flatMap { (it.qualifiedName ?: it.name ?: "").split(".") }
                         .forEach { addToGlobalIndex(it) }
+                addToGlobalIndex(name)
                 classesToCollectPackageNames.removeAt(classesToCollectPackageNames.size - 1)
             }
             if (canProceed()) {
