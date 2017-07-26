@@ -100,10 +100,9 @@ class Index(val signature: Signature) {
 
             val cache = PsiShortNamesCache.getInstance(project)
 
-            fun canProceed() = !indicator.isCanceled && isCurrentRefreshingTask()
-
             fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
-                if (!indicator.isCanceled && isCurrentRefreshingTask() && !isCollected) {
+                indicator.checkCanceled()
+                if (isCurrentRefreshingTask() && !isCollected) {
                     collect()
                 }
             }
@@ -123,21 +122,23 @@ class Index(val signature: Signature) {
                 classNamesCollected = true
             }
 
-            while (canProceed() && classesToCollectPackageNames.isNotEmpty()) {
+            while (isCurrentRefreshingTask() && classesToCollectPackageNames.isNotEmpty()) {
+                indicator.checkCanceled()
                 val name = classesToCollectPackageNames.last()
-                // todo: language specific (?)
+                // todo: language specific (?) (kotlin bug)
                 cache.getClassesByName(name, GlobalSearchScope.allScope(project))
                         .flatMap { (it.qualifiedName ?: it.name ?: "").split(".") }
                         .forEach { addToGlobalIndex(it) }
                 addToGlobalIndex(name)
                 classesToCollectPackageNames.removeAt(classesToCollectPackageNames.size - 1)
             }
-            if (canProceed()) {
-                // todo: lock here
+            indicator.checkCanceled()
+            if (isCurrentRefreshingTask()) {
+                // todo: lock here (?)
                 usable = true
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
             }
-            if (!indicator.isCanceled) done = true
+            done = true
         }
 
         override fun onCanceled(p0: ProgressIndicator) {
