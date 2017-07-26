@@ -90,7 +90,7 @@ open class DLSearcher(val project: Project) : Searcher() {
 //        updateIndex()
     }
 
-    override fun getStatus() = if (DumbService.isDumb(project)) Status.DUMB_MODE else if (index.usable) Status.ACTIVE else Status.INDEX_REFRESHING
+    override fun getStatus() = if (DumbService.isDumb(project)) Status.DUMB_MODE else if (index.isUsable()) Status.ACTIVE else Status.INDEX_REFRESHING
     private fun canSearch() = getStatus() == Status.ACTIVE
 
     // todo: make private

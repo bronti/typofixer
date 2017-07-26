@@ -33,9 +33,9 @@ class RefreshingIndicator(val searcher: DLSearcher) : CustomStatusBarWidget, Sta
 
     fun update() {
         myLabel.text = when (searcher.getStatus()) {
-            Searcher.Status.INDEX_REFRESHING -> NOT_ACTIVE_TEXT
-            Searcher.Status.DUMB_MODE -> NOT_ACTIVE_TEXT
-            Searcher.Status.ACTIVE -> ACTIVE_TEXT + " (" + searcher.index.size + ")"
+            Searcher.Status.INDEX_REFRESHING -> NOT_ACTIVE_TEXT + " (${searcher.index.timesGlobalRefreshRequested})"
+            Searcher.Status.DUMB_MODE -> NOT_ACTIVE_TEXT + " (${searcher.index.timesGlobalRefreshRequested})"
+            Searcher.Status.ACTIVE -> ACTIVE_TEXT + " (${searcher.index.size}, ${searcher.index.timesGlobalRefreshRequested})"
         }
     }
 

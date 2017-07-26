@@ -44,11 +44,20 @@ class GlobalQualityTest {
         myProject = myFixture.project
 
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.toList()
-        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+        dependencies.forEach {
+            PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath)
+            println(it.name)
+        }
 
+        DumbService.getInstance(myProject).waitForSmartMode()
         searcher = myProject.getComponent(TypoFixerComponent::class.java).searcher
-        searcher.forceGlobalIndexRefreshing()
+        searcher.index.waitForGlobalRefreshing(myProject)
         // 560422
+
+        println(searcher.index.globalSize)
+
+        assert(searcher.index.contains("UniqueLikeASnowflake"))
+        assert(searcher.index.contains("privateMethod666"))
 
         if (!currentTestResultsDir.exists()) {
             currentTestResultsDir.mkdir()
@@ -59,7 +68,7 @@ class GlobalQualityTest {
 //    @Ignore
     fun testRefreshGlobalIndex() {
         val times = 50
-        val result = measureTimeMillis({ (1..times).forEach { searcher.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
+        val result = measureTimeMillis({ (1..times).forEach { searcher.index.waitForGlobalRefreshing(myProject) } }).toDouble() / times.toDouble()
         val resultLoggingNeeded = !refreshingResults.exists()
         if (resultLoggingNeeded) {
             refreshingResults.createNewFile()
@@ -135,9 +144,6 @@ class GlobalQualityTest {
             val result = searcher.search(str, psiFile)
             Pair(preciseResult, result)
         })
-
-        assert(searcher.index.contains("UniqueLikeASnowflake"))
-        assert(searcher.index.contains("privateMethod666"))
 
 //        println("index size: ${searcher.index.size}")
         checkPrecision(preciseResult, result, str, precs, resultLoggingNeeded)

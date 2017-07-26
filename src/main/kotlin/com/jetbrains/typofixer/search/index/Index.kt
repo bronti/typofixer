@@ -1,5 +1,6 @@
 package com.jetbrains.typofixer.search.index
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.progress.util.ReadTask
@@ -7,12 +8,15 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.PsiFile
+import com.intellij.psi.impl.java.stubs.index.JavaFieldNameIndex
+import com.intellij.psi.impl.java.stubs.index.JavaMethodNameIndex
 import com.intellij.psi.impl.java.stubs.index.JavaShortClassNameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
@@ -39,18 +43,22 @@ class Index(val signature: Signature) {
         words.forEach { addToLocalIndex(it) }
     }
 
-    var usable = true
-        private set
-
     var localSize = 0
         private set
     var globalSize = 0
         private set
 
+    // todo: remove
+    var timesGlobalRefreshRequested = 0
+        private set
+
     val size: Int
         get() = localSize + globalSize
 
+    @Volatile
     private var lastGlobalRefreshingTask: CollectProjectNames? = null
+
+    fun isUsable() = lastGlobalRefreshingTask == null
 
     fun get(signature: Int) = localIndex.getWithDefault(signature) + globalIndex.getWithDefault(signature)
     fun contains(str: String) = localIndex.contains(str) || globalIndex.contains(str)
@@ -64,11 +72,12 @@ class Index(val signature: Signature) {
     }
 
     fun refreshGlobal(project: Project) {
+        ++timesGlobalRefreshRequested
         val refreshingTask = CollectProjectNames(project)
-        // todo: concurrency
-        usable = false
+        synchronized(this@Index) {
+            lastGlobalRefreshingTask = refreshingTask
+        }
         project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
-        lastGlobalRefreshingTask = refreshingTask
         clearGlobal()
         DumbService.getInstance(project).smartInvokeLater {
             if (project.isInitialized) {
@@ -76,7 +85,6 @@ class Index(val signature: Signature) {
             }
         }
     }
-
 
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
@@ -86,7 +94,8 @@ class Index(val signature: Signature) {
         private var fieldNamesCollected = false
         private var classNamesCollected = false
         private var classesToCollectPackageNames = ArrayList<String>()
-        private var done = false
+        var done = false
+            private set
 
         override fun runBackgroundProcess(indicator: ProgressIndicator): Continuation? {
             return DumbService.getInstance(project).runReadActionInSmartMode(Computable<Continuation?> {
@@ -95,13 +104,13 @@ class Index(val signature: Signature) {
             })
         }
 
-        private fun doCollect(indicator: ProgressIndicator) {
+        private fun doCollect(indicator: ProgressIndicator?) {
             if (!project.isInitialized) return
 
             val cache = PsiShortNamesCache.getInstance(project)
 
             fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
-                indicator.checkCanceled()
+                indicator?.checkCanceled()
                 if (isCurrentRefreshingTask() && !isCollected) {
                     collect()
                 }
@@ -123,7 +132,7 @@ class Index(val signature: Signature) {
             }
 
             while (isCurrentRefreshingTask() && classesToCollectPackageNames.isNotEmpty()) {
-                indicator.checkCanceled()
+                indicator?.checkCanceled()
                 val name = classesToCollectPackageNames.last()
                 // todo: language specific (?) (kotlin bug)
                 cache.getClassesByName(name, GlobalSearchScope.allScope(project))
@@ -132,10 +141,13 @@ class Index(val signature: Signature) {
                 addToGlobalIndex(name)
                 classesToCollectPackageNames.removeAt(classesToCollectPackageNames.size - 1)
             }
-            indicator.checkCanceled()
+            indicator?.checkCanceled()
             if (isCurrentRefreshingTask()) {
-                // todo: lock here (?)
-                usable = true
+                synchronized(this@Index) { // todo: makes everything slow. why?
+                    if (isCurrentRefreshingTask()) lastGlobalRefreshingTask = null
+                }
+            }
+            if (this@Index.isUsable()) {
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
             }
             done = true
@@ -144,6 +156,13 @@ class Index(val signature: Signature) {
         override fun onCanceled(p0: ProgressIndicator) {
             if (!done) {
                 ProgressIndicatorUtils.scheduleWithWriteActionPriority(this)
+            }
+        }
+
+        @TestOnly
+        fun waitForGlobalRefreshing() {
+            while (!done) {
+                doCollect(null)
             }
         }
     }
@@ -174,5 +193,15 @@ class Index(val signature: Signature) {
     private fun HashMap<Int, HashSet<String>>.contains(str: String): Boolean {
         val signature = signature.get(str)
         return if (this[signature] == null) false else this[signature]!!.contains(str)
+    }
+
+    @TestOnly
+    fun waitForGlobalRefreshing(project: Project) {
+        val refreshingTask = CollectProjectNames(project)
+        clearGlobal()
+        lastGlobalRefreshingTask = refreshingTask
+        DumbService.getInstance(project).runReadActionInSmartMode {
+            refreshingTask.waitForGlobalRefreshing()
+        }
     }
 }
