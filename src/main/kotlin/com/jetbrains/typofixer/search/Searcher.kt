@@ -14,6 +14,7 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
 import com.jetbrains.typofixer.search.signature.ComplexSignature
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
@@ -34,7 +35,6 @@ abstract class Searcher {
 
 open class DLSearcher(val project: Project) : Searcher() {
 
-
     companion object {
         // signature with length + char frequency + improved range + clever choosing from index
         val VERSION = 5
@@ -43,8 +43,8 @@ open class DLSearcher(val project: Project) : Searcher() {
     private val maxError = 2
     private val signature = ComplexSignature()
     private val distanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
-    // todo: make private
-    val index = Index(signature)
+
+    private val index = Index(signature)
 
     private var lastPsiModificationCount = 0L
     private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(project).outOfCodeBlockModificationCount
@@ -62,14 +62,6 @@ open class DLSearcher(val project: Project) : Searcher() {
                 }
             })
 
-//            connection.subscribe(PsiModificationTracker.TOPIC, PsiModificationTracker.Listener {
-//                val count = PsiModificationTracker.SERVICE.getInstance(myProject).outOfCodeBlockModificationCount
-//                if (psiModificationCount != count) {
-//                    psiModificationCount = count
-//                    updateNeeded = true
-//                }
-//            })
-
             connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
                 override fun selectionChanged(event: FileEditorManagerEvent) {
                     if (freshPsiModificationCount() != lastPsiModificationCount) {
@@ -85,38 +77,18 @@ open class DLSearcher(val project: Project) : Searcher() {
                 }
             })
         }
-
-// todo: not sure if it is necessary here
-//        updateIndex()
     }
 
     override fun getStatus() = if (DumbService.isDumb(project)) Status.DUMB_MODE else if (index.isUsable()) Status.ACTIVE else Status.INDEX_REFRESHING
     private fun canSearch() = getStatus() == Status.ACTIVE
 
-    // todo: make private
-    fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
-
+    private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
     override fun findClosest(str: String, psiFile: PsiFile?): String? {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
             getSearch(false).findClosest(str)
         } else null
-    }
-
-    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Pair<Int, Int>> {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(false).findClosestWithInfo(str)
-        } else Pair(null, Pair(-1, -1))
-    }
-
-    // todo: deriving class for test (?)
-    fun forceGlobalIndexRefreshing() {
-        index.refreshGlobal(project)
-    }
-    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
-        index.refreshLocal(psiFile)
     }
 
     override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
@@ -130,5 +102,28 @@ open class DLSearcher(val project: Project) : Searcher() {
     private fun updateIndex() {
         lastPsiModificationCount = freshPsiModificationCount()
         index.refreshGlobal(project)
+    }
+
+    fun getStatistics() = Pair(index.size, index.timesGlobalRefreshRequested)
+
+    @TestOnly
+    fun getIndex() = index
+
+    @TestOnly
+    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Pair<Int, Int>> {
+        return if (canSearch()) {
+            index.refreshLocal(psiFile)
+            getSearch(false).findClosestWithInfo(str)
+        } else Pair(null, Pair(-1, -1))
+    }
+
+    @TestOnly
+    fun forceGlobalIndexRefreshing() {
+        index.waitForGlobalRefreshing(project)
+    }
+
+    @TestOnly
+    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
+        index.refreshLocal(psiFile)
     }
 }

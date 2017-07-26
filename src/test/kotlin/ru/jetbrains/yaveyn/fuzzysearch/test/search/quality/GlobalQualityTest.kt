@@ -51,13 +51,13 @@ class GlobalQualityTest {
 
         DumbService.getInstance(myProject).waitForSmartMode()
         searcher = myProject.getComponent(TypoFixerComponent::class.java).searcher
-        searcher.index.waitForGlobalRefreshing(myProject)
+        searcher.forceGlobalIndexRefreshing()
         // 560422
 
-        println(searcher.index.globalSize)
+        println(searcher.getIndex().globalSize)
 
-        assert(searcher.index.contains("UniqueLikeASnowflake"))
-        assert(searcher.index.contains("privateMethod666"))
+        assert(searcher.getIndex().contains("UniqueLikeASnowflake"))
+        assert(searcher.getIndex().contains("privateMethod666"))
 
         if (!currentTestResultsDir.exists()) {
             currentTestResultsDir.mkdir()
@@ -68,14 +68,14 @@ class GlobalQualityTest {
 //    @Ignore
     fun testRefreshGlobalIndex() {
         val times = 50
-        val result = measureTimeMillis({ (1..times).forEach { searcher.index.waitForGlobalRefreshing(myProject) } }).toDouble() / times.toDouble()
+        val result = measureTimeMillis({ (1..times).forEach { searcher.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
         val resultLoggingNeeded = !refreshingResults.exists()
         if (resultLoggingNeeded) {
             refreshingResults.createNewFile()
             refreshingResults.appendText("$result\n")
-            refreshingResults.appendText("index size: ${searcher.index.size}")
+            refreshingResults.appendText("index size: ${searcher.getStatistics().first}")
         }
-        println("index size: ${searcher.index.size}")
+        println("index size: ${searcher.getStatistics().first}")
         println(result)
     }
 
@@ -85,9 +85,9 @@ class GlobalQualityTest {
         val resultLoggingNeeded = !precisionResults.exists()
         if (resultLoggingNeeded) {
             precisionResults.createNewFile()
-            precisionResults.appendText("index size: ${searcher.index.size}\n")
+            precisionResults.appendText("index size: ${searcher.getStatistics().first}\n")
         }
-        println("index size: ${searcher.index.size}")
+        println("index size: ${searcher.getStatistics().first}")
         // todo: clear index (??)
         // todo: generate words
         // todo: different lengths
@@ -102,9 +102,9 @@ class GlobalQualityTest {
         val resultLoggingNeeded = !timeResults.exists()
         if (resultLoggingNeeded) {
             timeResults.createNewFile()
-            timeResults.appendText("index size: ${searcher.index.size}\n")
+            timeResults.appendText("index size: ${searcher.getStatistics().first}\n")
         }
-        println("index size: ${searcher.index.size}")
+        println("index size: ${searcher.getStatistics().first}")
         val chars = ('a'..'z').map { it.toString() }
         val chars2 = chars.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
         val chars3 = chars2.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }

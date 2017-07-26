@@ -38,8 +38,7 @@ class Index(val signature: Signature) {
         if (localIndex.add(word)) ++localSize
     }
 
-    // not private because of tests (todo: do something about it)
-    fun addAllToLocalIndex(words: List<String>) {
+    private fun addAllToLocalIndex(words: List<String>) {
         words.forEach { addToLocalIndex(it) }
     }
 
@@ -204,4 +203,7 @@ class Index(val signature: Signature) {
             refreshingTask.waitForGlobalRefreshing()
         }
     }
+
+    @TestOnly
+    fun addToIndex(words: List<String>) = addAllToLocalIndex(words)
 }

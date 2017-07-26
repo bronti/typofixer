@@ -63,7 +63,6 @@ class TypoResolver(
         if (resolveStillValid && element != null && element.isValid && element.text.startsWith(oldText)) {
             fixTypo()
 
-            // todo: make language specific
             PsiDocumentManager.getInstance(project).commitDocument(document)
 
             val newElement = psiFile.findElementAt(elementStartOffset) ?: return

@@ -18,8 +18,7 @@ abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (Stri
 
     protected abstract fun getClassifiedCandidates(str: String): List<List<String>>
 
-    // todo: make protected
-    fun getCandidates(str: String) = getClassifiedCandidates(str).flatten()
+    protected fun getCandidates(str: String) = getClassifiedCandidates(str).flatten()
 
     override fun findClosest(str: String): String? {
         val (result, _) = findClosestWithInfo(str)

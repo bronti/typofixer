@@ -23,7 +23,7 @@ class SmokeSearchTest {
     @Test
     fun simpleTest() {
         val index = Index(ComplexSignature())
-        index.addAllToLocalIndex(listOf("alabama", "Alabama", "alab", "ala", "bububum"))
+        index.addToIndex(listOf("alabama", "Alabama", "alab", "ala", "bububum"))
 
         val searcher = searcherProvider(3, index)
 
@@ -33,7 +33,7 @@ class SmokeSearchTest {
     @Test
     fun preciseSearcherTest() {
         val index = Index(ComplexSignature())
-        index.addAllToLocalIndex(listOf("aceg", "aikm"))
+        index.addToIndex(listOf("aceg", "aikm"))
 
         val preciseSearcher = preciseSearcherProvider(3, index)
 
@@ -43,7 +43,7 @@ class SmokeSearchTest {
     @Test
     fun notPreciseSearcherTest() {
         val index = Index(ComplexSignature())
-        index.addAllToLocalIndex(listOf("aceg", "aikm"))
+        index.addToIndex(listOf("aceg", "aikm"))
 
         val searcher = searcherProvider(3, index)
 
