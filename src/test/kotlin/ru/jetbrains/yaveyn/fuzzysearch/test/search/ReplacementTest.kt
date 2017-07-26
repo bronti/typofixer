@@ -1,5 +1,6 @@
 package ru.jetbrains.yaveyn.fuzzysearch.test.search
 
+import com.intellij.openapi.project.DumbService
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 
 /**
@@ -8,69 +9,66 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
 
 class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
 
-    fun testReplacementAfterTyped() {
-        myFixture.configureByText("Foo.java", "clasa<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("class <caret>")
-    }
+    fun testReplacementAfterTyped() = doTest(
+            "clasa<caret>",
+            ' ',
+            "class <caret>")
 
-    fun testReplacementAfterEnter() {
-        myFixture.configureByText("Foo.java", "clasa<caret>")
-        myFixture.type('\n')
-        myFixture.checkResult("class\n<caret>")
-    }
+    fun testReplacementAfterEnter() = doTest(
+            "clasa<caret>",
+            '\n',
+            "class\n<caret>")
 
-    fun testReplacementAfterClosingParenthesis() {
-        myFixture.configureByText("Foo.java", "class Some {privvate<caret>}")
-        myFixture.type('}')
-        myFixture.checkResult("class Some {private}<caret>")
-    }
+    fun testReplacementAfterClosingParenthesis() = doTest(
+            "class Some {privvate<caret>}",
+            '}',
+            "class Some {private}<caret>")
 
-    fun testReplacementAfterTypedInSolidText() {
-        myFixture.configureByText("Foo.java", "clasa<caret>Some")
-        myFixture.type(' ')
-        myFixture.checkResult("class <caret>Some")
-    }
+    fun testReplacementAfterTypedInSolidText() = doTest(
+            "clasa<caret>Some",
+            ' ',
+            "class <caret>Some")
 
-    fun testReplacementAfterEnterInSolidText() {
-        myFixture.configureByText("Foo.java", "clasa<caret>Some")
-        myFixture.type('\n')
-        myFixture.checkResult("class\n<caret>Some")
-    }
+    fun testReplacementAfterEnterInSolidText() = doTest(
+            "clasa<caret>Some",
+            '\n',
+            "class\n<caret>Some")
 
-    fun testReplacementInIdentifier() {
-        myFixture.configureByText("Foo.java", "class Some { voidd<caret>}")
-        myFixture.type(' ')
-        myFixture.checkResult("class Some { void <caret>}")
-    }
+    fun testReplacementInIdentifier() = doTest(
+            "class Some { voidd<caret>}",
+            ' ',
+            "class Some { void <caret>}")
 
-    fun testReplacementInErrorElement() {
-        myFixture.configureByText("Foo.java", "innerface<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("interface <caret>")
-    }
+    fun testReplacementInErrorElement() = doTest(
+            "innerface<caret>",
+            ' ',
+            "interface <caret>")
 
-    fun testNoReplacementInsideIdentifier() {
-        myFixture.configureByText("Foo.java", "innerface<caret>")
-        myFixture.type('_')
-        myFixture.checkResult("innerface_<caret>")
-    }
+    fun testNoReplacementInsideIdentifier() = doTest(
+            "innerface<caret>",
+            '_',
+            "innerface_<caret>")
 
-    fun testNoReplacementInTheBeginningOfADocument() {
-        myFixture.configureByText("Foo.java", "<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult(" <caret>")
-    }
+    fun testNoReplacementAtDocumentStart() = doTest(
+            "<caret>something",
+            ' ',
+            " <caret>something")
 
-    fun testReplacementWithShorterWord() {
-        myFixture.configureByText("Foo.java", "interfacell<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("interface <caret>")
-    }
+    fun testReplacementWithShorterWord() = doTest(
+            "interfacell<caret>",
+            ' ',
+            "interface <caret>")
 
-    fun testReplacementWithLongerWord() {
-        myFixture.configureByText("Foo.java", "nteface<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("interface <caret>")
+    fun testReplacementWithLongerWord() = doTest(
+            "nteface<caret>",
+            ' ',
+            "interface <caret>")
+
+    private fun doTest(input: String, typed: Char, output: String) {
+        myFixture.configureByText("Foo.java", input)
+        DumbService.getInstance(myModule.project).smartInvokeLater {
+            myFixture.type(typed)
+            myFixture.checkResult(output)
+        }
     }
 }

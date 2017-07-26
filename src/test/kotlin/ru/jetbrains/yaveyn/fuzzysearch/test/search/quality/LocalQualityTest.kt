@@ -29,14 +29,16 @@ class LocalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
     @Test
     fun testLocalRefreshing() {
         val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
+
+        myFixture.configureByFile(bigFile.canonicalPath)
+
+        searcher.forceLocalIndexRefreshing(myFixture.file)
         val resultLoggingNeeded = !localTimeResults.exists()
         if (resultLoggingNeeded) {
             localTimeResults.createNewFile()
             localTimeResults.appendText("index size: ${searcher.index.localSize}\n")
         }
         println("index size: ${searcher.index.localSize}")
-
-        myFixture.configureByFile(bigFile.canonicalPath)
 
         val times = 1000
         val time = DumbService.getInstance(project).runReadActionInSmartMode(Computable {

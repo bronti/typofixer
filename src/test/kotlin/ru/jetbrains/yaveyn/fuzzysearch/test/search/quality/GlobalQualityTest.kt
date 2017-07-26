@@ -3,6 +3,7 @@ package ru.jetbrains.yaveyn.fuzzysearch.test.search.quality
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
@@ -43,7 +44,7 @@ class GlobalQualityTest {
         myProject = myFixture.project
 
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.toList()
-//        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
+        dependencies.forEach { PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath) }
 
         searcher = myProject.getComponent(TypoFixerComponent::class.java).searcher
         searcher.forceGlobalIndexRefreshing()
@@ -70,7 +71,7 @@ class GlobalQualityTest {
     }
 
     @Test
-    @Ignore
+//    @Ignore
     fun testPrecision() {
         val resultLoggingNeeded = !precisionResults.exists()
         if (resultLoggingNeeded) {
@@ -87,7 +88,7 @@ class GlobalQualityTest {
     }
 
     @Test
-    @Ignore
+//    @Ignore
     fun testTime() {
         val resultLoggingNeeded = !timeResults.exists()
         if (resultLoggingNeeded) {

@@ -1,5 +1,6 @@
 package ru.jetbrains.yaveyn.fuzzysearch.test.search
 
+import com.intellij.openapi.project.DumbService
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 
 /**
@@ -8,33 +9,36 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
 
 class LocalIndexTest : LightPlatformCodeInsightFixtureTestCase() {
 
-    fun testKeyword() {
-        myFixture.configureByText("Foo.java", "clasa<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("class <caret>")
-    }
+    fun testKeyword() = doTest(
+            "clasa<caret>",
+            ' ',
+            "class <caret>")
 
-    fun testClass() {
-        myFixture.configureByText("Foo.java", "class Some { Somee<caret> }")
-        myFixture.type(' ')
-        myFixture.checkResult("class Some { Some <caret> }")
-    }
+    fun testClass() = doTest(
+            "class Some { Somee<caret> }",
+            ' ',
+            "class Some { Some <caret> }")
 
-    fun testMethod() {
-        myFixture.configureByText("Foo.java", "class Some { void someMethod() { someMetho<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("class Some { void someMethod() { someMethod <caret>")
-    }
+    fun testMethod() = doTest(
+            "class Some { void someMethod() { someMetho<caret>",
+            ' ',
+            "class Some { void someMethod() { someMethod <caret>")
 
-    fun testField() {
-        myFixture.configureByText("Foo.java", "class Some { int someField; void someMethod() { someFiel<caret>")
-        myFixture.type(' ')
-        myFixture.checkResult("class Some { int someField; void someMethod() { someField <caret>")
-    }
+    fun testField() = doTest(
+            "class Some { int someField; void someMethod() { someFiel<caret>",
+            ' ',
+            "class Some { int someField; void someMethod() { someField <caret>")
 
-    fun testPackage() {
-        myFixture.configureByText("Foo.java", "package some.package; import some.packkage<caret>")
-        myFixture.type('.')
-        myFixture.checkResult("package some.package; import some.package.<caret>")
+    fun testPackage() = doTest(
+            "package some.package; import some.packkage<caret>",
+            '.',
+            "package some.package; import some.package.<caret>")
+
+    private fun doTest(input: String, typed: Char, output: String) {
+        myFixture.configureByText("Foo.java", input)
+        DumbService.getInstance(myModule.project).smartInvokeLater {
+            myFixture.type(typed)
+            myFixture.checkResult(output)
+        }
     }
 }
