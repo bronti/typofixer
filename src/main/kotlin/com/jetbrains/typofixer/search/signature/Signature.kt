@@ -50,7 +50,7 @@ abstract class SignatureBase : Signature {
     companion object {
         protected @JvmStatic val lengthUpperBound = 1 shl 7
 
-        protected fun charMask(c: Char) = CHAR_MASK[c.toLowerCase()] ?: (baseShift - 1)
+        protected fun charMask(c: Char) = CHAR_MASK[c.toLowerCase()] ?: (c.toInt() % baseShift)
 
         protected val CHAR_MASK = hashMapOf(
                 'a' to (1 shl 2),
@@ -113,7 +113,7 @@ abstract class SignatureBase : Signature {
                 '~' to (1 shl 15)
         )
 
-        val baseShift = 24
+        val baseShift = 25
         protected val BASE_MASK = ((1 shl baseShift) - 1)
     }
 }
