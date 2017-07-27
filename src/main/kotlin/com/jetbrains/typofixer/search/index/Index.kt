@@ -75,9 +75,9 @@ class Index(val signature: Signature) {
         val refreshingTask = CollectProjectNames(project)
         synchronized(this@Index) {
             lastGlobalRefreshingTask = refreshingTask
+            clearGlobal()                                   // should be ok
         }
         project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
-        clearGlobal()
         DumbService.getInstance(project).smartInvokeLater {
             if (project.isInitialized) {
                 ProgressIndicatorUtils.scheduleWithWriteActionPriority(refreshingTask)
@@ -126,7 +126,7 @@ class Index(val signature: Signature) {
             }
 
             checkedCollect(classNamesCollected) {
-                classesToCollectPackageNames.addAll(cache.allClassNames)
+                classesToCollectPackageNames.addAll(cache.allClassNames.toHashSet())
                 classNamesCollected = true
             }
 
@@ -134,7 +134,7 @@ class Index(val signature: Signature) {
                 indicator?.checkCanceled()
                 val name = classesToCollectPackageNames.last()
                 // todo: language specific (?) (kotlin bug)
-                cache.getClassesByName(name, GlobalSearchScope.allScope(project))
+                cache.getClassesByName(name, GlobalSearchScope.allScope(project)) // todo: makes everything slow.
                         .flatMap { (it.qualifiedName ?: it.name ?: "").split(".") }
                         .forEach { addToGlobalIndex(it) }
                 addToGlobalIndex(name)
@@ -142,7 +142,7 @@ class Index(val signature: Signature) {
             }
             indicator?.checkCanceled()
             if (isCurrentRefreshingTask()) {
-                synchronized(this@Index) { // todo: makes everything slow. why?
+                synchronized(this@Index) {
                     if (isCurrentRefreshingTask()) lastGlobalRefreshingTask = null
                 }
             }
