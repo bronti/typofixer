@@ -19,7 +19,9 @@ class JavaSupport : TypoFixerLanguageSupport {
     override fun isTypoNotFixed(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         val parent = element.parent
-        return (parent is PsiErrorElement || parent is PsiReference && parent.resolve() == null)
+        return (parent is PsiErrorElement
+                || parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
+                || parent is PsiReference && parent.resolve() == null)
     }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()

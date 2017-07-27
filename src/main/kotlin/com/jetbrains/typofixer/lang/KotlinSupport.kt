@@ -6,16 +6,17 @@ import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiReference
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
-import org.jetbrains.kotlin.idea.references.KtReference 
-// todo bug: cannot resolve mainReference
-import org.jetbrains.kotlin.idea.references.mainReference
-import org.jetbrains.kotlin.idea.references.unwrappedTargets
-import org.jetbrains.kotlin.idea.references.canBePsiMethodReference
+import org.jetbrains.kotlin.codegen.optimization.common.analyze
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.references.*
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
+import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.resolve.BindingContext
 
 /**
  * @author bronti.
@@ -32,9 +33,12 @@ class KotlinSupport : TypoFixerLanguageSupport {
 
     override fun isTypoNotFixed(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
+        // todo: ApplicationManager.getApplication().isInteral
         val parent = element.parent
         return (parent is PsiErrorElement
-                || parent is KtReferenceExpression && parent.references.all { it.resolve() == null }  // todo: sure?
+//        return mainReference?.resolveToDescriptors(bindingContext) ?: emptyList()
+                || parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
+        // todo:
                 || parent is KtReference && parent.resolve() == null)
     }
 
