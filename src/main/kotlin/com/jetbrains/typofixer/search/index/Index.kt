@@ -1,16 +1,12 @@
 package com.jetbrains.typofixer.search.index
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.progress.util.ReadTask
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
-import com.intellij.psi.PsiFile
-import com.intellij.psi.impl.java.stubs.index.JavaFieldNameIndex
-import com.intellij.psi.impl.java.stubs.index.JavaMethodNameIndex
-import com.intellij.psi.impl.java.stubs.index.JavaShortClassNameIndex
+import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
@@ -23,6 +19,7 @@ import org.jetbrains.annotations.TestOnly
  */
 class Index(val signature: Signature) {
 
+    // todo: look into JavaKeywordCompletion
     private val localIndex = HashMap<Int, HashSet<String>>()
     private val globalIndex = HashMap<Int, HashSet<String>>()
 
@@ -85,6 +82,7 @@ class Index(val signature: Signature) {
         }
     }
 
+    // todo: refactor
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
         private fun isCurrentRefreshingTask() = this === lastGlobalRefreshingTask
@@ -92,7 +90,7 @@ class Index(val signature: Signature) {
         private var methodNamesCollected = false
         private var fieldNamesCollected = false
         private var classNamesCollected = false
-        private var classesToCollectPackageNames = ArrayList<String>()
+        private var dirsToCollectPackages = ArrayList<PsiDirectory>()
         var done = false
             private set
 
@@ -125,27 +123,42 @@ class Index(val signature: Signature) {
                 fieldNamesCollected = true
             }
 
+            // todo: language specific (?) (kotlin bug)
             checkedCollect(classNamesCollected) {
-                classesToCollectPackageNames.addAll(cache.allClassNames.toHashSet())
+                addAllToGlobalIndex(cache.allClassNames.toList())
                 classNamesCollected = true
             }
 
-            while (isCurrentRefreshingTask() && classesToCollectPackageNames.isNotEmpty()) {
+            val initialPackage = JavaPsiFacade.getInstance(project).findPackage("")!!
+            val javaDirService = JavaDirectoryService.getInstance()
+            val scope = GlobalSearchScope.allScope(project)
+
+            dirsToCollectPackages.addAll(initialPackage.getDirectories(scope).flatMap { it.subdirectories.toList() })
+
+            while (isCurrentRefreshingTask() && dirsToCollectPackages.isNotEmpty()) {
                 indicator?.checkCanceled()
-                val name = classesToCollectPackageNames.last()
-                // todo: language specific (?) (kotlin bug)
-                cache.getClassesByName(name, GlobalSearchScope.allScope(project)) // todo: makes everything slow.
-                        .flatMap { (it.qualifiedName ?: it.name ?: "").split(".") }
-                        .forEach { addToGlobalIndex(it) }
-                addToGlobalIndex(name)
-                classesToCollectPackageNames.removeAt(classesToCollectPackageNames.size - 1)
+                val subDir = dirsToCollectPackages.last()
+                val subPackage = javaDirService.getPackage(subDir)
+                val subPackageName = subPackage?.name
+                if (subPackageName != null && subPackageName.isNotBlank()) {
+                    addToGlobalIndex(subPackageName)
+                }
+                dirsToCollectPackages.removeAt(dirsToCollectPackages.size - 1)
+                if (subPackage != null) {
+                    // todo: filter resources (?)
+                    // todo: Kotlin (files with > 1 class)
+                    // todo: Classkt
+                    dirsToCollectPackages.addAll(subDir.subdirectories)
+                }
             }
+
             indicator?.checkCanceled()
             if (isCurrentRefreshingTask()) {
                 synchronized(this@Index) {
                     if (isCurrentRefreshingTask()) lastGlobalRefreshingTask = null
                 }
             }
+
             if (this@Index.isUsable()) {
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
             }
