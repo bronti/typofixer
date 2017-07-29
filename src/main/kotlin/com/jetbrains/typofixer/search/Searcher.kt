@@ -36,8 +36,12 @@ abstract class Searcher {
 open class DLSearcher(val project: Project) : Searcher() {
 
     companion object {
-        // signature with length + char frequency + improved range + clever choosing from index
-        val VERSION = 5
+        // signature with length
+        // char frequency
+        // improved range
+        // clever choosing from index
+        // fast package names collecting + bug with shift in signature fixed
+        val VERSION = 6
     }
 
     private val maxError = 2

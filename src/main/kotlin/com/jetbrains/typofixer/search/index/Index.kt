@@ -129,11 +129,13 @@ class Index(val signature: Signature) {
                 classNamesCollected = true
             }
 
-            val initialPackage = JavaPsiFacade.getInstance(project).findPackage("")!!
+            val initialPackage = JavaPsiFacade.getInstance(project).findPackage("")
             val javaDirService = JavaDirectoryService.getInstance()
             val scope = GlobalSearchScope.allScope(project)
 
-            dirsToCollectPackages.addAll(initialPackage.getDirectories(scope).flatMap { it.subdirectories.toList() })
+            dirsToCollectPackages.addAll(
+                    initialPackage?.getDirectories(scope)?.flatMap { it.subdirectories.toList() } ?: emptyList()
+            )
 
             while (isCurrentRefreshingTask() && dirsToCollectPackages.isNotEmpty()) {
                 indicator?.checkCanceled()

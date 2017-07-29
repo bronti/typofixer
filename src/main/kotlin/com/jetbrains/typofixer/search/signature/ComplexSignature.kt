@@ -90,7 +90,7 @@ class ComplexSignature : SignatureBase() {
     }
 
     private fun mutateBase(base: Int, mutate: (Int, Int) -> Int): HashSet<Int> {
-        return HashSet((0..baseShift)
+        return HashSet((0..baseShift - 1)
                 .mapNotNull {
                     val mutated = mutate(base, it)
                     if (mutated == base) null else mutated
