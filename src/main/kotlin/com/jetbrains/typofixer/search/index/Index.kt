@@ -1,5 +1,6 @@
 package com.jetbrains.typofixer.search.index
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.progress.util.ReadTask
@@ -95,10 +96,10 @@ class Index(val signature: Signature) {
             private set
 
         override fun runBackgroundProcess(indicator: ProgressIndicator): Continuation? {
-            return DumbService.getInstance(project).runReadActionInSmartMode(Computable<Continuation?> {
+            ApplicationManager.getApplication().runReadAction {
                 doCollect(indicator)
-                null
-            })
+            }
+            return null
         }
 
         private fun doCollect(indicator: ProgressIndicator?) {

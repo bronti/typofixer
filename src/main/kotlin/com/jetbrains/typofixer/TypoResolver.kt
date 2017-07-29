@@ -32,6 +32,8 @@ class TypoResolver(
     private val oldText: String
     private val newText: String
 
+    private val appManager = ApplicationManager.getApplication()
+
     init {
         val nextCharOffset = editor.caretModel.offset
         element =
@@ -63,12 +65,7 @@ class TypoResolver(
         if (resolveStillValid && element != null && element.isValid && element.text.startsWith(oldText)) {
             fixTypo()
 
-            PsiDocumentManager.getInstance(project).commitDocument(document)
-
-            val newElement = psiFile.findElementAt(elementStartOffset) ?: return
-            if (!newElement.text.startsWith(newText)) return
-
-            Thread { checkedUndoFix(newElement) }.start()
+            Thread { checkedUndoFix() }.start()
         }
     }
 
@@ -78,7 +75,7 @@ class TypoResolver(
 
 //        CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
         CommandProcessor.getInstance().executeCommand(project, {
-            ApplicationManager.getApplication().runWriteAction {
+            appManager.runWriteAction {
                 document.replaceString(elementStartOffset, elementStartOffset + oldText.length, newText)
             }
         }, "Resolve Typo", null, UndoConfirmationPolicy.DEFAULT, document)
@@ -86,30 +83,44 @@ class TypoResolver(
         editor.caretModel.moveToOffset(elementStartOffset + newText.length)
     }
 
-    private fun checkedUndoFix(element: PsiElement) {
-        if (typoWasNotFixed(element)) {
-            ApplicationManager.getApplication().invokeLater {
-                CommandProcessor.getInstance().executeCommand(project, {
-                    ApplicationManager.getApplication().runWriteAction {
-                        if (element.parent.isValid) {
-                            document.replaceString(elementStartOffset, elementStartOffset + newText.length, oldText)
-                        }
-                    }
-                }, null, document, UndoConfirmationPolicy.DEFAULT, document)
-            }
+    private fun checkedUndoFix() {
+        if (shouldUndoFix()) {
+            undoFix()
         }
     }
 
-    private fun typoWasNotFixed(element: PsiElement): Boolean {
+    private fun undoFix() {
+        appManager.invokeLater { appManager.runWriteAction {
+            refreshPsi()
+            val element = psiFile.findElementAt(elementStartOffset)
+            if (element?.text?.startsWith(newText) == true) {
+                CommandProcessor.getInstance().executeCommand(project, {
+                    document.replaceString(elementStartOffset, elementStartOffset + newText.length, oldText)
+                }, null, document, UndoConfirmationPolicy.DEFAULT, document)
+            }
+        }}
+    }
+
+    private fun shouldUndoFix(): Boolean {
+        var newElement : PsiElement? = null
+        appManager.invokeAndWait { appManager.runReadAction {
+            refreshPsi()
+            newElement = psiFile.findElementAt(elementStartOffset)
+        }}
+
+        if (newElement?.text?.startsWith(newText) != true) return false
+
         var result = false
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
         var resolveFinished = false
+
         while (!resolveFinished) {
             resolveFinished = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
                 ProgressIndicatorProvider.checkCanceled()
-                result = element.isValid && langSupport!!.isTypoNotFixed(element)
+                result = newElement!!.isValid && langSupport!!.isTypoNotFixed(newElement!!)
             }, indicator)
         }
+
         return result
     }
 }
