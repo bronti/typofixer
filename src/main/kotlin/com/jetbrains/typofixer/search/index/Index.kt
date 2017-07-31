@@ -1,7 +1,6 @@
 package com.jetbrains.typofixer.search.index
 
 
-
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
@@ -16,47 +15,44 @@ import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 
 /**
  * @author bronti.
  */
-private typealias IndexMap = ConcurrentHashMap<Int, ConcurrentHashMap<String, Boolean>>
+private typealias IndexMap = HashMap<Int, HashSet<String>>
 
 class Index(val signature: Signature) {
 
     // todo: look into JavaKeywordCompletion
-    private val localIndex = IndexMap()
+    private val localIndex  = IndexMap()
     private val globalIndex = IndexMap()
 
-    private fun addAllToLocalIndex(words: List<String>)  = words.forEach { localIndex.add(it) }
+    private fun addAllToIndex(index: IndexMap, words: List<String>)  = words.forEach { index.add(it) }
 
-    private fun getSizeOf(index: IndexMap): Int = synchronized(index) { index.map { it.value.keys.size } }.sum()
-
-    fun getLocalSize()  = getSizeOf(localIndex)
-    fun getGlobalSize() = getSizeOf(globalIndex)
+    fun getLocalSize()  = localIndex.map { it.value.size }.sum()
+    fun getGlobalSize() = synchronized(globalIndex) { globalIndex.map { it.value.size } }.sum()
     fun getSize() = getLocalSize() + getGlobalSize()
 
     // internal use only
     var timesGlobalRefreshRequested = 0
-        private set
+    private set
 
     @Volatile
     private var lastGlobalRefreshingTask: CollectProjectNames? = null
 
     fun isUsable() = lastGlobalRefreshingTask == null
 
-    fun get(signature: Int)   = localIndex.getWithDefault(signature).keys + globalIndex.getWithDefault(signature).keys
-    fun contains(str: String) = localIndex.doContains(str) || globalIndex.doContains(str)
+    fun get(signature: Int)   = localIndex.getWithDefault(signature) + synchronized(globalIndex) { globalIndex.getWithDefault(signature) }
+    fun contains(str: String) = localIndex.doContains(str) || synchronized(globalIndex) { globalIndex.doContains(str) }
 
     // not meant to be called concurrently
     fun refreshLocal(psiFile: PsiFile?) {
         localIndex.clear()
         psiFile ?: return
         val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
-        addAllToLocalIndex(collector.keyWords())
-        addAllToLocalIndex(collector.localIdentifiers(psiFile))
+        addAllToIndex(localIndex, collector.keyWords())
+        addAllToIndex(localIndex, collector.localIdentifiers(psiFile))
     }
 
     fun refreshGlobal(project: Project) {
@@ -82,7 +78,8 @@ class Index(val signature: Signature) {
         private var methodNamesCollected = false
         private var fieldNamesCollected = false
         private var classNamesCollected = false
-        private var dirsToCollectPackages = ArrayList<PsiDirectory>()
+        private val dirsToCollectPackages = ArrayList<PsiDirectory>()
+        private val packageNames = ArrayList<String>()
         var done = false
             private set
 
@@ -107,14 +104,12 @@ class Index(val signature: Signature) {
             }
 
             fun checkedCollect(isCollected: Boolean, toCollect: Array<String>, markCollected: () -> Unit) {
-                if (isCollected) return
-                toCollect.forEach {
-                    synchronized(globalIndex) {
-                        if (shouldCollect()) {
-                            globalIndex.add(it)
-                        }
-                        else return@checkedCollect
+                if (!shouldCollect() || isCollected) return
+                synchronized(globalIndex) {
+                    if (shouldCollect() && !isCollected) {
+                        addAllToIndex(globalIndex, toCollect.toList())
                     }
+                    else return@checkedCollect
                 }
                 markCollected()
             }
@@ -138,16 +133,19 @@ class Index(val signature: Signature) {
                 val subPackage = javaDirService.getPackage(subDir)
                 val subPackageName = subPackage?.name
                 if (subPackageName != null && subPackageName.isNotBlank()) {
-                    synchronized(globalIndex) {
-                        if (shouldCollect()) {
-                            globalIndex.add(subPackageName)
-                        }
-                    }
+                    packageNames.add(subPackageName)
                 }
                 dirsToCollectPackages.removeAt(dirsToCollectPackages.size - 1)
                 if (subPackage != null) {
                     // todo: filter resources (?)
                     dirsToCollectPackages.addAll(subDir.subdirectories)
+                }
+            }
+
+            if (shouldCollect() && packageNames.isNotEmpty()) {
+                synchronized(globalIndex) {
+                    if (shouldCollect()) addAllToIndex(globalIndex, packageNames)
+                    packageNames.clear()
                 }
             }
 
@@ -184,19 +182,16 @@ class Index(val signature: Signature) {
         globalIndex.clear()
     }
 
-    private fun IndexMap.getWithDefault(signature: Int)
-            = this[signature] ?: ConcurrentHashMap<String, Boolean>()
+    // todo: refactor (?)
+    private fun IndexMap.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
 
     private fun IndexMap.add(str: String): Boolean {
         val signature = signature.get(str)
         this[signature] = this.getWithDefault(signature)
-        return this[signature]?.put(str, true) ?: false
+        return this[signature]!!.add(str)
     }
 
-    private fun IndexMap.doContains(str: String): Boolean {
-        val signature = signature.get(str)
-        return this[signature]?.get(str) == true
-    }
+    private fun IndexMap.doContains(str: String) = this[signature.get(str)]?.contains(str) ?: false
 
     // can be interrupted by dumb mode
     @TestOnly
@@ -210,5 +205,5 @@ class Index(val signature: Signature) {
     }
 
     @TestOnly
-    fun addToIndex(words: List<String>) = addAllToLocalIndex(words)
+    fun addToIndex(words: List<String>) = addAllToIndex(localIndex, words)
 }
