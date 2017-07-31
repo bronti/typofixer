@@ -1,5 +1,7 @@
 package com.jetbrains.typofixer.search.index
 
+
+
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
@@ -15,6 +17,8 @@ import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 
+
+
 /**
  * @author bronti.
  */
@@ -28,17 +32,13 @@ class Index(val signature: Signature) {
         if (globalIndex.add(word)) ++globalSize
     }
 
-    private fun addAllToGlobalIndex(words: List<String>) {
-        words.forEach { addToGlobalIndex(it) }
-    }
-
     private fun addToLocalIndex(word: String) {
         if (localIndex.add(word)) ++localSize
     }
 
-    private fun addAllToLocalIndex(words: List<String>) {
-        words.forEach { addToLocalIndex(it) }
-    }
+    private fun addAllToGlobalIndex(words: List<String>) = words.forEach { addToGlobalIndex(it) }
+    private fun addAllToLocalIndex(words: List<String>)  = words.forEach { addToLocalIndex(it) }
+
 
     var localSize = 0
         private set
@@ -107,9 +107,13 @@ class Index(val signature: Signature) {
 
             val cache = PsiShortNamesCache.getInstance(project)
 
-            fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
+            fun shouldCollect(): Boolean {
                 indicator?.checkCanceled()
-                if (isCurrentRefreshingTask() && !isCollected) {
+                return !DumbService.isDumb(project) && isCurrentRefreshingTask()
+            }
+
+            fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
+                if (shouldCollect() && !isCollected) {
                     collect()
                 }
             }
@@ -138,8 +142,7 @@ class Index(val signature: Signature) {
                     initialPackage?.getDirectories(scope)?.flatMap { it.subdirectories.toList() } ?: emptyList()
             )
 
-            while (isCurrentRefreshingTask() && dirsToCollectPackages.isNotEmpty()) {
-                indicator?.checkCanceled()
+            while (shouldCollect() && dirsToCollectPackages.isNotEmpty()) {
                 val subDir = dirsToCollectPackages.last()
                 val subPackage = javaDirService.getPackage(subDir)
                 val subPackageName = subPackage?.name
@@ -149,14 +152,12 @@ class Index(val signature: Signature) {
                 dirsToCollectPackages.removeAt(dirsToCollectPackages.size - 1)
                 if (subPackage != null) {
                     // todo: filter resources (?)
-                    // todo: Kotlin (files with > 1 class)
-                    // todo: Classkt
                     dirsToCollectPackages.addAll(subDir.subdirectories)
                 }
             }
 
-            indicator?.checkCanceled()
-            if (isCurrentRefreshingTask()) {
+            // todo: check that index is refreshing after each stub index refreshment
+            if (shouldCollect()) {
                 synchronized(this@Index) {
                     if (isCurrentRefreshingTask()) lastGlobalRefreshingTask = null
                 }
