@@ -12,6 +12,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
+import com.jetbrains.typofixer.search.Searcher
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 import java.util.*
@@ -24,35 +25,70 @@ private typealias IndexMap = HashMap<Int, HashSet<String>>
 
 class Index(val signature: Signature) {
 
-    // todo: look into JavaKeywordCompletion
-    private val localIndex  = IndexMap()
+    enum class WordType {
+        KEYWORD, LOCAL, GLOBAL
+    }
+
+    // not concurrent
+    private val keywordsIndex = IndexMap()
+    // not concurrent
+    private val localIdentifiersIndex = IndexMap()
+    // concurrent
     private val globalIndex = IndexMap()
 
-    private fun addAllToIndex(index: IndexMap, words: List<String>)  = words.forEach { index.add(it) }
+    private fun addAllToIndex(index: IndexMap, words: List<String>) = words.forEach { index.add(it) }
 
-    fun getLocalSize()  = localIndex.map { it.value.size }.sum()
-    fun getGlobalSize() = synchronized(globalIndex) { globalIndex.map { it.value.size } }.sum()
+    private fun getSizeOf(index: IndexMap) = index.map { it.value.size }.sum()
+    fun getLocalSize() = getSizeOf(localIdentifiersIndex) + getSizeOf(keywordsIndex)
+    fun getGlobalSize() = synchronized(globalIndex) { getSizeOf(globalIndex) }
     fun getSize() = getLocalSize() + getGlobalSize()
 
     // internal use only
     var timesGlobalRefreshRequested = 0
-    private set
+        private set
 
     @Volatile
     private var lastGlobalRefreshingTask: CollectProjectNames? = null
 
     fun isUsable() = lastGlobalRefreshingTask == null
 
-    fun get(signature: Int)   = localIndex.getWithDefault(signature) + synchronized(globalIndex) { globalIndex.getWithDefault(signature) }
-    fun contains(str: String) = localIndex.doContains(str) || synchronized(globalIndex) { globalIndex.doContains(str) }
+//    fun get(signature: Int) = hashMapOf(
+//            WordType.KEYWORD to keywordsIndex.getWithDefault(signature),
+//            WordType.LOCAL to localIdentifiersIndex.getWithDefault((signature)),
+//            WordType.GLOBAL to synchronized(globalIndex) { globalIndex.getWithDefault(signature) }
+//    )
+
+//    fun getAll(signatures: List<Set<Int>>) = signatures.map { hashMapOf(
+//            WordType.KEYWORD to keywordsIndex.getAll(it.toList()),
+//            WordType.LOCAL to localIdentifiersIndex.getAll((it.toList())),
+//            WordType.GLOBAL to synchronized(globalIndex) { globalIndex.getAll(it.toList()) }
+//    )}
+
+    fun getAll(type: WordType, signatures: Set<Int>) = when (type) {
+            WordType.KEYWORD -> keywordsIndex.getAll(signatures)
+            WordType.LOCAL -> localIdentifiersIndex.getAll(signatures)
+            WordType.GLOBAL -> synchronized(globalIndex) { globalIndex.getAll(signatures) }
+    }
+
+//    fun getKeywords(signatures: List<Set<Int>>) = signatures.map { keywordsIndex.getAll(it.toList()) }
+//    fun getLocal(signatures: List<Set<Int>>)  = signatures.map { localIdentifiersIndex.getAll(it.toList()) }
+//    fun getGlobal(signatures: List<Set<Int>>) = signatures.map { globalIndex.getAll(it.toList()) }
+
+    fun contains(str: String) = keywordsIndex.doContains(str) ||
+            localIdentifiersIndex.doContains(str) ||
+            synchronized(globalIndex) { globalIndex.doContains(str) }
 
     // not meant to be called concurrently
     fun refreshLocal(psiFile: PsiFile?) {
-        localIndex.clear()
         psiFile ?: return
         val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
-        addAllToIndex(localIndex, collector.keyWords())
-        addAllToIndex(localIndex, collector.localIdentifiers(psiFile))
+        doRefreshLocal(keywordsIndex, collector.keyWords())
+        doRefreshLocal(localIdentifiersIndex, collector.localIdentifiers(psiFile))
+    }
+
+    private fun doRefreshLocal(index: IndexMap, words: List<String>) {
+        index.clear()
+        addAllToIndex(index, words)
     }
 
     fun refreshGlobal(project: Project) {
@@ -69,6 +105,18 @@ class Index(val signature: Signature) {
             }
         }
     }
+
+    private fun IndexMap.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
+
+    private fun IndexMap.getAll(signatures: Set<Int>) = signatures.flatMap { getWithDefault(it) }
+
+    private fun IndexMap.add(str: String): Boolean {
+        val signature = signature.get(str)
+        this[signature] = this.getWithDefault(signature)
+        return this[signature]!!.add(str)
+    }
+
+    private fun IndexMap.doContains(str: String) = this[signature.get(str)]?.contains(str) ?: false
 
     // todo: refactor
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
@@ -108,8 +156,7 @@ class Index(val signature: Signature) {
                 synchronized(globalIndex) {
                     if (shouldCollect() && !isCollected) {
                         addAllToIndex(globalIndex, toCollect.toList())
-                    }
-                    else return@checkedCollect
+                    } else return@checkedCollect
                 }
                 markCollected()
             }
@@ -177,22 +224,6 @@ class Index(val signature: Signature) {
         }
     }
 
-    fun clear() {
-        localIndex.clear()
-        globalIndex.clear()
-    }
-
-    // todo: refactor (?)
-    private fun IndexMap.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
-
-    private fun IndexMap.add(str: String): Boolean {
-        val signature = signature.get(str)
-        this[signature] = this.getWithDefault(signature)
-        return this[signature]!!.add(str)
-    }
-
-    private fun IndexMap.doContains(str: String) = this[signature.get(str)]?.contains(str) ?: false
-
     // can be interrupted by dumb mode
     @TestOnly
     fun waitForGlobalRefreshing(project: Project) {
@@ -205,5 +236,9 @@ class Index(val signature: Signature) {
     }
 
     @TestOnly
-    fun addToIndex(words: List<String>) = addAllToIndex(localIndex, words)
+    fun addToIndex(words: List<String>) = addAllToIndex(localIdentifiersIndex, words)
+
+
+    @TestOnly
+    fun getAltogether(signatures: Set<Int>) = WordType.values().fold(HashSet<String>() as Set<String>) { acc, type -> acc + getAll(type, signatures) }
 }

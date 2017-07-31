@@ -11,7 +11,6 @@ import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
-import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.index.Index
 import com.jetbrains.typofixer.search.signature.ComplexSignature
 import org.jetbrains.annotations.TestOnly
@@ -48,15 +47,14 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private val maxError = 2
     private val signature = ComplexSignature()
-    private val distanceTo = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
 
     private val index = Index(signature)
 
     private var lastPsiModificationCount = 0L
     private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(project).outOfCodeBlockModificationCount
 
-    private val simpleSearch = DLSearchAlgorithm(maxError, distanceTo, index)
-    private val preciceSearch = DLPreciseSearchAlgorithm(maxError, distanceTo, index)
+    private val simpleSearch = DLSearchAlgorithm(maxError, index)
+    private val preciceSearch = DLPreciseSearchAlgorithm(maxError, index)
 
     init {
         val connection = project.messageBus.connect(project)
@@ -93,17 +91,9 @@ open class DLSearcher(val project: Project) : Searcher() {
     override fun findClosest(str: String, psiFile: PsiFile?): String? {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
-            getSearch(false).findClosest(str)
+            getSearch(false).findClosest(str).word
         } else null
     }
-
-    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(precise).search(str)
-        } else mapOf()
-    }
-
 
     private fun updateIndex() {
         lastPsiModificationCount = freshPsiModificationCount()
@@ -112,6 +102,14 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     // internal use only
     fun getStatistics() = Pair(index.getSize(), index.timesGlobalRefreshRequested)
+
+    @TestOnly
+    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
+        return if (canSearch()) {
+            index.refreshLocal(psiFile)
+            getSearch(precise).search(str)
+        } else mapOf()
+    }
 
     @TestOnly
     fun getIndex() = index

@@ -1,82 +1,115 @@
 package com.jetbrains.typofixer.search
 
+import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
 import com.jetbrains.typofixer.search.index.Index
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
  */
-interface SearchAlgorithm {
-    fun findClosest(str: String): String?
-    fun findClosestWithInfo(str: String): Pair<String?, Pair<Int, Int>>
-    fun findAllClosest(str: String): List<String>
-    fun simpleSearch(str: String): List<String>
-    fun search(str: String): Map<Int, List<String>>
-}
+abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) {
 
-abstract class DLSearchAlgorithmBase(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) : SearchAlgorithm {
+    protected abstract fun findClosestWithRealCandidatesCount(str: String): Pair<SearchAlgorithm.SearchResult, Int>
+    protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    protected abstract fun getClassifiedCandidates(str: String): List<List<String>>
+    fun findClosest(str: String): SearchResult = findClosestWithRealCandidatesCount(str).first
 
-    protected fun getCandidates(str: String) = getClassifiedCandidates(str).flatten()
+    inner class SearchResult(foundWord: String?, val error: Int, val type: Index.WordType) {
+        val word = foundWord
+            get() = if (isValid) field else null
 
-    override fun findClosest(str: String): String? {
-        val (result, _) = findClosestWithInfo(str)
-        return result
+        val isValid = foundWord != null && error <= maxError
+
+        constructor(): this(null, maxError + 1, Index.WordType.GLOBAL)
+
+        // don't compare results from different outer classes!!!
+        fun betterThan(other: SearchResult): Boolean {
+            if (!isValid) return false
+            if (error != other.error) return error < other.error
+            return type < other.type
+        }
     }
 
-    override fun findClosestWithInfo(str: String): Pair<String?, Pair<Int, Int>> {
-        val distance = getDistanceTo(str)
-        val candidates = getClassifiedCandidates(str)
-        val candidatesCount = candidates.map { it.size }.sum()
-        var realCandidatesCount = 0
-        // todo: refactor
-        var result: String? = null
-        for (error in 0..maxError) {
-            if (result != null && distance.measure(result) <= error) {
-                break
-            }
-            val newResult = candidates[error].minBy { distance.measure(it) }
-            realCandidatesCount += candidates[error].size
-            if (result == null || (newResult != null && distance.measure(newResult) < distance.measure(result))) {
-                result = newResult
-            }
-        }
-        if (result != null && distance.measure(result) > maxError) {
-            result = null
-        }
-        return Pair(result, Pair(realCandidatesCount, candidatesCount))
+    @TestOnly
+    fun findClosestWithInfo(str: String): Pair<String?, Pair<Int, Int>> {
+        val signaturesByError = getSignatures(str)
+
+        val (result, realCandidatesCount) = findClosestWithRealCandidatesCount(str)
+
+        val candidatesCount = signaturesByError.map { index.getAltogether(it).size }.sum()
+
+        return Pair(if (result.isValid) result.word else null, Pair(realCandidatesCount, candidatesCount))
     }
 
-    override fun findAllClosest(str: String): List<String> {
-        val results = search(str)
-        for (error in 0..maxError) {
-            if (results[error]?.isNotEmpty() ?: false) return results[error]!!
-        }
-        return listOf()
+    @TestOnly
+    fun getCandidates(str: String): List<String> {
+        return getSignatures(str).flatMap { index.getAltogether(it) }
     }
 
-    override fun simpleSearch(str: String): List<String> {
+    @TestOnly
+    fun simpleSearch(str: String): List<String> {
         val distance = getDistanceTo(str)
         return getCandidates(str).filter { distance.measure(it) <= maxError }
     }
 
-    override fun search(str: String): Map<Int, List<String>> {
+    @TestOnly
+    fun search(str: String): Map<Int, List<String>> {
         val distance = getDistanceTo(str)
         return getCandidates(str).groupBy { it: String -> distance.measure(it) }.filter { it.key <= maxError }
     }
+}
 
-    protected fun getRange(str: String, maxError: Int): List<List<String>> {
-        return index.signature.getRange(str, maxError)
-                .map { signatures -> signatures.flatMap { index.get(it) } }
+abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
+    : SearchAlgorithm(maxError, { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }, index) {
+
+    override fun findClosestWithRealCandidatesCount(str: String): Pair<SearchAlgorithm.SearchResult, Int> {
+        val distance = getDistanceTo(str)
+        val signaturesByError = getSignatures(str)
+        var realCandidatesCount = 0
+        var result = this.SearchResult()
+
+        // todo: refactor!!!!
+        for (error in signaturesByError.indices) {
+            val signatures = signaturesByError[error]
+            
+            fun getMinimumOfType(type: Index.WordType): SearchAlgorithm.SearchResult {
+                val candidates = index.getAll(type, signatures)
+                val best = candidates.minBy { distance.measure(it) }
+                realCandidatesCount += candidates.size
+                val bestError = if (best == null) maxError + 1 else distance.measure(best)
+                assert(bestError >= error) // something wrong with index and/or signature
+                return this.SearchResult(best, bestError, type)
+            }
+
+            fun searchForType(type: Index.WordType): Boolean {
+                if (result.isValid && result.type == type && result.error == error) return true
+
+                val newResult = getMinimumOfType(Index.WordType.KEYWORD)
+
+                if (!newResult.isValid) return false
+
+                if (newResult.betterThan(result)) {
+                    result = newResult
+                }
+
+                return newResult.error == error
+            }
+
+            if (searchForType(Index.WordType.KEYWORD) || searchForType(Index.WordType.LOCAL) || searchForType(Index.WordType.GLOBAL)) {
+                break
+            }
+        }
+
+        return Pair(result, realCandidatesCount)
     }
 }
 
-class DLSearchAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearchAlgorithmBase(maxError, getDistanceTo, index) {
-    override fun getClassifiedCandidates(str: String) = getRange(str, maxError)
+class DLSearchAlgorithm(maxError: Int, index: Index) : DLSearchAlgorithmBase(maxError, index) {
+    override fun getSignatures(str: String) = index.signature.getRange(str, maxError)
 }
 
-class DLPreciseSearchAlgorithm(maxError: Int, getDistanceTo: (String) -> DistanceTo, index: Index) : DLSearchAlgorithmBase(maxError, getDistanceTo, index) {
+class DLPreciseSearchAlgorithm(maxError: Int, index: Index) : DLSearchAlgorithmBase(maxError, index) {
     // todo: optimize precise
-    override fun getClassifiedCandidates(str: String) = getRange(str, 2 * maxError)
+    override fun getSignatures(str: String) = index.signature.getRange(str, 2 * maxError)
 }

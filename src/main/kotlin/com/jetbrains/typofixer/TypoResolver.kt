@@ -35,6 +35,7 @@ class TypoResolver(
     private val appManager = ApplicationManager.getApplication()
 
     init {
+        // todo: look into JavaKeywordCompletion
         val nextCharOffset = editor.caretModel.offset
         element =
                 if (langSupport != null && !langSupport.identifierChar(nextChar)) {
