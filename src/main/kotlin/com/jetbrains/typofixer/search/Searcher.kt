@@ -40,8 +40,9 @@ open class DLSearcher(val project: Project) : Searcher() {
         // char frequency
         // improved range
         // clever choosing from index
-        // fast package names collecting + bug with shift in signature fixed
-        val VERSION = 6
+        // 6: fast package names collecting + bug with shift in signature fixed
+        // 7: concurrent index
+        val VERSION = 7
     }
 
     private val maxError = 2
@@ -108,7 +109,8 @@ open class DLSearcher(val project: Project) : Searcher() {
         index.refreshGlobal(project)
     }
 
-    fun getStatistics() = Pair(index.size, index.timesGlobalRefreshRequested)
+    // internal use only
+    fun getStatistics() = Pair(index.getSize(), index.timesGlobalRefreshRequested)
 
     @TestOnly
     fun getIndex() = index

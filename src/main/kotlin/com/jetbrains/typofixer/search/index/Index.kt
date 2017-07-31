@@ -8,7 +8,6 @@ import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.progress.util.ReadTask
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
@@ -16,52 +15,44 @@ import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
-
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 
 /**
  * @author bronti.
  */
+private typealias IndexMap = ConcurrentHashMap<Int, ConcurrentHashMap<String, Boolean>>
+
 class Index(val signature: Signature) {
 
     // todo: look into JavaKeywordCompletion
-    private val localIndex = HashMap<Int, HashSet<String>>()
-    private val globalIndex = HashMap<Int, HashSet<String>>()
+    private val localIndex = IndexMap()
+    private val globalIndex = IndexMap()
 
-    private fun addToGlobalIndex(word: String) {
-        if (globalIndex.add(word)) ++globalSize
-    }
+    private fun addAllToLocalIndex(words: List<String>)  = words.forEach { localIndex.add(it) }
 
-    private fun addToLocalIndex(word: String) {
-        if (localIndex.add(word)) ++localSize
-    }
+    private fun getSizeOf(index: IndexMap): Int = synchronized(index) { index.map { it.value.keys.size } }.sum()
 
-    private fun addAllToGlobalIndex(words: List<String>) = words.forEach { addToGlobalIndex(it) }
-    private fun addAllToLocalIndex(words: List<String>)  = words.forEach { addToLocalIndex(it) }
+    fun getLocalSize()  = getSizeOf(localIndex)
+    fun getGlobalSize() = getSizeOf(globalIndex)
+    fun getSize() = getLocalSize() + getGlobalSize()
 
-
-    var localSize = 0
-        private set
-    var globalSize = 0
-        private set
-
-    // todo: remove
+    // internal use only
     var timesGlobalRefreshRequested = 0
         private set
-
-    val size: Int
-        get() = localSize + globalSize
 
     @Volatile
     private var lastGlobalRefreshingTask: CollectProjectNames? = null
 
     fun isUsable() = lastGlobalRefreshingTask == null
 
-    fun get(signature: Int) = localIndex.getWithDefault(signature) + globalIndex.getWithDefault(signature)
-    fun contains(str: String) = localIndex.contains(str) || globalIndex.contains(str)
+    fun get(signature: Int)   = localIndex.getWithDefault(signature).keys + globalIndex.getWithDefault(signature).keys
+    fun contains(str: String) = localIndex.doContains(str) || globalIndex.doContains(str)
 
+    // not meant to be called concurrently
     fun refreshLocal(psiFile: PsiFile?) {
-        clearLocal()
+        localIndex.clear()
         psiFile ?: return
         val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
         addAllToLocalIndex(collector.keyWords())
@@ -71,11 +62,11 @@ class Index(val signature: Signature) {
     fun refreshGlobal(project: Project) {
         ++timesGlobalRefreshRequested
         val refreshingTask = CollectProjectNames(project)
-        synchronized(this@Index) {
+        synchronized(globalIndex) {
             lastGlobalRefreshingTask = refreshingTask
-            clearGlobal()                                   // should be ok
+            globalIndex.clear()
         }
-        project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
+        project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
         DumbService.getInstance(project).smartInvokeLater {
             if (project.isInitialized) {
                 ProgressIndicatorUtils.scheduleWithWriteActionPriority(refreshingTask)
@@ -109,30 +100,30 @@ class Index(val signature: Signature) {
 
             fun shouldCollect(): Boolean {
                 indicator?.checkCanceled()
-                return !DumbService.isDumb(project) && isCurrentRefreshingTask()
-            }
-
-            fun checkedCollect(isCollected: Boolean, collect: () -> Unit) {
-                if (shouldCollect() && !isCollected) {
-                    collect()
+                if (DumbService.isDumb(project) || !isCurrentRefreshingTask()) {
+                    done = true
                 }
+                return !done
             }
 
-            checkedCollect(methodNamesCollected) {
-                addAllToGlobalIndex(cache.allMethodNames.toList())
-                methodNamesCollected = true
+            fun checkedCollect(isCollected: Boolean, toCollect: Array<String>, markCollected: () -> Unit) {
+                if (isCollected) return
+                toCollect.forEach {
+                    synchronized(globalIndex) {
+                        if (shouldCollect()) {
+                            globalIndex.add(it)
+                        }
+                        else return@checkedCollect
+                    }
+                }
+                markCollected()
             }
 
-            checkedCollect(fieldNamesCollected) {
-                addAllToGlobalIndex(cache.allFieldNames.toList())
-                fieldNamesCollected = true
-            }
+            checkedCollect(methodNamesCollected, cache.allMethodNames) { methodNamesCollected = true }
+            checkedCollect(fieldNamesCollected, cache.allFieldNames) { fieldNamesCollected = true }
 
             // todo: language specific (?) (kotlin bug)
-            checkedCollect(classNamesCollected) {
-                addAllToGlobalIndex(cache.allClassNames.toList())
-                classNamesCollected = true
-            }
+            checkedCollect(classNamesCollected, cache.allClassNames) { classNamesCollected = true }
 
             val initialPackage = JavaPsiFacade.getInstance(project).findPackage("")
             val javaDirService = JavaDirectoryService.getInstance()
@@ -147,7 +138,11 @@ class Index(val signature: Signature) {
                 val subPackage = javaDirService.getPackage(subDir)
                 val subPackageName = subPackage?.name
                 if (subPackageName != null && subPackageName.isNotBlank()) {
-                    addToGlobalIndex(subPackageName)
+                    synchronized(globalIndex) {
+                        if (shouldCollect()) {
+                            globalIndex.add(subPackageName)
+                        }
+                    }
                 }
                 dirsToCollectPackages.removeAt(dirsToCollectPackages.size - 1)
                 if (subPackage != null) {
@@ -158,13 +153,13 @@ class Index(val signature: Signature) {
 
             // todo: check that index is refreshing after each stub index refreshment
             if (shouldCollect()) {
-                synchronized(this@Index) {
+                synchronized(globalIndex) {
                     if (isCurrentRefreshingTask()) lastGlobalRefreshingTask = null
                 }
             }
 
             if (this@Index.isUsable()) {
-                project.getComponent(TypoFixerComponent::class.java).onSearcherStatusChanged()
+                project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
             }
             done = true
         }
@@ -175,6 +170,7 @@ class Index(val signature: Signature) {
             }
         }
 
+        // can be interrupted by dumb mode
         @TestOnly
         fun waitForGlobalRefreshing() {
             while (!done) {
@@ -184,37 +180,29 @@ class Index(val signature: Signature) {
     }
 
     fun clear() {
-        clearLocal()
-        clearGlobal()
-    }
-
-    private fun clearLocal() {
         localIndex.clear()
-        localSize = 0
-    }
-
-    private fun clearGlobal() {
         globalIndex.clear()
-        globalSize = 0
     }
 
-    private fun HashMap<Int, HashSet<String>>.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
+    private fun IndexMap.getWithDefault(signature: Int)
+            = this[signature] ?: ConcurrentHashMap<String, Boolean>()
 
-    private fun HashMap<Int, HashSet<String>>.add(str: String): Boolean {
+    private fun IndexMap.add(str: String): Boolean {
         val signature = signature.get(str)
         this[signature] = this.getWithDefault(signature)
-        return this[signature]!!.add(str)
+        return this[signature]?.put(str, true) ?: false
     }
 
-    private fun HashMap<Int, HashSet<String>>.contains(str: String): Boolean {
+    private fun IndexMap.doContains(str: String): Boolean {
         val signature = signature.get(str)
-        return if (this[signature] == null) false else this[signature]!!.contains(str)
+        return this[signature]?.get(str) == true
     }
 
+    // can be interrupted by dumb mode
     @TestOnly
     fun waitForGlobalRefreshing(project: Project) {
         val refreshingTask = CollectProjectNames(project)
-        clearGlobal()
+        globalIndex.clear()
         lastGlobalRefreshingTask = refreshingTask
         DumbService.getInstance(project).runReadActionInSmartMode {
             refreshingTask.waitForGlobalRefreshing()

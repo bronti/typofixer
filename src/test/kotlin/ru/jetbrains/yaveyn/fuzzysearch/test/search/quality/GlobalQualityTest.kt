@@ -53,7 +53,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         searcher!!.forceGlobalIndexRefreshing()
         // 589671
 
-        println(searcher!!.getIndex().globalSize)
+        println(searcher!!.getIndex().getGlobalSize())
 
         assert(searcher!!.getIndex().contains("UniqueLikeASnowflake"))
         assert(searcher!!.getIndex().contains("privateMethod666"))

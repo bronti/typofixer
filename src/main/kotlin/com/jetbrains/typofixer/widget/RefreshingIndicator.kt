@@ -32,6 +32,7 @@ class RefreshingIndicator(val searcher: DLSearcher) : CustomStatusBarWidget, Sta
     override fun ID() = "Typo Fixer status bar"
 
     fun update() {
+        if (!searcher.project.isInitialized) return
         myLabel.text = when (searcher.getStatus()) {
             Searcher.Status.INDEX_REFRESHING -> NOT_ACTIVE_TEXT + " (${searcher.getStatistics().second})"
             Searcher.Status.DUMB_MODE -> NOT_ACTIVE_TEXT + " (${searcher.getStatistics().second})"

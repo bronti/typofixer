@@ -36,9 +36,9 @@ class LocalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
         val resultLoggingNeeded = !localTimeResults.exists()
         if (resultLoggingNeeded) {
             localTimeResults.createNewFile()
-            localTimeResults.appendText("index size: ${searcher.getIndex().localSize}\n")
+            localTimeResults.appendText("index size: ${searcher.getIndex().getLocalSize()}\n")
         }
-        println("index size: ${searcher.getIndex().localSize}")
+        println("index size: ${searcher.getIndex().getLocalSize()}")
 
         val times = 1000
         val time = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
