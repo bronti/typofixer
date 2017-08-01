@@ -19,10 +19,8 @@ class BigSearchTest {
     val pathToIntellij = "./testData/intellij-community-master.zip"
     val simpleIndex = FromZipTestIndexRetriever(ComplexSignature()).retrieve(pathToIntellij)
 
-    fun distanceProvider(maxError: Int) = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
-
-    fun searcherProvider(maxError: Int, index: Index) = DLSearchAlgorithm(maxError, distanceProvider(maxError), index)
-    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearchAlgorithm(maxError, distanceProvider(maxError), index)
+    fun searcherProvider(maxError: Int, index: Index) = DLSearchAlgorithm(maxError, index)
+    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearchAlgorithm(maxError, index)
 
 
     @Test

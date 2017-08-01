@@ -41,8 +41,9 @@ open class DLSearcher(val project: Project) : Searcher() {
         // clever choosing from index
         // 6: fast package names collecting + bug with shift in signature fixed
         // 7: concurrent index
-        // 7: less concurrent index
-        val VERSION = 8
+        // 8: less concurrent index
+        // 9: search result prioritizing
+        val VERSION = 9
     }
 
     private val maxError = 2
