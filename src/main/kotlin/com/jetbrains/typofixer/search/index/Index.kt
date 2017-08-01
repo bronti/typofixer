@@ -52,27 +52,11 @@ class Index(val signature: Signature) {
 
     fun isUsable() = lastGlobalRefreshingTask == null
 
-//    fun get(signature: Int) = hashMapOf(
-//            WordType.KEYWORD to keywordsIndex.getWithDefault(signature),
-//            WordType.LOCAL to localIdentifiersIndex.getWithDefault((signature)),
-//            WordType.GLOBAL to synchronized(globalIndex) { globalIndex.getWithDefault(signature) }
-//    )
-
-//    fun getAll(signatures: List<Set<Int>>) = signatures.map { hashMapOf(
-//            WordType.KEYWORD to keywordsIndex.getAll(it.toList()),
-//            WordType.LOCAL to localIdentifiersIndex.getAll((it.toList())),
-//            WordType.GLOBAL to synchronized(globalIndex) { globalIndex.getAll(it.toList()) }
-//    )}
-
     fun getAll(type: WordType, signatures: Set<Int>) = when (type) {
             WordType.KEYWORD -> keywordsIndex.getAll(signatures)
             WordType.LOCAL -> localIdentifiersIndex.getAll(signatures)
             WordType.GLOBAL -> synchronized(globalIndex) { globalIndex.getAll(signatures) }
     }
-
-//    fun getKeywords(signatures: List<Set<Int>>) = signatures.map { keywordsIndex.getAll(it.toList()) }
-//    fun getLocal(signatures: List<Set<Int>>)  = signatures.map { localIdentifiersIndex.getAll(it.toList()) }
-//    fun getGlobal(signatures: List<Set<Int>>) = signatures.map { globalIndex.getAll(it.toList()) }
 
     fun contains(str: String) = keywordsIndex.doContains(str) ||
             localIdentifiersIndex.doContains(str) ||
@@ -84,6 +68,7 @@ class Index(val signature: Signature) {
         val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
         doRefreshLocal(keywordsIndex, collector.keyWords())
         doRefreshLocal(localIdentifiersIndex, collector.localIdentifiers(psiFile))
+        psiFile.project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
     }
 
     private fun doRefreshLocal(index: IndexMap, words: List<String>) {
