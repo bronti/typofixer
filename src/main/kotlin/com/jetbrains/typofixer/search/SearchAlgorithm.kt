@@ -85,14 +85,13 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
             fun searchForType(type: Index.WordType): Boolean {
                 if (result.isValid && result.type == type && result.error == error) return true
 
-                val newResult = getMinimumOfType(Index.WordType.KEYWORD)
+                val newResult = getMinimumOfType(type)
 
                 if (!newResult.isValid) return false
 
                 if (newResult.betterThan(result)) {
                     result = newResult
                 }
-
                 return newResult.error == error
             }
 

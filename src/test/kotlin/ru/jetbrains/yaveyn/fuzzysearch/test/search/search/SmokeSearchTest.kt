@@ -13,10 +13,8 @@ import org.junit.Test
 
 class SmokeSearchTest {
 
-    fun distanceProvider(maxError: Int) = { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }
-
-    fun searcherProvider(maxError: Int, index: Index) = DLSearchAlgorithm(maxError, distanceProvider(maxError), index)
-    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearchAlgorithm(maxError, distanceProvider(maxError), index)
+    fun searcherProvider(maxError: Int, index: Index) = DLSearchAlgorithm(maxError, index)
+    fun preciseSearcherProvider(maxError: Int, index: Index) = DLPreciseSearchAlgorithm(maxError, index)
 
     fun hasAll(strs: List<String>) = Matcher(List<String>::containsAll, strs)
 
