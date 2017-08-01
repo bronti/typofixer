@@ -25,6 +25,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
 
         // don't compare results from different outer classes!!!
         fun betterThan(other: SearchResult): Boolean {
+//      todo:      assert(this@SearchAlgorithm == other???)
             if (!isValid) return false
             if (error != other.error) return error < other.error
             return type < other.type
@@ -69,7 +70,6 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
         var realCandidatesCount = 0
         var result = this.SearchResult()
 
-        // todo: refactor!!!!
         for (error in signaturesByError.indices) {
             val signatures = signaturesByError[error]
             
