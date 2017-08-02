@@ -3,7 +3,6 @@ package com.jetbrains.typofixer.lang
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.*
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
-import com.sun.org.apache.xpath.internal.operations.Bool
 
 /**
  * @author bronti.
@@ -27,7 +26,8 @@ class JavaSupport : TypoFixerLanguageSupport {
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
 
     class JavaLocalDictionaryCollector : LocalDictionaryCollector {
-        override fun keyWords() = javaKeywords
+        // todo: reuse JavaKeywordCompletion?
+        override fun keyWords(element: PsiElement) = javaKeywords
 
         // todo: make it right
         override fun localIdentifiers(psiFile: PsiFile): List<String> {

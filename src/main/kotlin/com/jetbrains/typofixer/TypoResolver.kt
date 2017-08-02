@@ -6,7 +6,9 @@ import com.intellij.openapi.command.UndoConfirmationPolicy
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.psi.*
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 
 /**
@@ -50,7 +52,8 @@ class TypoResolver(
             oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
 
             val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-            val replacement = searcher.findClosest(oldText, psiFile)
+            val searchResult = searcher.findClosest(element, oldText)
+            val replacement = searchResult.word
 
             resolveStillValid = replacement != null && replacement != oldText
             newText = replacement ?: ""
@@ -65,7 +68,6 @@ class TypoResolver(
     fun resolve() {
         if (resolveStillValid && element != null && element.isValid && element.text.startsWith(oldText)) {
             fixTypo()
-
             Thread { checkedUndoFix() }.start()
         }
     }

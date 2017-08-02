@@ -4,19 +4,15 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiReference
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
-import org.jetbrains.kotlin.codegen.optimization.common.analyze
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
-import org.jetbrains.kotlin.idea.references.*
+import org.jetbrains.kotlin.idea.completion.KeywordCompletion
+import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
-import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
-import org.jetbrains.kotlin.resolve.BindingContext
 
 /**
  * @author bronti.
@@ -45,7 +41,12 @@ class KotlinSupport : TypoFixerLanguageSupport {
     override fun getLocalDictionaryCollector() = KotlinLocalDictionaryCollector()
 
     class KotlinLocalDictionaryCollector : LocalDictionaryCollector {
-        override fun keyWords() = kotlinKeywords + kotlinSoftKeywords
+        override fun keyWords(element: PsiElement): List<String> {
+            val result = arrayListOf<String>()
+            // todo: wtf is isJvmModule ?!
+            KeywordCompletion.complete(element, "", true, { result.add(it.lookupString) })
+            return result
+        }
 
         override fun localIdentifiers(psiFile: PsiFile): List<String> {
             val result = mutableListOf<String>()

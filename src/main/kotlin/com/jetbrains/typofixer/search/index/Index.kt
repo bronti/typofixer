@@ -7,12 +7,14 @@ import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.progress.util.ReadTask
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.psi.*
+import com.intellij.psi.JavaDirectoryService
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiDirectory
+import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
-import com.jetbrains.typofixer.search.Searcher
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 import java.util.*
@@ -63,10 +65,11 @@ class Index(val signature: Signature) {
             synchronized(globalIndex) { globalIndex.doContains(str) }
 
     // not meant to be called concurrently
-    fun refreshLocal(psiFile: PsiFile?) {
-        psiFile ?: return
+    fun refreshLocal(psiElement: PsiElement?) {
+        psiElement ?: return
+        val psiFile = psiElement.containingFile
         val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
-        doRefreshLocal(keywordsIndex, collector.keyWords())
+        doRefreshLocal(keywordsIndex, collector.keyWords(psiElement))
         doRefreshLocal(localIdentifiersIndex, collector.localIdentifiers(psiFile))
         psiFile.project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
     }
@@ -103,7 +106,6 @@ class Index(val signature: Signature) {
 
     private fun IndexMap.doContains(str: String) = this[signature.get(str)]?.contains(str) ?: false
 
-    // todo: refactor
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
         private fun isCurrentRefreshingTask() = this === lastGlobalRefreshingTask
@@ -136,21 +138,21 @@ class Index(val signature: Signature) {
                 return !done
             }
 
-            fun checkedCollect(isCollected: Boolean, toCollect: Array<String>, markCollected: () -> Unit) {
+            fun checkedCollect(isCollected: Boolean, getToCollect: () -> Array<String>, markCollected: () -> Unit) {
                 if (!shouldCollect() || isCollected) return
                 synchronized(globalIndex) {
                     if (shouldCollect() && !isCollected) {
-                        addAllToIndex(globalIndex, toCollect.toList())
+                        addAllToIndex(globalIndex, getToCollect().toList())
                     } else return@checkedCollect
                 }
                 markCollected()
             }
 
-            checkedCollect(methodNamesCollected, cache.allMethodNames) { methodNamesCollected = true }
-            checkedCollect(fieldNamesCollected, cache.allFieldNames) { fieldNamesCollected = true }
+            checkedCollect(methodNamesCollected, { cache.allMethodNames }) { methodNamesCollected = true }
+            checkedCollect(fieldNamesCollected, { cache.allFieldNames }) { fieldNamesCollected = true }
 
             // todo: language specific (?) (kotlin bug)
-            checkedCollect(classNamesCollected, cache.allClassNames) { classNamesCollected = true }
+            checkedCollect(classNamesCollected, { cache.allClassNames }) { classNamesCollected = true }
 
             val initialPackage = JavaPsiFacade.getInstance(project).findPackage("")
             val javaDirService = JavaDirectoryService.getInstance()

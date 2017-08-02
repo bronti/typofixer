@@ -9,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.index.Index
@@ -27,7 +28,7 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(str: String, psiFile: PsiFile?): String?
+    abstract fun findClosest(element: PsiElement?, str: String): SearchAlgorithm.SearchResult
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
     abstract fun getStatus(): Status
 }
@@ -89,11 +90,11 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
-    override fun findClosest(str: String, psiFile: PsiFile?): String? {
+    override fun findClosest(element: PsiElement?, str: String): SearchAlgorithm.SearchResult {
         return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(false).findClosest(str).word
-        } else null
+            index.refreshLocal(element)
+            getSearch(false).findClosest(str)
+        } else getSearch(false).SearchResult()
     }
 
     private fun updateIndex() {
