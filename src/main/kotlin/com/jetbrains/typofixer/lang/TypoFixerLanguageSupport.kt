@@ -15,9 +15,8 @@ interface TypoFixerLanguageSupport {
 
     fun identifierChar(c: Char): Boolean
 
-    fun isTypoResolverApplicable(element: PsiElement): Boolean
-
-    fun isTypoNotFixed(element: PsiElement): Boolean
+    fun fastIsBadElement(element: PsiElement): Boolean
+    fun isBadElement(element: PsiElement): Boolean
 
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
 

@@ -3,6 +3,7 @@ package com.jetbrains.typofixer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.UndoConfirmationPolicy
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
@@ -14,116 +15,94 @@ import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 /**
  * @author bronti
  */
-
-class TypoResolver(
-        nextChar: Char,
+class TypoResolver private constructor(
+        private val psiFile: PsiFile,
         private val editor: Editor,
-        private val psiFile: PsiFile) {
+        private var element: PsiElement,
+        private val oldText: String,
+        private val newText: String) {
 
+    companion object {
+        fun getInstance(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
+            val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)
+            val nextCharOffset = editor.caretModel.offset
+            val project = psiFile.project
+
+            if (langSupport == null || langSupport.identifierChar(nextChar)) return null
+
+            refreshPsi(editor)
+            val element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
+            val elementStartOffset = element.textOffset
+
+            if (!langSupport.fastIsBadElement(element)) return null
+
+            val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+
+            val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
+            val newText = searcher.findClosest(element, oldText).word
+
+            if (newText == null || newText == oldText) return null
+            return TypoResolver(psiFile, editor, element, oldText, newText)
+        }
+
+        private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
+    }
+
+    private fun refreshPsi() = refreshPsi(editor)
+
+    private val document: Document = editor.document
+    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)!!
     private val project = psiFile.project
-    private val document = editor.document
 
-    private fun refreshPsi() = PsiDocumentManager.getInstance(project).commitDocument(document)
-
-    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)
-
-    private var resolveStillValid: Boolean
-
-    private val elementStartOffset: Int
-    private val element: PsiElement?
-    private val oldText: String
-    private val newText: String
+    private var elementStartOffset = element.textOffset
 
     private val appManager = ApplicationManager.getApplication()
 
-    init {
-        // todo: look into JavaKeywordCompletion
-        val nextCharOffset = editor.caretModel.offset
-        element =
-                if (langSupport != null && !langSupport.identifierChar(nextChar)) {
-                    refreshPsi()
-                    psiFile.findElementAt(nextCharOffset - 1)
-                }
-                else null
+    fun resolve() = Thread { checkElementIsBad(oldText) && fixTypo() && checkElementIsBad(newText) && undoFix() }.start()
 
-        elementStartOffset = element?.textOffset ?: -1
+    private fun fixTypo(): Boolean = performCommand("Resolve typo", oldText) { replaceText(oldText, newText) }
 
-        if (element != null && langSupport!!.isTypoResolverApplicable(element)) {
-            oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+    private fun undoFix(): Boolean = performCommand("Undo typo resolve", newText) { replaceText(newText, oldText) }
 
-            val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-            val searchResult = searcher.findClosest(element, oldText)
-            val replacement = searchResult.word
-
-            resolveStillValid = replacement != null && replacement != oldText
-            newText = replacement ?: ""
-        }
-        else {
-            resolveStillValid = false
-            oldText = ""
-            newText = ""
-        }
+    private fun refreshElement(startingText: String = ""): Boolean {
+        refreshPsi()
+        val newElement = psiFile.findElementAt(elementStartOffset)
+        if (newElement == null || !newElement.text.startsWith(startingText)) return false
+        element = newElement
+        elementStartOffset = element.textOffset
+        return true
     }
 
-    fun resolve() {
-        if (resolveStillValid && element != null && element.isValid && element.text.startsWith(oldText)) {
-            fixTypo()
-            Thread { checkedUndoFix() }.start()
-        }
-    }
-
-    private fun fixTypo() {
-        // todo: fix ctrl + z
-        // todo: see EditorComponentImpl.replaceText (transactions?)
-
-//        CommandProcessor.getInstance().markCurrentCommandAsGlobal(project)
-        CommandProcessor.getInstance().executeCommand(project, {
-            appManager.runWriteAction {
-                document.replaceString(elementStartOffset, elementStartOffset + oldText.length, newText)
-            }
-        }, "Resolve Typo", null, UndoConfirmationPolicy.DEFAULT, document)
-
-        editor.caretModel.moveToOffset(elementStartOffset + newText.length)
-    }
-
-    private fun checkedUndoFix() {
-        if (shouldUndoFix()) {
-            undoFix()
-        }
-    }
-
-    private fun undoFix() {
-        appManager.invokeLater { appManager.runWriteAction {
-            refreshPsi()
-            val element = psiFile.findElementAt(elementStartOffset)
-            if (element?.text?.startsWith(newText) == true) {
-                CommandProcessor.getInstance().executeCommand(project, {
-                    document.replaceString(elementStartOffset, elementStartOffset + newText.length, oldText)
-                }, null, document, UndoConfirmationPolicy.DEFAULT, document)
-            }
-        }}
-    }
-
-    private fun shouldUndoFix(): Boolean {
-        var newElement : PsiElement? = null
-        appManager.invokeAndWait { appManager.runReadAction {
-            refreshPsi()
-            newElement = psiFile.findElementAt(elementStartOffset)
-        }}
-
-        if (newElement?.text?.startsWith(newText) != true) return false
-
-        var result = false
+    private fun checkElementIsBad(prefix: String): Boolean {
+        var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
-        var resolveFinished = false
 
-        while (!resolveFinished) {
-            resolveFinished = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
+        var resultCalculated = false
+        while (result && !resultCalculated) {
+            appManager.invokeAndWait { appManager.runReadAction { result = refreshElement(prefix) } }
+            if (!result) return false
+            resultCalculated = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
                 ProgressIndicatorProvider.checkCanceled()
-                result = newElement!!.isValid && langSupport!!.isTypoNotFixed(newElement!!)
+                result = langSupport.isBadElement(element)
             }, indicator)
         }
-
         return result
+    }
+
+    private fun performCommand(name: String, prefix: String, command: () -> Unit): Boolean {
+        var done = false
+        appManager.invokeAndWait {
+            appManager.runWriteAction {
+                if (refreshElement(prefix)) {
+                    CommandProcessor.getInstance().executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
+                    done = true
+                }
+            }
+        }
+        return done
+    }
+
+    private fun replaceText(old: String, new: String) {
+        document.replaceString(elementStartOffset, elementStartOffset + old.length, new)
     }
 }

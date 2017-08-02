@@ -75,7 +75,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
             
             fun getMinimumOfType(type: Index.WordType): SearchAlgorithm.SearchResult {
                 val candidates = index.getAll(type, signatures)
-                val best = candidates.minBy { distance.measure(it) }
+                val best = candidates.filter { it != str }.minBy { distance.measure(it) }
                 realCandidatesCount += candidates.size
                 val bestError = if (best == null) maxError + 1 else distance.measure(best)
                 assert(bestError >= error) // something wrong with index and/or signature

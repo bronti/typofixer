@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.tree.IElementType
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 import org.jetbrains.kotlin.idea.completion.KeywordCompletion
 import org.jetbrains.kotlin.idea.references.KtReference
@@ -21,20 +22,22 @@ import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 class KotlinSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isJavaIdentifierPart() // || c == '`'
 
-    override fun isTypoResolverApplicable(element: PsiElement): Boolean {
+    override fun fastIsBadElement(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
-        return element.node.elementType == KtTokens.IDENTIFIER &&
-                (element.parent is KtReferenceExpression || element.parent is KtReference || element.parent is PsiErrorElement)
+
+        fun checkType(type: IElementType) = type == KtTokens.IDENTIFIER || type is KtKeywordToken
+
+        val parent = element.parent
+        return checkType(element.node.elementType) && (parent is KtReferenceExpression || parent is KtReference || parent is PsiErrorElement)
     }
 
-    override fun isTypoNotFixed(element: PsiElement): Boolean {
+    override fun isBadElement(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
-        // todo: ApplicationManager.getApplication().isInteral
+        
         val parent = element.parent
-        return (parent is PsiErrorElement
-//        return mainReference?.resolveToDescriptors(bindingContext) ?: emptyList()
+        return fastIsBadElement(element)
+                && (parent is PsiErrorElement
                 || parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
-        // todo:
                 || parent is KtReference && parent.resolve() == null)
     }
 

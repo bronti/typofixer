@@ -2,6 +2,8 @@ package com.jetbrains.typofixer.lang
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.*
+import com.intellij.psi.tree.IElementType
+import com.intellij.psi.tree.java.IKeywordElementType
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 
 /**
@@ -10,17 +12,23 @@ import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 class JavaSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isJavaIdentifierPart()
 
-    override fun isTypoResolverApplicable(element: PsiElement): Boolean {
+    override fun fastIsBadElement(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
-        return element.node.elementType == JavaTokenType.IDENTIFIER && (element.parent is PsiReference || element.parent is PsiErrorElement)
+
+        fun checkType(type: IElementType) = type == JavaTokenType.IDENTIFIER || type is IKeywordElementType
+
+        val parent = element.parent
+        return checkType(element.node.elementType) && (parent is PsiReference || parent is PsiErrorElement)
     }
 
-    override fun isTypoNotFixed(element: PsiElement): Boolean {
+    override fun isBadElement(element: PsiElement): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
+
         val parent = element.parent
-        return (parent is PsiErrorElement
-                || parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
-                || parent is PsiReference && parent.resolve() == null)
+        return fastIsBadElement(element)
+                && (parent is PsiErrorElement
+                    || parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
+                    || parent is PsiReference && parent.resolve() == null)
     }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
