@@ -1,13 +1,10 @@
-package ru.jetbrains.yaveyn.fuzzysearch.test.search
-
-import com.intellij.openapi.project.DumbService
-import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
+package ru.jetbrains.yaveyn.fuzzysearch.test.search.replacement
 
 /**
  * @author bronti.
  */
 
-class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
+class SimpleReplacementTest : BaseReplacementTest() {
 
     fun testReplacementAfterTyped() = doTest(
             "clasa<caret>",
@@ -63,12 +60,4 @@ class ReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
             "nteface<caret>",
             ' ',
             "interface <caret>")
-
-    private fun doTest(input: String, typed: Char, output: String) {
-        myFixture.configureByText("Foo.java", input)
-        DumbService.getInstance(myModule.project).smartInvokeLater {
-            myFixture.type(typed)
-            myFixture.checkResult(output)
-        }
-    }
 }
