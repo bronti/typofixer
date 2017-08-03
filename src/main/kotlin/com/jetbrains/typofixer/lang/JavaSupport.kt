@@ -2,33 +2,43 @@ package com.jetbrains.typofixer.lang
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.*
-import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.java.IKeywordElementType
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 
 /**
  * @author bronti.
  */
+// todo: make base class for java and kotlin
 class JavaSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isJavaIdentifierPart()
 
-    override fun fastIsBadElement(element: PsiElement): Boolean {
+    override fun isBadElement(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
 
-        fun checkType(type: IElementType) = type == JavaTokenType.IDENTIFIER || type is IKeywordElementType
-
+        val type = element.node.elementType
         val parent = element.parent
-        return checkType(element.node.elementType) && (parent is PsiReference || parent is PsiErrorElement)
-    }
 
-    override fun isBadElement(element: PsiElement): Boolean {
-        ApplicationManager.getApplication().assertReadAccessAllowed()
+        val isReference = parent is PsiReference
+        val isIdentifier = type == JavaTokenType.IDENTIFIER
+        val isKeyword = type is IKeywordElementType
 
-        val parent = element.parent
-        return fastIsBadElement(element)
-                && (parent is PsiErrorElement
-                    || parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
-                    || parent is PsiReference && parent.resolve() == null)
+        val isIdentifierReference = isIdentifier && isReference
+        val isBadKeyword = isKeyword && parent is PsiErrorElement
+
+        if (isFast) {
+            assert(!isReplaced)
+            return isBadKeyword || isIdentifierReference
+        } else {
+            val isUnresolved =
+                    parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
+                            || parent is PsiReference && parent.resolve() == null
+
+            val isUnresolvedReference = isIdentifierReference && isUnresolved
+            val isIdentifierNotReference = isIdentifier && !isReference
+            val isSomethingElse = !isIdentifier && !isKeyword
+
+            return isBadKeyword || isUnresolvedReference || (isReplaced && (isIdentifierNotReference || isSomethingElse))
+        }
     }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()

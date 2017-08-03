@@ -34,7 +34,7 @@ class TypoResolver private constructor(
             val element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
             val elementStartOffset = element.textOffset
 
-            if (!langSupport.fastIsBadElement(element)) return null
+            if (!langSupport.isBadElement(element, isReplaced = false, isFast = true)) return null
 
             val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
 
@@ -58,7 +58,7 @@ class TypoResolver private constructor(
 
     private val appManager = ApplicationManager.getApplication()
 
-    fun resolve() = Thread { checkElementIsBad(oldText) && fixTypo() && checkElementIsBad(newText) && undoFix() }.start()
+    fun resolve() = Thread { checkElementIsBad(true) && fixTypo() && checkElementIsBad(false) && undoFix() }.start()
 
     private fun fixTypo(): Boolean = performCommand("Resolve typo", oldText) { replaceText(oldText, newText) }
 
@@ -73,17 +73,18 @@ class TypoResolver private constructor(
         return true
     }
 
-    private fun checkElementIsBad(prefix: String): Boolean {
+    private fun checkElementIsBad(isBeforeReplace: Boolean): Boolean {
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
         var resultCalculated = false
-        while (result && !resultCalculated) {
-            appManager.invokeAndWait { appManager.runReadAction { result = refreshElement(prefix) } }
+        while (!resultCalculated) {
+            val expectedText = if (isBeforeReplace) oldText else newText
+            appManager.invokeAndWait { appManager.runReadAction { result = refreshElement(expectedText) } }
             if (!result) return false
             resultCalculated = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
                 ProgressIndicatorProvider.checkCanceled()
-                result = langSupport.isBadElement(element)
+                result = langSupport.isBadElement(element, isFast = false, isReplaced = !isBeforeReplace)
             }, indicator)
         }
         return result
