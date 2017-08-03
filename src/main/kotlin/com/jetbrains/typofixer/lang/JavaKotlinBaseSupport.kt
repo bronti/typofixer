@@ -11,29 +11,35 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         ApplicationManager.getApplication().assertReadAccessAllowed()
 
         val isIdentifierReference = isIdentifier(element) && isReference(element)
-        val isBadKeyword = isKeyword(element) && element.parent is PsiErrorElement
+        val isBadKeyword = isKeyword(element) && isErrorElement(element)
+        val isErrorIdentifier = isIdentifier(element) && isErrorElement(element)
 
         if (isFast) {
             assert(!isReplaced)
-            return isBadKeyword || isIdentifierReference
+            return isBadKeyword || isIdentifierReference || isErrorIdentifier
         } else {
 
             val isUnresolvedReference = isIdentifierReference && isUnresolved(element)
             val isIdentifierNotReference = isIdentifier(element) && !isReference(element)
             val isSomethingElse = !isIdentifier(element) && !isKeyword(element)
 
-            return isBadKeyword || isUnresolvedReference || (isReplaced && (isIdentifierNotReference || isSomethingElse))
+            return isBadKeyword
+                    || isUnresolvedReference
+                    || isErrorIdentifier
+                    || (isReplaced && (isIdentifierNotReference || isSomethingElse))
         }
     }
 
     override fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean {
         // todo: difference between primary constructor and other cases
-        return if (!isReplaced) isParameter(element) else !isKeyword(element) || element.parent is PsiErrorElement
+        return if (!isReplaced) isParameter(element) else !isKeyword(element) || isErrorElement(element)
     }
 
-    abstract fun isReference(element: PsiElement): Boolean
-    abstract fun isIdentifier(element: PsiElement): Boolean
-    abstract fun isKeyword(element: PsiElement): Boolean
-    abstract fun isUnresolved(element: PsiElement): Boolean
-    abstract fun isParameter(element: PsiElement): Boolean
+    protected fun isErrorElement(element: PsiElement) = element.parent is PsiErrorElement
+
+    abstract protected fun isReference(element: PsiElement): Boolean
+    abstract protected fun isIdentifier(element: PsiElement): Boolean
+    abstract protected fun isKeyword(element: PsiElement): Boolean
+    abstract protected fun isUnresolved(element: PsiElement): Boolean
+    abstract protected fun isParameter(element: PsiElement): Boolean
 }
