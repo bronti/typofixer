@@ -1,8 +1,6 @@
 package com.jetbrains.typofixer.lang
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 import org.jetbrains.kotlin.idea.completion.KeywordCompletion
@@ -18,36 +16,15 @@ import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
  * @author bronti.
  */
 
-class KotlinSupport : TypoFixerLanguageSupport {
-    override fun identifierChar(c: Char) = c.isJavaIdentifierPart() // || c == '`'
+class KotlinSupport : JavaKotlinBaseSupport() {
 
-    override fun isBadElement(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean {
-        ApplicationManager.getApplication().assertReadAccessAllowed()
-
-        val type = element.node.elementType
+    override fun isReference(element: PsiElement) = element.parent is KtReferenceExpression || element.parent is KtReference
+    override fun isIdentifier(element: PsiElement) = element.node.elementType == KtTokens.IDENTIFIER
+    override fun isKeyword(element: PsiElement) = element.node.elementType is KtKeywordToken
+    override fun isUnresolved(element: PsiElement): Boolean {
         val parent = element.parent
-
-        val isReference = parent is KtReferenceExpression || parent is KtReference
-        val isIdentifier = type == KtTokens.IDENTIFIER
-        val isKeyword = type is KtKeywordToken
-
-        val isIdentifierReference = isIdentifier && isReference
-        val isBadKeyword = isKeyword && parent is PsiErrorElement
-
-        if (isFast) {
-            assert(!isReplaced)
-            return isBadKeyword || isIdentifierReference
-        } else {
-            val isUnresolved =
-                    parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
-                            || parent is KtReference && parent.resolve() == null
-
-            val isUnresolvedReference = isIdentifierReference && isUnresolved
-            val isIdentifierNotReference = isIdentifier && !isReference
-            val isSomethingElse = !isIdentifier && !isKeyword
-
-            return isBadKeyword || isUnresolvedReference || (isReplaced && (isIdentifierNotReference || isSomethingElse))
-        }
+        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
+                || parent is KtReference && parent.resolve() == null
     }
 
     override fun getLocalDictionaryCollector() = KotlinLocalDictionaryCollector()

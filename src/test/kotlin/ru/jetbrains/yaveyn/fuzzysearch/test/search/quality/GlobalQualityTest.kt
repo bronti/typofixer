@@ -4,9 +4,6 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.testFramework.PsiTestUtil
-import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
-import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
-import com.intellij.testFramework.fixtures.JavaTestFixtureFactory
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.DLSearcher
@@ -19,7 +16,7 @@ import kotlin.system.measureTimeMillis
 /**
  * @author bronti.
  */
-//@Ignore
+@Ignore
 class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
 
     private val testDataDir = File("testData")

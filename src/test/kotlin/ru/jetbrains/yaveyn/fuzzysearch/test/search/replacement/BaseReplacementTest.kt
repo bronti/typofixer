@@ -2,7 +2,9 @@ package ru.jetbrains.yaveyn.fuzzysearch.test.search.replacement
 
 import com.intellij.openapi.project.DumbService
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
+import org.junit.Ignore
 
+@Ignore
 open class BaseReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
 
     protected fun doTest(input: String, typed: Char, output: String) {
