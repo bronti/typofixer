@@ -13,6 +13,7 @@ class JavaSupport : JavaKotlinBaseSupport() {
     override fun isReference(element: PsiElement) = element.parent is PsiReference
     override fun isIdentifier(element: PsiElement) = element.node.elementType == JavaTokenType.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is IKeywordElementType
+    override fun isParameter(element: PsiElement) = element.parent is PsiParameter && isIdentifier(element)
     override fun isUnresolved(element: PsiElement): Boolean {
         val parent = element.parent
         return parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()

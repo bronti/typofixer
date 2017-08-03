@@ -20,7 +20,8 @@ class TypoResolver private constructor(
         private val editor: Editor,
         private var element: PsiElement,
         private val oldText: String,
-        private val newText: String) {
+        private val newText: String,
+        private val isParameter: Boolean) {
 
     companion object {
         fun getInstance(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
@@ -34,15 +35,19 @@ class TypoResolver private constructor(
             val element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
             val elementStartOffset = element.textOffset
 
-            if (!langSupport.isBadElement(element, isReplaced = false, isFast = true)) return null
+            val isBadParameter = langSupport.isBadParameter(element, false)
+            val isBadRefOrKw = langSupport.isBadReferenceOrKeyword(element, isReplaced = false, isFast = true)
 
-            val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+            if (isBadParameter || isBadRefOrKw) {
 
-            val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-            val newText = searcher.findClosest(element, oldText).word
+                val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
 
-            if (newText == null || newText == oldText) return null
-            return TypoResolver(psiFile, editor, element, oldText, newText)
+                val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
+                val newText = searcher.findClosest(element, oldText).word
+
+                if (newText == null || newText == oldText) return null
+                return TypoResolver(psiFile, editor, element, oldText, newText, isBadParameter)
+            } else return null
         }
 
         private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
@@ -84,7 +89,12 @@ class TypoResolver private constructor(
             if (!result) return false
             resultCalculated = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
                 ProgressIndicatorProvider.checkCanceled()
-                result = langSupport.isBadElement(element, isFast = false, isReplaced = !isBeforeReplace)
+                result =
+                        if (isParameter) {
+                            langSupport.isBadParameter(element, !isBeforeReplace)
+                        } else {
+                            langSupport.isBadReferenceOrKeyword(element, isFast = false, isReplaced = !isBeforeReplace)
+                        }
             }, indicator)
         }
         return result

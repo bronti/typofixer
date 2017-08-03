@@ -12,4 +12,9 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             "fun is<caret>",
             ' ',
             "fun is <caret>")
+
+    fun testReplacingInParameters() = doTest(
+            "fun is(varargg<caret>)",
+            ' ',
+            "fun is(vararg <caret>)")
 }

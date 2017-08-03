@@ -7,7 +7,7 @@ import com.intellij.psi.PsiErrorElement
 abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     override fun identifierChar(c: Char) = c.isJavaIdentifierPart()
 
-    override fun isBadElement(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean {
+    override fun isBadReferenceOrKeyword(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
 
         val isIdentifierReference = isIdentifier(element) && isReference(element)
@@ -26,8 +26,14 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         }
     }
 
+    override fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean {
+        // todo: difference between primary constructor and other cases
+        return if (!isReplaced) isParameter(element) else !isKeyword(element) || element.parent is PsiErrorElement
+    }
+
     abstract fun isReference(element: PsiElement): Boolean
     abstract fun isIdentifier(element: PsiElement): Boolean
     abstract fun isKeyword(element: PsiElement): Boolean
     abstract fun isUnresolved(element: PsiElement): Boolean
+    abstract fun isParameter(element: PsiElement): Boolean
 }

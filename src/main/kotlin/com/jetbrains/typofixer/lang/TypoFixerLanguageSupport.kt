@@ -15,7 +15,8 @@ interface TypoFixerLanguageSupport {
 
     fun identifierChar(c: Char): Boolean
 
-    fun isBadElement(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean
+    fun isBadReferenceOrKeyword(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean
+    fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean
 
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
 

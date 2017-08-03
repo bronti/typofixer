@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtReferenceExpression
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 
@@ -21,6 +22,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     override fun isReference(element: PsiElement) = element.parent is KtReferenceExpression || element.parent is KtReference
     override fun isIdentifier(element: PsiElement) = element.node.elementType == KtTokens.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is KtKeywordToken
+    override fun isParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
     override fun isUnresolved(element: PsiElement): Boolean {
         val parent = element.parent
         return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
