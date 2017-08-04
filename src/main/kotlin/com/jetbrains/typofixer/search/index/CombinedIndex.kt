@@ -28,7 +28,11 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     private val globalIndex = GlobalIndex(project, signature)
 
     fun getLocalSize() = localIdentifiersIndex.getSize() + keywordsIndex.getSize()
+
+    // slow!!
     fun getGlobalSize() = synchronized(globalIndex) { globalIndex.getSize() }
+
+    // internal use only (works slowly for globalIndex!!!!
     fun getSize() = getLocalSize() + getGlobalSize()
 
     fun isUsable() = globalIndex.isUsable()

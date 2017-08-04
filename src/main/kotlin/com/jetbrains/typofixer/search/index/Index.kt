@@ -15,7 +15,14 @@ import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.util.*
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
+
 
 abstract class Index(val signature: Signature) {
 
@@ -62,9 +69,9 @@ class LocalIndex(signature: Signature, val getWords: (element: PsiElement) -> Se
 
 class GlobalIndex(val project: Project, signature: Signature) : Index(signature) {
 
-    override fun getSize() = synchronized(this) { index.entries.sumBy { it.value.size } }
+    override fun getSize() = synchronized(this) { index.entries.sumBy { it.value.getSize() } }
 
-    private val index = HashMap<Int, HashSet<String>>()
+    private val index = HashMap<Int, IndexEntry>()
 
     @Volatile
     private var lastRefreshingTask: CollectProjectNames? = null
@@ -86,27 +93,54 @@ class GlobalIndex(val project: Project, signature: Signature) : Index(signature)
     }
 
     override fun getWithDefault(signature: Int): HashSet<String> {
-        val result = index[signature] ?: return hashSetOf()
+        val result = index[signature]?.getAll() ?: return hashSetOf()
         return result
     }
 
     override fun addAll(signature: Int, strings: Set<String>) {
-        index[signature] = getWithDefault(signature)
+        if (index[signature] == null) {
+            index[signature] = IndexEntry()
+        }
         index[signature]!!.addAll(strings)
     }
 
     override fun getAll(signatures: Set<Int>) = synchronized(this) { super.getAll(signatures) }
     override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
 
-//    private class IndexEntry(private val signature: Int) {
-//        // todo: private
-//        private val outputStream = ObjectOutputStream(GZIPOutputStream(ByteArrayOutputStream()))
-//
-//        fun addAll(strs: Set<String>) {
-//            strs.forEach { outputStream.writeObject(it) }
-//        }
-//
-//    }
+
+    // todo: make it lazy
+    private class IndexEntry {
+
+        private var wordCount: Int = 0
+
+        // todo: private
+        private var outputBytes = ByteArrayOutputStream()
+        private val outputStream = ObjectOutputStream(GZIPOutputStream(outputBytes))
+        private var bytes: ByteArray? = null
+
+        fun addAll(strings: Set<String>) {
+            strings.forEach { outputStream.writeObject(it) }
+            wordCount += strings.size
+        }
+
+        fun prepareToBeRead() {
+            outputStream.close()
+            bytes = outputBytes.toByteArray()
+        }
+
+        fun getAll(): HashSet<String> {
+            val inputStream = ObjectInputStream(GZIPInputStream(ByteArrayInputStream(bytes!!)))
+            val result = hashSetOf<String>()
+            for (i in 1..wordCount) {
+                result.add(inputStream.readObject() as String)
+            }
+            return result
+        }
+
+        fun getSize() = getAll().size
+
+        fun contains(str: String) = getAll().contains(str)
+    }
 
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
@@ -188,6 +222,8 @@ class GlobalIndex(val project: Project, signature: Signature) : Index(signature)
             // todo: check that index is refreshing after each stub index refreshment
             if (shouldCollect()) {
                 synchronized(this) {
+                    // todo: here?
+                    index.entries.forEach { it.value.prepareToBeRead() }
                     if (isCurrentRefreshingTask()) lastRefreshingTask = null
                 }
             }

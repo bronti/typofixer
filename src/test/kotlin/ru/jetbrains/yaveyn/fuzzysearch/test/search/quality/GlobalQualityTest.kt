@@ -7,7 +7,6 @@ import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.DLSearcher
-import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -16,7 +15,7 @@ import kotlin.system.measureTimeMillis
 /**
  * @author bronti.
  */
-@Ignore
+//@Ignore
 class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
 
     private val testDataDir = File("testData")
