@@ -23,7 +23,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     override fun isIdentifier(element: PsiElement) = element.node.elementType == KtTokens.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is KtKeywordToken
     override fun isParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
-    override fun isUnresolved(element: PsiElement): Boolean {
+    override fun isUnresolvedReference(element: PsiElement): Boolean {
         val parent = element.parent
         return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
                 || parent is KtReference && parent.resolve() == null
@@ -55,7 +55,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     }
 }
 
-// cannot extract all keywords from KtTokens.KEYWORDS :(
+// todo: KtTokens.KEYWORDS.types
 private val kotlinKeywords = listOf<KtKeywordToken>(
         KtTokens.PACKAGE_KEYWORD,
         KtTokens.AS_KEYWORD,

@@ -13,10 +13,7 @@ interface TypoFixerLanguageSupport {
         fun getSupport(language: Language) = TypoFixerLanguageSupport.Extension.getSupport(language)
     }
 
-    fun identifierChar(c: Char): Boolean
-
-    fun isBadReferenceOrKeyword(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean
-    fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean
+    fun getTypoCases(): List<TypoCase>
 
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
 
@@ -29,4 +26,16 @@ interface TypoFixerLanguageSupport {
             }
         }
     }
+}
+
+interface TypoCase {
+
+    fun triggersTypoResolve(c: Char): Boolean
+
+    // TypoResolver handles the first case for which needToReplace(element, fast = true) is true
+    fun needToReplace(element: PsiElement, fast: Boolean = false): Boolean
+
+    fun iaBadReplace(element: PsiElement): Boolean
+//    fun findClosest(str: String): Boolean
+
 }

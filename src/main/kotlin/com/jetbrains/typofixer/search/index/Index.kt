@@ -98,16 +98,6 @@ class GlobalIndex(val project: Project, signature: Signature) : Index(signature)
     override fun getAll(signatures: Set<Int>) = synchronized(this) { super.getAll(signatures) }
     override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
 
-//    private class IndexEntry(private val signature: Int) {
-//        // todo: private
-//        private val outputStream = ObjectOutputStream(GZIPOutputStream(ByteArrayOutputStream()))
-//
-//        fun addAll(strs: Set<String>) {
-//            strs.forEach { outputStream.writeObject(it) }
-//        }
-//
-//    }
-
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
         private fun isCurrentRefreshingTask() = this === lastRefreshingTask

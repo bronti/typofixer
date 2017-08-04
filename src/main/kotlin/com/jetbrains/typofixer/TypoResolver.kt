@@ -10,6 +10,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 
 /**
@@ -18,36 +19,40 @@ import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 class TypoResolver private constructor(
         private val psiFile: PsiFile,
         private val editor: Editor,
+        private val typoCase: TypoCase,
         private var element: PsiElement,
         private val oldText: String,
-        private val newText: String,
-        private val isParameter: Boolean) {
+        private val newText: String) {
 
     companion object {
         fun getInstance(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
-            val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)
+            val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
             val nextCharOffset = editor.caretModel.offset
             val project = psiFile.project
 
-            if (langSupport == null || langSupport.identifierChar(nextChar)) return null
+            var element: PsiElement? = null
+            for (typoCase in langSupport.getTypoCases()) {
+                if (!typoCase.triggersTypoResolve(nextChar)) continue
 
-            refreshPsi(editor)
-            val element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
-            val elementStartOffset = element.textOffset
+                if (element == null) {
+                    refreshPsi(editor)
+                    element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
+                }
 
-            val isBadParameter = langSupport.isBadParameter(element, false)
-            val isBadRefOrKw = langSupport.isBadReferenceOrKeyword(element, isReplaced = false, isFast = true)
+                val elementStartOffset = element.textOffset
 
-            if (isBadParameter || isBadRefOrKw) {
+                if (typoCase.needToReplace(element, fast = true)) {
 
-                val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+                    val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
 
-                val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-                val newText = searcher.findClosest(element, oldText).word
+                    val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
+                    val newText = searcher.findClosest(element, oldText).word
 
-                if (newText == null || newText == oldText) return null
-                return TypoResolver(psiFile, editor, element, oldText, newText, isBadParameter)
-            } else return null
+                    if (newText == null || newText == oldText) return null
+                    return TypoResolver(psiFile, editor, typoCase, element, oldText, newText)
+                }
+            }
+            return null
         }
 
         private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
@@ -56,7 +61,7 @@ class TypoResolver private constructor(
     private fun refreshPsi() = refreshPsi(editor)
 
     private val document: Document = editor.document
-    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)!!
+    //    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)!!
     private val project = psiFile.project
 
     private var elementStartOffset = element.textOffset
@@ -89,12 +94,7 @@ class TypoResolver private constructor(
             if (!result) return false
             resultCalculated = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
                 ProgressIndicatorProvider.checkCanceled()
-                result =
-                        if (isParameter) {
-                            langSupport.isBadParameter(element, !isBeforeReplace)
-                        } else {
-                            langSupport.isBadReferenceOrKeyword(element, isFast = false, isReplaced = !isBeforeReplace)
-                        }
+                result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
             }, indicator)
         }
         return result
