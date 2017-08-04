@@ -35,7 +35,12 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     // internal use only (works slowly for globalIndex!!!!
     fun getSize() = getLocalSize() + getGlobalSize()
 
-    fun isUsable() = globalIndex.isUsable()
+    fun isUsable() = canRefreshGlobal && globalIndex.isUsable()
+
+    // when index is not active global refresh cannot be performed
+    var canRefreshGlobal = true
+//        get() = synchronized(globalIndex) { field }
+//        set(value) = synchronized(globalIndex) { field = value }
 
     // internal use only
     var timesGlobalRefreshRequested = 0
@@ -57,6 +62,7 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     }
 
     fun refreshGlobal() {
+        if (!canRefreshGlobal) return
         ++timesGlobalRefreshRequested
         globalIndex.refresh()
     }

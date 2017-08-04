@@ -36,16 +36,18 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         myFixture.testDataPath = testDataDir.canonicalPath
 
         myProject = myFixture.project
+        searcher = myProject!!.getComponent(TypoFixerComponent::class.java).searcher
 
+        searcher!!.getIndex().canRefreshGlobal = false
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.sortedBy { it.name }.toList()
         dependencies.forEach {
             PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath)
             println(it.name)
         }
+        searcher!!.getIndex().canRefreshGlobal = true
 
 
         DumbService.getInstance(myProject!!).waitForSmartMode()
-        searcher = myProject!!.getComponent(TypoFixerComponent::class.java).searcher
         searcher!!.forceGlobalIndexRefreshing()
         // 589671
 
