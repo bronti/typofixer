@@ -7,7 +7,7 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
  * @author bronti.
  */
 
-class LocalIndexTest : LightPlatformCodeInsightFixtureTestCase() {
+class LocalCombinedIndexTest : LightPlatformCodeInsightFixtureTestCase() {
 
     fun testKeyword() = doTest(
             "clasa<caret>",

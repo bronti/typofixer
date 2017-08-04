@@ -1,6 +1,5 @@
 package com.jetbrains.typofixer.search.index
 
-
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
@@ -14,77 +13,69 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
-import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 import java.util.*
 
+abstract class Index(val signature: Signature) {
 
-/**
- * @author bronti.
- */
-private typealias IndexMap = HashMap<Int, HashSet<String>>
+    abstract fun getSize(): Int
 
-class Index(val signature: Signature) {
+    open fun getAll(signatures: Set<Int>) = signatures.flatMap { getWithDefault(it) }
 
-    enum class WordType {
-        KEYWORD, LOCAL, GLOBAL
+    open fun addAll(strings: Set<String>) {
+        strings.groupBy { signature.get(it) }.forEach { addAll(it.key, it.value.toSet()) }
     }
 
-    // not concurrent
-    private val keywordsIndex = IndexMap()
-    // not concurrent
-    private val localIdentifiersIndex = IndexMap()
-    // concurrent
-    private val globalIndex = IndexMap()
+    protected abstract fun getWithDefault(signature: Int): HashSet<String>
+    protected abstract fun addAll(signature: Int, strings: Set<String>)
 
-    private fun addAllToIndex(index: IndexMap, words: List<String>) = words.forEach { index.add(it) }
+    @TestOnly
+    abstract fun contains(str: String): Boolean
+}
 
-    private fun getSizeOf(index: IndexMap) = index.map { it.value.size }.sum()
-    fun getLocalSize() = getSizeOf(localIdentifiersIndex) + getSizeOf(keywordsIndex)
-    fun getGlobalSize() = synchronized(globalIndex) { getSizeOf(globalIndex) }
-    fun getSize() = getLocalSize() + getGlobalSize()
+class LocalIndex(signature: Signature, val getWords: (element: PsiElement) -> Set<String>) : Index(signature) {
 
-    // internal use only
-    var timesGlobalRefreshRequested = 0
-        private set
+    override fun getSize() = index.entries.sumBy { it.value.size }
+
+    private val index = HashMap<Int, HashSet<String>>()
+
+    fun refresh(element: PsiElement?) {
+        index.clear()
+        element ?: return
+        addAll(getWords(element))
+    }
+
+    override fun getWithDefault(signature: Int): HashSet<String> {
+        val result = index[signature] ?: return hashSetOf()
+        return result
+    }
+
+    override fun addAll(signature: Int, strings: Set<String>) {
+        index[signature] = getWithDefault(signature)
+        index[signature]!!.addAll(strings)
+    }
+
+    @TestOnly
+    override fun contains(str: String) = index[signature.get(str)]?.contains(str) ?: false
+}
+
+class GlobalIndex(val project: Project, signature: Signature) : Index(signature) {
+
+    override fun getSize() = synchronized(this) { index.entries.sumBy { it.value.size } }
+
+    private val index = HashMap<Int, HashSet<String>>()
 
     @Volatile
-    private var lastGlobalRefreshingTask: CollectProjectNames? = null
+    private var lastRefreshingTask: CollectProjectNames? = null
 
-    fun isUsable() = lastGlobalRefreshingTask == null
+    fun isUsable() = lastRefreshingTask == null
 
-    fun getAll(type: WordType, signatures: Set<Int>) = when (type) {
-            WordType.KEYWORD -> keywordsIndex.getAll(signatures)
-            WordType.LOCAL -> localIdentifiersIndex.getAll(signatures)
-            WordType.GLOBAL -> synchronized(globalIndex) { globalIndex.getAll(signatures) }
-    }
-
-    fun contains(str: String) = keywordsIndex.doContains(str) ||
-            localIdentifiersIndex.doContains(str) ||
-            synchronized(globalIndex) { globalIndex.doContains(str) }
-
-    // not meant to be called concurrently
-    fun refreshLocal(psiElement: PsiElement?) {
-        psiElement ?: return
-        val psiFile = psiElement.containingFile
-        val collector = TypoFixerLanguageSupport.getSupport(psiFile.language)?.getLocalDictionaryCollector() ?: return
-        doRefreshLocal(keywordsIndex, collector.keyWords(psiElement))
-        doRefreshLocal(localIdentifiersIndex, collector.localIdentifiers(psiFile))
-        psiFile.project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
-    }
-
-    private fun doRefreshLocal(index: IndexMap, words: List<String>) {
-        index.clear()
-        addAllToIndex(index, words)
-    }
-
-    fun refreshGlobal(project: Project) {
-        ++timesGlobalRefreshRequested
+    fun refresh() {
         val refreshingTask = CollectProjectNames(project)
-        synchronized(globalIndex) {
-            lastGlobalRefreshingTask = refreshingTask
-            globalIndex.clear()
+        synchronized(this) {
+            lastRefreshingTask = refreshingTask
+            index.clear()
         }
         project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
         DumbService.getInstance(project).smartInvokeLater {
@@ -94,21 +85,32 @@ class Index(val signature: Signature) {
         }
     }
 
-    private fun IndexMap.getWithDefault(signature: Int) = this[signature] ?: hashSetOf()
-
-    private fun IndexMap.getAll(signatures: Set<Int>) = signatures.flatMap { getWithDefault(it) }
-
-    private fun IndexMap.add(str: String): Boolean {
-        val signature = signature.get(str)
-        this[signature] = this.getWithDefault(signature)
-        return this[signature]!!.add(str)
+    override fun getWithDefault(signature: Int): HashSet<String> {
+        val result = index[signature] ?: return hashSetOf()
+        return result
     }
 
-    private fun IndexMap.doContains(str: String) = this[signature.get(str)]?.contains(str) ?: false
+    override fun addAll(signature: Int, strings: Set<String>) {
+        index[signature] = getWithDefault(signature)
+        index[signature]!!.addAll(strings)
+    }
+
+    override fun getAll(signatures: Set<Int>) = synchronized(this) { super.getAll(signatures) }
+    override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
+
+//    private class IndexEntry(private val signature: Int) {
+//        // todo: private
+//        private val outputStream = ObjectOutputStream(GZIPOutputStream(ByteArrayOutputStream()))
+//
+//        fun addAll(strs: Set<String>) {
+//            strs.forEach { outputStream.writeObject(it) }
+//        }
+//
+//    }
 
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
-        private fun isCurrentRefreshingTask() = this === lastGlobalRefreshingTask
+        private fun isCurrentRefreshingTask() = this === lastRefreshingTask
 
         private var methodNamesCollected = false
         private var fieldNamesCollected = false
@@ -140,9 +142,9 @@ class Index(val signature: Signature) {
 
             fun checkedCollect(isCollected: Boolean, getToCollect: () -> Array<String>, markCollected: () -> Unit) {
                 if (!shouldCollect() || isCollected) return
-                synchronized(globalIndex) {
+                synchronized(this) {
                     if (shouldCollect() && !isCollected) {
-                        addAllToIndex(globalIndex, getToCollect().toList())
+                        addAll(getToCollect().toSet())
                     } else return@checkedCollect
                 }
                 markCollected()
@@ -177,20 +179,20 @@ class Index(val signature: Signature) {
             }
 
             if (shouldCollect() && packageNames.isNotEmpty()) {
-                synchronized(globalIndex) {
-                    if (shouldCollect()) addAllToIndex(globalIndex, packageNames)
+                synchronized(this) {
+                    if (shouldCollect()) addAll(packageNames.toSet())
                     packageNames.clear()
                 }
             }
 
             // todo: check that index is refreshing after each stub index refreshment
             if (shouldCollect()) {
-                synchronized(globalIndex) {
-                    if (isCurrentRefreshingTask()) lastGlobalRefreshingTask = null
+                synchronized(this) {
+                    if (isCurrentRefreshingTask()) lastRefreshingTask = null
                 }
             }
 
-            if (this@Index.isUsable()) {
+            if (this@GlobalIndex.isUsable()) {
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
             }
             done = true
@@ -204,28 +206,25 @@ class Index(val signature: Signature) {
 
         // can be interrupted by dumb mode
         @TestOnly
-        fun waitForGlobalRefreshing() {
+        fun waitForRefreshing() {
             while (!done) {
                 doCollect(null)
             }
         }
     }
 
-    // can be interrupted by dumb mode
     @TestOnly
-    fun waitForGlobalRefreshing(project: Project) {
+    fun waitForRefreshing() {
         val refreshingTask = CollectProjectNames(project)
-        globalIndex.clear()
-        lastGlobalRefreshingTask = refreshingTask
+        synchronized(this) {
+            lastRefreshingTask = refreshingTask
+            index.clear()
+        }
         DumbService.getInstance(project).runReadActionInSmartMode {
-            refreshingTask.waitForGlobalRefreshing()
+            refreshingTask.waitForRefreshing()
         }
     }
 
     @TestOnly
-    fun addToIndex(words: List<String>) = addAllToIndex(localIdentifiersIndex, words)
-
-
-    @TestOnly
-    fun getAltogether(signatures: Set<Int>) = WordType.values().fold(HashSet<String>() as Set<String>) { acc, type -> acc + getAll(type, signatures) }
+    override fun contains(str: String) = synchronized(this) { index[signature.get(str)]?.contains(str) ?: false }
 }

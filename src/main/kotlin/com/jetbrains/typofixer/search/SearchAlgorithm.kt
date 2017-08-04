@@ -2,26 +2,26 @@ package com.jetbrains.typofixer.search
 
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
-import com.jetbrains.typofixer.search.index.Index
+import com.jetbrains.typofixer.search.index.CombinedIndex
 import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
  */
-abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: Index) {
+abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: CombinedIndex) {
 
     protected abstract fun findClosestWithRealCandidatesCount(str: String): Pair<SearchAlgorithm.SearchResult, Int>
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
     fun findClosest(str: String): SearchResult = findClosestWithRealCandidatesCount(str).first
 
-    inner class SearchResult(foundWord: String?, val error: Int, val type: Index.WordType) {
+    inner class SearchResult(foundWord: String?, val error: Int, val type: CombinedIndex.WordType) {
         val word = foundWord
             get() = if (isValid) field else null
 
         val isValid = foundWord != null && error <= maxError
 
-        constructor(): this(null, maxError + 1, Index.WordType.GLOBAL)
+        constructor() : this(null, maxError + 1, CombinedIndex.WordType.GLOBAL)
 
         // don't compare results from different outer classes!!!
         fun betterThan(other: SearchResult): Boolean {
@@ -61,7 +61,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
     }
 }
 
-abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
+abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
     : SearchAlgorithm(maxError, { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }, index) {
 
     override fun findClosestWithRealCandidatesCount(str: String): Pair<SearchAlgorithm.SearchResult, Int> {
@@ -72,8 +72,8 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
 
         for (error in signaturesByError.indices) {
             val signatures = signaturesByError[error]
-            
-            fun getMinimumOfType(type: Index.WordType): SearchAlgorithm.SearchResult {
+
+            fun getMinimumOfType(type: CombinedIndex.WordType): SearchAlgorithm.SearchResult {
                 val candidates = index.getAll(type, signatures)
                 val best = candidates.filter { it != str }.minBy { distance.measure(it) }
                 realCandidatesCount += candidates.size
@@ -82,7 +82,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
                 return this.SearchResult(best, bestError, type)
             }
 
-            fun searchForType(type: Index.WordType): Boolean {
+            fun searchForType(type: CombinedIndex.WordType): Boolean {
                 if (result.isValid && result.type == type && result.error == error) return true
 
                 val newResult = getMinimumOfType(type)
@@ -95,7 +95,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
                 return newResult.error == error
             }
 
-            if (searchForType(Index.WordType.KEYWORD) || searchForType(Index.WordType.LOCAL) || searchForType(Index.WordType.GLOBAL)) {
+            if (searchForType(CombinedIndex.WordType.KEYWORD) || searchForType(CombinedIndex.WordType.LOCAL) || searchForType(CombinedIndex.WordType.GLOBAL)) {
                 break
             }
         }
@@ -104,11 +104,11 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: Index)
     }
 }
 
-class DLSearchAlgorithm(maxError: Int, index: Index) : DLSearchAlgorithmBase(maxError, index) {
+class DLSearchAlgorithm(maxError: Int, index: CombinedIndex) : DLSearchAlgorithmBase(maxError, index) {
     override fun getSignatures(str: String) = index.signature.getRange(str, maxError)
 }
 
-class DLPreciseSearchAlgorithm(maxError: Int, index: Index) : DLSearchAlgorithmBase(maxError, index) {
+class DLPreciseSearchAlgorithm(maxError: Int, index: CombinedIndex) : DLSearchAlgorithmBase(maxError, index) {
     // todo: optimize precise
     override fun getSignatures(str: String) = index.signature.getRange(str, 2 * maxError)
 }

@@ -12,7 +12,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
-import com.jetbrains.typofixer.search.index.Index
+import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.signature.ComplexSignature
 import org.jetbrains.annotations.TestOnly
 
@@ -50,7 +50,7 @@ open class DLSearcher(val project: Project) : Searcher() {
     private val maxError = 2
     private val signature = ComplexSignature()
 
-    private val index = Index(signature)
+    private val index = CombinedIndex(project, signature)
 
     private var lastPsiModificationCount = 0L
     private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(project).outOfCodeBlockModificationCount
@@ -99,7 +99,7 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private fun updateIndex() {
         lastPsiModificationCount = freshPsiModificationCount()
-        index.refreshGlobal(project)
+        index.refreshGlobal()
     }
 
     // internal use only
@@ -126,7 +126,7 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     @TestOnly
     fun forceGlobalIndexRefreshing() {
-        index.waitForGlobalRefreshing(project)
+        index.waitForGlobalRefreshing()
     }
 
     @TestOnly

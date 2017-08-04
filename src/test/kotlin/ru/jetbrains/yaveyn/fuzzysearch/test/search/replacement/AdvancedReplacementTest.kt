@@ -17,4 +17,9 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             "fun is(varargg<caret>)",
             ' ',
             "fun is(vararg <caret>)")
+
+    fun testOverride() = doTest(
+            "class Some { ovarride<caret>",
+            ' ',
+            "class Some { override <caret>")
 }

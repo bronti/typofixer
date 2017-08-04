@@ -8,7 +8,7 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
  * @author bronti.
  */
 
-class GlobalIndexTest : LightPlatformCodeInsightFixtureTestCase() {
+class GlobalCombinedIndexTest : LightPlatformCodeInsightFixtureTestCase() {
 
     private val testDataDirPath = "./testData/"
     private val dependencyForTestingPath = "projectfortesting-1.0-SNAPSHOT.jar"
