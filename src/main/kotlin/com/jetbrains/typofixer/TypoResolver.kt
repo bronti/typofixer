@@ -62,7 +62,8 @@ class TypoResolver private constructor(
 
     private val document: Document = editor.document
     //    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)!!
-    private val project = psiFile.project
+    private val project
+        get() = psiFile.project
 
     private var elementStartOffset = element.textOffset
 
@@ -105,8 +106,10 @@ class TypoResolver private constructor(
         appManager.invokeAndWait {
             appManager.runWriteAction {
                 if (refreshElement(prefix)) {
-                    CommandProcessor.getInstance().executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
-                    done = true
+                    if (project.isOpen) {
+                        CommandProcessor.getInstance().executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
+                        done = true
+                    }
                 }
             }
         }
