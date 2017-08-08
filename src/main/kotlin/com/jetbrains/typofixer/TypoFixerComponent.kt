@@ -13,6 +13,9 @@ import com.jetbrains.typofixer.widget.RefreshingIndicator
  * @author bronti.
  */
 class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
+
+    var isActive: Boolean = true
+
     private var mySearcher: DLSearcher? = null
     private var myStatusBarWidget: RefreshingIndicator? = null
 

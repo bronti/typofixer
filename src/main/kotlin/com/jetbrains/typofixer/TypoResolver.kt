@@ -12,6 +12,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti
@@ -27,8 +28,15 @@ class TypoResolver private constructor(
     companion object {
         fun getInstance(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
-            val nextCharOffset = editor.caretModel.offset
+            if (!psiFile.project.getComponent(TypoFixerComponent::class.java).isActive) return null
+
+            return doGetInstance(nextChar, editor, psiFile, langSupport)
+        }
+
+        private fun doGetInstance(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport): TypoResolver? {
+
             val project = psiFile.project
+            val nextCharOffset = editor.caretModel.offset
 
             var element: PsiElement? = null
             for (typoCase in langSupport.getTypoCases()) {
@@ -56,6 +64,12 @@ class TypoResolver private constructor(
         }
 
         private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
+
+        @TestOnly
+        fun getInstanceIgnoreIsActive(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
+            val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
+            return doGetInstance(nextChar, editor, psiFile, langSupport)
+        }
     }
 
     private fun refreshPsi() = refreshPsi(editor)
@@ -89,7 +103,6 @@ class TypoResolver private constructor(
     }
 
     private fun checkElementIsBad(isBeforeReplace: Boolean): Boolean {
-        assert(!ApplicationManager.getApplication().isDispatchThread)
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
@@ -98,10 +111,21 @@ class TypoResolver private constructor(
             val expectedText = if (isBeforeReplace) oldText else newText
             appManager.invokeAndWait { appManager.runReadAction { result = refreshElement(expectedText) } }
             if (!result) return false
-            resultCalculated = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
-                ProgressIndicatorProvider.checkCanceled()
+
+            fun doCheck() {
                 result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
-            }, indicator)
+            }
+
+            resultCalculated =
+                    if (ApplicationManager.getApplication().isDispatchThread) {
+                        doCheck()
+                        true
+                    } else {
+                        ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
+                            ProgressIndicatorProvider.checkCanceled()
+                            doCheck()
+                        }, indicator)
+                    }
         }
         return result
     }
@@ -124,4 +148,7 @@ class TypoResolver private constructor(
     private fun replaceText(old: String, new: String) {
         document.replaceString(elementStartOffset, elementStartOffset + old.length, new)
     }
+
+    @TestOnly
+    fun waitForResolve() = doResolve()
 }
