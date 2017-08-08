@@ -69,7 +69,11 @@ class TypoResolver private constructor(
 
     private val appManager = ApplicationManager.getApplication()
 
-    fun resolve() = Thread { checkElementIsBad(true) && fixTypo() && checkElementIsBad(false) && undoFix() }.start()
+    fun resolve() = Thread { doResolve() }.start()
+
+    private fun doResolve() {
+        checkElementIsBad(true) && fixTypo() && checkElementIsBad(false) && undoFix()
+    }
 
     private fun fixTypo(): Boolean = performCommand("Resolve typo", oldText) { replaceText(oldText, newText) }
 
@@ -85,6 +89,7 @@ class TypoResolver private constructor(
     }
 
     private fun checkElementIsBad(isBeforeReplace: Boolean): Boolean {
+        assert(!ApplicationManager.getApplication().isDispatchThread)
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 

@@ -1,7 +1,6 @@
 package ru.jetbrains.yaveyn.fuzzysearch.test.search.quality
 
 import com.intellij.openapi.project.DumbService
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
@@ -26,7 +25,6 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     private val refreshingResults = File(currentTestResultsDir, "refreshing.txt")
     private val timeResults = File(currentTestResultsDir, "time.txt")
 
-    private var myProject: Project? = null
     private var searcher: DLSearcher? = null
 
     private val ANSI_RESET = "\u001B[0m"
@@ -36,17 +34,19 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         super.setUp()
         myFixture.testDataPath = testDataDir.canonicalPath
 
-        myProject = myFixture.project
-
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.sortedBy { it.name }.toList()
         dependencies.forEach {
             PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath)
             println(it.name)
         }
 
+//        if (!DumbService.isDumb(project)) {
+//            FileBasedIndex.getInstance().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, null)
+//            FileBasedIndex.getInstance().ensureUpToDate<TodoIndexEntry>(TodoIndex.NAME, project, null)
+//        }
 
-        DumbService.getInstance(myProject!!).waitForSmartMode()
-        searcher = myProject!!.getComponent(TypoFixerComponent::class.java).searcher
+        DumbService.getInstance(project).waitForSmartMode()
+        searcher = project.getComponent(TypoFixerComponent::class.java).searcher
         searcher!!.forceGlobalIndexRefreshing()
         // 589671
 
@@ -63,7 +63,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     @Test
 //    @Ignore
     fun testRefreshGlobalIndex() {
-        val times = 50
+        val times = 1
         val result = measureTimeMillis({ (1..times).forEach { searcher!!.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
         val resultLoggingNeeded = !refreshingResults.exists()
         if (resultLoggingNeeded) {
@@ -135,7 +135,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     }
 
     private fun doPrecisionTest(str: String, precs: List<Double>, resultLoggingNeeded: Boolean) {
-        val (preciseResult, result) = DumbService.getInstance(myProject!!).runReadActionInSmartMode(Computable {
+        val (preciseResult, result) = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
             val psiFile = null
             val preciseResult = searcher!!.search(str, psiFile, true)
             val result = searcher!!.search(str, psiFile)
@@ -148,7 +148,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
 
     private fun doTimeTest(str: String): Pair<Long, Pair<Int, Int>> {
         var candidates: Pair<Int, Int> = Pair(0, 0)
-        val time = DumbService.getInstance(myProject!!).runReadActionInSmartMode(Computable {
+        val time = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
             measureTimeMillis({ candidates = searcher!!.findClosestWithInfo(str, null).second })
         })
         return Pair(time, candidates)
