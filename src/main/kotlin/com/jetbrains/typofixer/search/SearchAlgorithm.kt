@@ -4,7 +4,7 @@ import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.index.CombinedIndex.WordType
-import com.jetbrains.typofixer.search.index.GlobalInnerIndex
+import com.jetbrains.typofixer.search.index.GlobalInnerIndexBase
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -19,7 +19,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
     // order in wordTypes matters
-    fun findClosest(str: String, isTooLate: () -> Boolean, wordTypes: Array<CombinedIndex.WordType> = WordType.values()): SearchResult
+    fun findClosest(str: String, isTooLate: () -> Boolean, wordTypes: Array<CombinedIndex.WordType>): SearchResult
             = findClosestWithRealCandidatesCount(str, wordTypes, isTooLate).first
 
     inner class SearchResult(foundWord: String?, val error: Int, val type: WordType) {
@@ -115,7 +115,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
                         return result to realCandidatesCount
                     }
                 }
-            } catch (e: GlobalInnerIndex.TriedToAccessIndexWhileItIsRefreshing) {
+            } catch (e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
                 return SearchResult() to realCandidatesCount
             }
         }

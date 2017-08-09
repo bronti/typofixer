@@ -14,6 +14,8 @@ abstract class InnerIndex(val signature: Signature) {
         strings.groupBy { signature.get(it) }.forEach { addAll(it.key, it.value.toSet()) }
     }
 
+    protected fun Set<String>.addAllToIndex() = addAll(this)
+
     protected abstract fun getWithDefault(signature: Int): HashSet<String>
     protected abstract fun addAll(signature: Int, strings: Set<String>)
 

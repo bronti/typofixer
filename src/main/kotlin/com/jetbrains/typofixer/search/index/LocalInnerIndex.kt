@@ -25,12 +25,12 @@ class LocalInnerIndex(signature: Signature, val getWords: (element: PsiElement) 
     fun refresh(element: PsiElement?) {
         index.clear()
         element ?: return
-        addAll(getWords(element))
+        getWords(element).addAllToIndex()
     }
 
     fun refreshWithWords(words: List<String>) {
         index.clear()
-        addAll(words.toSet())
+        words.toSet().addAllToIndex()
     }
 
     @TestOnly

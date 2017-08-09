@@ -49,9 +49,5 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             "class Some { override <caret>}",
             true)
 
-    fun testKeywordInPrimaryConstructor() = doTest(
-            "class Some(vall<caret>)",
-            ' ',
-            "class Some(val <caret>)",
-            true)
+    // todo: test kotlin specific fields (new projectfortesting needed?)
 }

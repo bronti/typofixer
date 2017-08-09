@@ -29,7 +29,7 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
+    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
     abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
     abstract fun getStatus(): Status
@@ -95,11 +95,11 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
-    override fun findClosest(element: PsiElement?, str: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocal(element)
-            getSearch(false).findClosest(str, isTooLate)
+            getSearch(false).findClosest(str, isTooLate, wordTypes)
         } else getSearch(false).EMPTY_RESULT
     }
 

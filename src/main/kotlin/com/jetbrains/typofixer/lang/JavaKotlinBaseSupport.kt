@@ -5,6 +5,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.SearchAlgorithm
+import com.jetbrains.typofixer.search.index.CombinedIndex
 
 abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     companion object {
@@ -33,7 +34,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         override fun iaBadReplace(element: PsiElement) = !isProperlyReplacedIdentifier(element)
         override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
             val searcher = element.project.getComponent(TypoFixerComponent::class.java).searcher
-            return searcher.findClosest(element, oldText, isTooLate)
+            return searcher.findClosest(element, oldText, correspondingWordTypes(), isTooLate)
         }
     }
 
@@ -44,6 +45,8 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 //        // todo: difference between primary constructor and other cases
 //        return if (!isReplaced) isParameter(element) else !isKeyword(element) || isErrorElement(element)
 //    }
+
+    abstract protected fun correspondingWordTypes(): Array<CombinedIndex.WordType>
 
     abstract protected fun isReference(element: PsiElement): Boolean
     abstract protected fun isIdentifier(element: PsiElement): Boolean

@@ -6,6 +6,7 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.SearchAlgorithm
+import com.jetbrains.typofixer.search.index.CombinedIndex
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
@@ -17,6 +18,13 @@ import org.jetbrains.kotlin.psi.*
  */
 
 class KotlinSupport : JavaKotlinBaseSupport() {
+
+    override fun correspondingWordTypes() = arrayOf(
+            CombinedIndex.WordType.KEYWORD,
+            CombinedIndex.WordType.LOCAL_IDENTIFIER,
+            CombinedIndex.WordType.KOTLIN_SPECIFIC_FIELD,
+            CombinedIndex.WordType.GLOBAL
+    )
 
     private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'

@@ -2,12 +2,19 @@ package com.jetbrains.typofixer.lang
 
 import com.intellij.psi.*
 import com.intellij.psi.tree.java.IKeywordElementType
+import com.jetbrains.typofixer.search.index.CombinedIndex
 
 /**
  * @author bronti.
  */
 // todo: make base class for java and kotlin
 class JavaSupport : JavaKotlinBaseSupport() {
+
+    override fun correspondingWordTypes() = arrayOf(
+            CombinedIndex.WordType.KEYWORD,
+            CombinedIndex.WordType.LOCAL_IDENTIFIER,
+            CombinedIndex.WordType.GLOBAL
+    )
 
     override fun isReference(element: PsiElement) = element.parent is PsiReference
     override fun isIdentifier(element: PsiElement) = element.node.elementType == JavaTokenType.IDENTIFIER
