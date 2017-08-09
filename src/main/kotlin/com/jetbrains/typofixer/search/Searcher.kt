@@ -29,6 +29,7 @@ abstract class Searcher {
     }
 
     abstract fun findClosest(element: PsiElement?, str: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
+    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
     abstract fun getStatus(): Status
 }
@@ -95,6 +96,14 @@ open class DLSearcher(val project: Project) : Searcher() {
             // todo: isTooLate into refreshLocal?
             index.refreshLocal(element)
             getSearch(false).findClosest(str, isTooLate)
+        } else getSearch(false).EMPTY_RESULT
+    }
+
+    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+        return if (canSearch()) {
+            // todo: isTooLate into refreshLocal?
+            index.refreshLocalWithKeywords(keywords)
+            getSearch(false).findClosest(str, isTooLate, arrayOf(CombinedIndex.WordType.KEYWORD))
         } else getSearch(false).EMPTY_RESULT
     }
 

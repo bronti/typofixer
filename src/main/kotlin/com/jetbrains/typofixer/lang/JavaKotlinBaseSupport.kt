@@ -3,6 +3,8 @@ package com.jetbrains.typofixer.lang
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
+import com.jetbrains.typofixer.TypoFixerComponent
+import com.jetbrains.typofixer.search.SearchAlgorithm
 
 abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     protected fun identifierChar(c: Char) = c.isJavaIdentifierPart()
@@ -26,8 +28,13 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c)
         override fun needToReplace(element: PsiElement, fast: Boolean) = isBadIdentifier(element, fast)
         override fun iaBadReplace(element: PsiElement) = !isProperlyReplacedIdentifier(element)
+        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+            val searcher = element.project.getComponent(TypoFixerComponent::class.java).searcher
+            return searcher.findClosest(element, oldText, isTooLate)
+        }
     }
 
+    // order matters
     override fun getTypoCases(): List<TypoCase> = listOf(BAD_IDENTIFIER)
 
 //    protected fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean {

@@ -60,6 +60,11 @@ class CombinedIndex(val project: Project, val signature: Signature) {
         project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
     }
 
+    fun refreshLocalWithKeywords(words: List<String>) {
+        keywordsIndex.refreshWithWords(words)
+        localIdentifiersIndex.clear()
+    }
+
     fun refreshGlobal() {
         if (!canRefreshGlobal) return
         ++timesGlobalRefreshRequested

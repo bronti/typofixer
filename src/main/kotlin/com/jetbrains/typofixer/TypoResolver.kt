@@ -28,8 +28,8 @@ class TypoResolver private constructor(
 
     companion object {
         //todo: make settings
-        private const val MAX_MILLIS_TO_FIND = 200
-        private const val MAX_MILLIS_TO_RESOLVE = 1000
+        private const val MAX_MILLIS_TO_FIND = 100000//200
+        private const val MAX_MILLIS_TO_RESOLVE = 100000//1000
 
         private fun isTooLateForFind(timeOfStart: Long) = System.currentTimeMillis() >= timeOfStart + MAX_MILLIS_TO_FIND
 
@@ -41,8 +41,6 @@ class TypoResolver private constructor(
         }
 
         private fun doGetInstance(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport, timeOfStart: Long): TypoResolver? {
-
-            val project = psiFile.project
             val nextCharOffset = editor.caretModel.offset
 
             var element: PsiElement? = null
@@ -59,11 +57,10 @@ class TypoResolver private constructor(
                 if (typoCase.needToReplace(element, fast = true)) {
 
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+                    val newText = typoCase.getReplacement(element, oldText, { isTooLateForFind(timeOfStart) }).word
+//                    val newText = searcher.findClosest(element, oldText, { isTooLateForFind(timeOfStart) }).word
 
-                    val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-                    val newText = searcher.findClosest(element, oldText, { isTooLateForFind(timeOfStart) }).word
-
-                    if (newText == null || newText == oldText || isTooLateForFind(timeOfStart)) return null
+                    if (newText == null || isTooLateForFind(timeOfStart)) return null
                     return TypoResolver(psiFile, editor, typoCase, element, oldText, newText, timeOfStart)
                 }
             }

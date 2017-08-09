@@ -30,6 +30,8 @@ abstract class Index(val signature: Signature) {
     protected abstract fun getWithDefault(signature: Int): HashSet<String>
     protected abstract fun addAll(signature: Int, strings: Set<String>)
 
+    abstract fun clear()
+
     @TestOnly
     abstract fun contains(str: String): Boolean
 }
@@ -38,12 +40,19 @@ class LocalIndex(signature: Signature, val getWords: (element: PsiElement) -> Se
 
     override fun getSize() = index.entries.sumBy { it.value.size }
 
+    override fun clear() = index.clear()
+
     private val index = HashMap<Int, HashSet<String>>()
 
     fun refresh(element: PsiElement?) {
         index.clear()
         element ?: return
         addAll(getWords(element))
+    }
+
+    fun refreshWithWords(words: List<String>) {
+        index.clear()
+        addAll(words.toSet())
     }
 
     override fun getWithDefault(signature: Int): HashSet<String> {
@@ -63,6 +72,8 @@ class LocalIndex(signature: Signature, val getWords: (element: PsiElement) -> Se
 class GlobalIndex(val project: Project, signature: Signature) : Index(signature) {
 
     override fun getSize() = synchronized(this) { index.entries.sumBy { it.value.size } }
+
+    override fun clear() = index.clear()
 
     private val index = HashMap<Int, HashSet<String>>()
 

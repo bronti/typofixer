@@ -3,6 +3,7 @@ package com.jetbrains.typofixer.search
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
 import com.jetbrains.typofixer.search.index.CombinedIndex
+import com.jetbrains.typofixer.search.index.CombinedIndex.WordType
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -10,18 +11,23 @@ import org.jetbrains.annotations.TestOnly
  */
 abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: CombinedIndex) {
 
-    protected abstract fun findClosestWithRealCandidatesCount(str: String, isTooLate: () -> Boolean = { false }): Pair<SearchResult, Int>
+    protected abstract fun findClosestWithRealCandidatesCount(
+            str: String,
+            wordTypes: Array<CombinedIndex.WordType>,
+            isTooLate: () -> Boolean = { false }): Pair<SearchResult, Int>
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    fun findClosest(str: String, isTooLate: () -> Boolean): SearchResult = findClosestWithRealCandidatesCount(str, isTooLate).first
+    // order in wordTypes matters
+    fun findClosest(str: String, isTooLate: () -> Boolean, wordTypes: Array<CombinedIndex.WordType> = WordType.values()): SearchResult
+            = findClosestWithRealCandidatesCount(str, wordTypes, isTooLate).first
 
-    inner class SearchResult(foundWord: String?, val error: Int, val type: CombinedIndex.WordType) {
+    inner class SearchResult(foundWord: String?, val error: Int, val type: WordType) {
         val word = foundWord
             get() = if (isValid) field else null
 
         val isValid = foundWord != null && error <= maxError
 
-        constructor() : this(null, maxError + 1, CombinedIndex.WordType.GLOBAL)
+        constructor() : this(null, maxError + 1, WordType.GLOBAL)
 
         // don't compare results from different outer classes!!!
         fun betterThan(other: SearchResult): Boolean {
@@ -36,7 +42,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
     fun findClosestWithInfo(str: String): Pair<String?, Pair<Int, Int>> {
         val signaturesByError = getSignatures(str)
 
-        val (result, realCandidatesCount) = findClosestWithRealCandidatesCount(str)
+        val (result, realCandidatesCount) = findClosestWithRealCandidatesCount(str, WordType.values())
 
         val candidatesCount = signaturesByError.map { index.getAltogether(it).size }.sum()
 
@@ -66,13 +72,17 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
 
     val EMPTY_RESULT = SearchResult()
 
-    override fun findClosestWithRealCandidatesCount(str: String, isTooLate: () -> Boolean): Pair<SearchAlgorithm.SearchResult, Int> {
+    override fun findClosestWithRealCandidatesCount(
+            str: String,
+            wordTypes: Array<CombinedIndex.WordType>,
+            isTooLate: () -> Boolean): Pair<SearchAlgorithm.SearchResult, Int> {
+
         val distance = getDistanceTo(str)
         val signaturesByError = getSignatures(str)
         var realCandidatesCount = 0
         var result = this.SearchResult()
 
-        loop@for (error in signaturesByError.indices) {
+        errorsLoop@ for (error in signaturesByError.indices) {
             val signatures = signaturesByError[error]
 
             fun getMinimumOfType(type: CombinedIndex.WordType): SearchAlgorithm.SearchResult {
@@ -98,10 +108,10 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
                 return newResult.error == error
             }
 
-            if (searchForType(CombinedIndex.WordType.KEYWORD) || isTooLate()
-                    || searchForType(CombinedIndex.WordType.LOCAL) || isTooLate()
-                    || searchForType(CombinedIndex.WordType.GLOBAL) || isTooLate()) {
-                break
+            for (type in wordTypes) {
+                if (searchForType(type) || isTooLate()) {
+                    break@errorsLoop
+                }
             }
         }
 

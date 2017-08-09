@@ -3,6 +3,7 @@ package com.jetbrains.typofixer.lang
 import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
 import com.intellij.psi.PsiElement
+import com.jetbrains.typofixer.search.SearchAlgorithm
 import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 
 /**
@@ -36,6 +37,6 @@ interface TypoCase {
     fun needToReplace(element: PsiElement, fast: Boolean = false): Boolean
 
     fun iaBadReplace(element: PsiElement): Boolean
-//    fun findClosest(str: String): Boolean
 
+    fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
 }
