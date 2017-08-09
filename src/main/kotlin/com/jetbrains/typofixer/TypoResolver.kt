@@ -23,17 +23,24 @@ class TypoResolver private constructor(
         private val typoCase: TypoCase,
         private var element: PsiElement,
         private val oldText: String,
-        private val newText: String) {
+        private val newText: String,
+        private val timeOfStart: Long) {
 
     companion object {
+        //todo: make settings
+        private const val MAX_MILLIS_TO_FIND = 200
+        private const val MAX_MILLIS_TO_RESOLVE = 1000
+
+        private fun isTooLateForFind(timeOfStart: Long) = System.currentTimeMillis() >= timeOfStart + MAX_MILLIS_TO_FIND
+
         fun getInstance(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
             if (!psiFile.project.getComponent(TypoFixerComponent::class.java).isActive) return null
 
-            return doGetInstance(nextChar, editor, psiFile, langSupport)
+            return doGetInstance(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
         }
 
-        private fun doGetInstance(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport): TypoResolver? {
+        private fun doGetInstance(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport, timeOfStart: Long): TypoResolver? {
 
             val project = psiFile.project
             val nextCharOffset = editor.caretModel.offset
@@ -54,10 +61,10 @@ class TypoResolver private constructor(
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
 
                     val searcher = project.getComponent(TypoFixerComponent::class.java).searcher
-                    val newText = searcher.findClosest(element, oldText).word
+                    val newText = searcher.findClosest(element, oldText, { isTooLateForFind(timeOfStart) }).word
 
-                    if (newText == null || newText == oldText) return null
-                    return TypoResolver(psiFile, editor, typoCase, element, oldText, newText)
+                    if (newText == null || newText == oldText || isTooLateForFind(timeOfStart)) return null
+                    return TypoResolver(psiFile, editor, typoCase, element, oldText, newText, timeOfStart)
                 }
             }
             return null
@@ -68,11 +75,12 @@ class TypoResolver private constructor(
         @TestOnly
         fun getInstanceIgnoreIsActive(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
-            return doGetInstance(nextChar, editor, psiFile, langSupport)
+            return doGetInstance(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
         }
     }
 
     private fun refreshPsi() = refreshPsi(editor)
+    private fun isTooLate() = System.currentTimeMillis() >= timeOfStart + MAX_MILLIS_TO_RESOLVE
 
     private val document: Document = editor.document
     //    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)!!
@@ -86,7 +94,10 @@ class TypoResolver private constructor(
     fun resolve() = Thread { doResolve() }.start()
 
     private fun doResolve() {
-        checkElementIsBad(true) && fixTypo() && checkElementIsBad(false) && undoFix()
+        checkElementIsBad(true) && !isTooLate()
+                && fixTypo() && !isTooLate()
+                && checkElementIsBad(false) && !isTooLate()
+                && undoFix()
     }
 
     private fun fixTypo(): Boolean = performCommand("Resolve typo", oldText) { replaceText(oldText, newText) }
@@ -106,15 +117,17 @@ class TypoResolver private constructor(
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
+        fun doCheck() {
+            result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
+        }
+
         var resultCalculated = false
         while (!resultCalculated) {
             val expectedText = if (isBeforeReplace) oldText else newText
-            appManager.invokeAndWait { appManager.runReadAction { result = refreshElement(expectedText) } }
-            if (!result) return false
 
-            fun doCheck() {
-                result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
-            }
+            var elementIsRefreshed = false
+            appManager.invokeAndWait { appManager.runReadAction { elementIsRefreshed = refreshElement(expectedText) } }
+            if (!elementIsRefreshed || isTooLate()) return false
 
             resultCalculated =
                     if (ApplicationManager.getApplication().isDispatchThread) {
@@ -135,7 +148,7 @@ class TypoResolver private constructor(
         appManager.invokeAndWait {
             appManager.runWriteAction {
                 if (refreshElement(prefix)) {
-                    if (project.isOpen) {
+                    if (project.isOpen && !isTooLate()) {
                         CommandProcessor.getInstance().executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
                         done = true
                     }

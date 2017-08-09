@@ -10,10 +10,10 @@ import org.jetbrains.annotations.TestOnly
  */
 abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: CombinedIndex) {
 
-    protected abstract fun findClosestWithRealCandidatesCount(str: String): Pair<SearchAlgorithm.SearchResult, Int>
+    protected abstract fun findClosestWithRealCandidatesCount(str: String, isTooLate: () -> Boolean = { false }): Pair<SearchResult, Int>
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    fun findClosest(str: String): SearchResult = findClosestWithRealCandidatesCount(str).first
+    fun findClosest(str: String, isTooLate: () -> Boolean): SearchResult = findClosestWithRealCandidatesCount(str, isTooLate).first
 
     inner class SearchResult(foundWord: String?, val error: Int, val type: CombinedIndex.WordType) {
         val word = foundWord
@@ -64,17 +64,20 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
 abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
     : SearchAlgorithm(maxError, { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }, index) {
 
-    override fun findClosestWithRealCandidatesCount(str: String): Pair<SearchAlgorithm.SearchResult, Int> {
+    val EMPTY_RESULT = SearchResult()
+
+    override fun findClosestWithRealCandidatesCount(str: String, isTooLate: () -> Boolean): Pair<SearchAlgorithm.SearchResult, Int> {
         val distance = getDistanceTo(str)
         val signaturesByError = getSignatures(str)
         var realCandidatesCount = 0
         var result = this.SearchResult()
 
-        for (error in signaturesByError.indices) {
+        loop@for (error in signaturesByError.indices) {
             val signatures = signaturesByError[error]
 
             fun getMinimumOfType(type: CombinedIndex.WordType): SearchAlgorithm.SearchResult {
                 val candidates = index.getAll(type, signatures)
+                // todo: isTooLate (?)
                 val best = candidates.filter { it != str }.minBy { distance.measure(it) }
                 realCandidatesCount += candidates.size
                 val bestError = if (best == null) maxError + 1 else distance.measure(best)
@@ -95,7 +98,9 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
                 return newResult.error == error
             }
 
-            if (searchForType(CombinedIndex.WordType.KEYWORD) || searchForType(CombinedIndex.WordType.LOCAL) || searchForType(CombinedIndex.WordType.GLOBAL)) {
+            if (searchForType(CombinedIndex.WordType.KEYWORD) || isTooLate()
+                    || searchForType(CombinedIndex.WordType.LOCAL) || isTooLate()
+                    || searchForType(CombinedIndex.WordType.GLOBAL) || isTooLate()) {
                 break
             }
         }
