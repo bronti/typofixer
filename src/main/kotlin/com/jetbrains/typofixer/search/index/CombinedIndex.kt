@@ -1,6 +1,7 @@
 package com.jetbrains.typofixer.search.index
 
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -21,18 +22,20 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     private fun getDictCollector(file: PsiFile) = TypoFixerLanguageSupport.getSupport(file.language)?.getLocalDictionaryCollector()
 
     // not concurrent
-    private val keywordsIndex = LocalIndex(signature) { getDictCollector(it.containingFile)?.keyWords(it)?.toSet() ?: setOf() }
+    private val keywordsIndex = LocalInnerIndex(signature) { getDictCollector(it.containingFile)?.keyWords(it)?.toSet() ?: setOf() }
     // not concurrent
-    private val localIdentifiersIndex = LocalIndex(signature) { getDictCollector(it.containingFile)?.localIdentifiers(it.containingFile)?.toSet() ?: setOf() }
+    private val localIdentifiersIndex = LocalInnerIndex(signature) { getDictCollector(it.containingFile)?.localIdentifiers(it.containingFile)?.toSet() ?: setOf() }
     // concurrent
-    private val globalIndex = GlobalIndex(project, signature)
+    private val globalIndex = GlobalInnerIndex(project, signature)
 
     fun getLocalSize() = localIdentifiersIndex.getSize() + keywordsIndex.getSize()
 
-    // slow!!
-    fun getGlobalSize() = synchronized(globalIndex) { globalIndex.getSize() }
+    fun getGlobalSize(): Int {
+        assert(ApplicationManager.getApplication().isInternal)
+        return synchronized(globalIndex) { globalIndex.getSize() }
+    }
 
-    // internal use only (works slowly for globalIndex!!!!
+    // internal use only (can works slowly for globalIndex!!!!)
     fun getSize() = getLocalSize() + getGlobalSize()
 
     fun isUsable() = globalIndex.isUsable()
@@ -44,7 +47,6 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     // internal use only
     var timesGlobalRefreshRequested = 0
         private set
-
 
     fun getAll(type: WordType, signatures: Set<Int>) = when (type) {
         WordType.KEYWORD -> keywordsIndex.getAll(signatures)

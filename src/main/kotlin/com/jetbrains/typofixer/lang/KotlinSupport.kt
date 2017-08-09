@@ -6,7 +6,6 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.SearchAlgorithm
-import com.jetbrains.typofixer.search.index.LocalDictionaryCollector
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
@@ -19,23 +18,24 @@ import org.jetbrains.kotlin.psi.*
 
 class KotlinSupport : JavaKotlinBaseSupport() {
 
-    private val BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR = object : TypoCase {
+    private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
-        override fun needToReplace(element: PsiElement, fast: Boolean) = isParameter(element) && isInPrimaryConstructor(element)
         override fun iaBadReplace(element: PsiElement) = isErrorElement(element)
         override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
             val searcher = element.project.getComponent(TypoFixerComponent::class.java).searcher
-            return searcher.findClosestAmongKeywords(oldText, KEYWORDS_ALLOWED_IN_PRIMARY_CONSTRUCTOR, isTooLate)
+            return searcher.findClosestAmongKeywords(oldText, allowedKeywords, isTooLate)
         }
+
+        abstract val allowedKeywords: List<String>
     }
-    private val BAD_KEYWORD_IN_FUN_PARAMETER = object : TypoCase {
-        override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
+
+    private val BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR = object : BadKeywordBeforeParameter() {
+        override fun needToReplace(element: PsiElement, fast: Boolean) = isParameter(element) && isInPrimaryConstructor(element)
+        override val allowedKeywords = KEYWORDS_ALLOWED_IN_PRIMARY_CONSTRUCTOR
+    }
+    private val BAD_KEYWORD_IN_FUN_PARAMETER = object : BadKeywordBeforeParameter() {
         override fun needToReplace(element: PsiElement, fast: Boolean) = isParameter(element)
-        override fun iaBadReplace(element: PsiElement) = isErrorElement(element)
-        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
-            val searcher = element.project.getComponent(TypoFixerComponent::class.java).searcher
-            return searcher.findClosestAmongKeywords(oldText, KEYWORDS_ALLOWED_IN_FUN_PARAMETERS, isTooLate)
-        }
+        override val allowedKeywords = KEYWORDS_ALLOWED_IN_FUN_PARAMETERS
     }
 
     // order matters

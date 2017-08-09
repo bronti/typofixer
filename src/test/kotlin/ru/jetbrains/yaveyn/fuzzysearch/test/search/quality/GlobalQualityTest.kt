@@ -41,8 +41,8 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         }
 
 //        if (!DumbService.isDumb(project)) {
-//            FileBasedIndex.getInstance().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, null)
-//            FileBasedIndex.getInstance().ensureUpToDate<TodoIndexEntry>(TodoIndex.NAME, project, null)
+//            FileBasedIndex.getResolver().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, null)
+//            FileBasedIndex.getResolver().ensureUpToDate<TodoIndexEntry>(TodoIndex.NAME, project, null)
 //        }
 
         DumbService.getInstance(project).waitForSmartMode()

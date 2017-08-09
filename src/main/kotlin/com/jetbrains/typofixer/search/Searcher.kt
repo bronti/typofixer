@@ -1,6 +1,7 @@
 package com.jetbrains.typofixer.search
 
 import com.intellij.ProjectTopics
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -76,17 +77,20 @@ open class DLSearcher(val project: Project) : Searcher() {
                     }
                 }
 
-                // todo:
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
-                }
+                // todo: ?
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {}
 
-                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {
-                }
+                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {}
             })
         }
     }
 
-    override fun getStatus() = if (DumbService.isDumb(project)) Status.DUMB_MODE else if (index.isUsable()) Status.ACTIVE else Status.INDEX_REFRESHING
+    override fun getStatus() = when {
+        DumbService.isDumb(project) -> Status.DUMB_MODE
+        index.isUsable() -> Status.ACTIVE
+        else -> Status.INDEX_REFRESHING
+    }
+
     private fun canSearch() = getStatus() == Status.ACTIVE
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
@@ -113,7 +117,10 @@ open class DLSearcher(val project: Project) : Searcher() {
     }
 
     // internal use only
-    fun getStatistics() = Pair(index.getSize(), index.timesGlobalRefreshRequested)
+    fun getStatistics(): Pair<Int, Int> {
+        assert(ApplicationManager.getApplication().isInternal)
+        return Pair(index.getSize(), index.timesGlobalRefreshRequested)
+    }
 
     @TestOnly
     override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {

@@ -19,7 +19,7 @@ class TypoFixTypedHandler: TypedHandlerDelegate() {
         // todo: multiple caret. do nothing?
         if (editor.caretModel.caretCount > 1) return Result.CONTINUE
 
-        TypoResolver.getInstance(c, editor, psiFile)?.resolve()
+        TypoResolver.getResolver(c, editor, psiFile)?.resolve()
 
         return Result.CONTINUE
     }

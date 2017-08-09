@@ -7,7 +7,10 @@ import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.SearchAlgorithm
 
 abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
-    protected fun identifierChar(c: Char) = c.isJavaIdentifierPart()
+    companion object {
+        fun identifierChar(c: Char) = c.isJavaIdentifierPart()
+        fun isErrorElement(element: PsiElement) = element.parent is PsiErrorElement
+    }
 
     protected fun isBadIdentifier(element: PsiElement, isFast: Boolean): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
@@ -41,8 +44,6 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 //        // todo: difference between primary constructor and other cases
 //        return if (!isReplaced) isParameter(element) else !isKeyword(element) || isErrorElement(element)
 //    }
-
-    protected fun isErrorElement(element: PsiElement) = element.parent is PsiErrorElement
 
     abstract protected fun isReference(element: PsiElement): Boolean
     abstract protected fun isIdentifier(element: PsiElement): Boolean

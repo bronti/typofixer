@@ -33,14 +33,16 @@ class TypoResolver private constructor(
 
         private fun isTooLateForFind(timeOfStart: Long) = System.currentTimeMillis() >= timeOfStart + MAX_MILLIS_TO_FIND
 
-        fun getInstance(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
+        fun getResolver(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
             if (!psiFile.project.getComponent(TypoFixerComponent::class.java).isActive) return null
 
-            return doGetInstance(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
+            return doGetResolver(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
         }
 
-        private fun doGetInstance(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport, timeOfStart: Long): TypoResolver? {
+        private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
+
+        private fun doGetResolver(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport, timeOfStart: Long): TypoResolver? {
             val nextCharOffset = editor.caretModel.offset
 
             var element: PsiElement? = null
@@ -58,7 +60,6 @@ class TypoResolver private constructor(
 
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
                     val newText = typoCase.getReplacement(element, oldText, { isTooLateForFind(timeOfStart) }).word
-//                    val newText = searcher.findClosest(element, oldText, { isTooLateForFind(timeOfStart) }).word
 
                     if (newText == null || isTooLateForFind(timeOfStart)) return null
                     return TypoResolver(psiFile, editor, typoCase, element, oldText, newText, timeOfStart)
@@ -67,12 +68,10 @@ class TypoResolver private constructor(
             return null
         }
 
-        private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
-
         @TestOnly
         fun getInstanceIgnoreIsActive(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
-            return doGetInstance(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
+            return doGetResolver(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
         }
     }
 
@@ -80,7 +79,7 @@ class TypoResolver private constructor(
     private fun isTooLate() = System.currentTimeMillis() >= timeOfStart + MAX_MILLIS_TO_RESOLVE
 
     private val document: Document = editor.document
-    //    private val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language)!!
+
     private val project
         get() = psiFile.project
 
@@ -98,23 +97,14 @@ class TypoResolver private constructor(
     }
 
     private fun fixTypo(): Boolean = performCommand("Resolve typo", oldText) { replaceText(oldText, newText) }
-
-    private fun undoFix(): Boolean = performCommand("Undo typo resolve", newText) { replaceText(newText, oldText) }
-
-    private fun refreshElement(startingText: String = ""): Boolean {
-        refreshPsi()
-        val newElement = psiFile.findElementAt(elementStartOffset)
-        if (newElement == null || !newElement.text.startsWith(startingText)) return false
-        element = newElement
-        elementStartOffset = element.textOffset
-        return true
-    }
+    private fun undoFix(): Boolean = performCommand("Undo incorrect typo resolve", newText) { replaceText(newText, oldText) }
 
     private fun checkElementIsBad(isBeforeReplace: Boolean): Boolean {
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
         fun doCheck() {
+            ProgressIndicatorProvider.checkCanceled()
             result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
         }
 
@@ -127,15 +117,9 @@ class TypoResolver private constructor(
             if (!elementIsRefreshed || isTooLate()) return false
 
             resultCalculated =
-                    if (ApplicationManager.getApplication().isDispatchThread) {
-                        doCheck()
-                        true
-                    } else {
-                        ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
-                            ProgressIndicatorProvider.checkCanceled()
-                            doCheck()
-                        }, indicator)
-                    }
+                    if (appManager.isDispatchThread) {
+                        doCheck(); true
+                    } else ProgressManager.getInstance().runInReadActionWithWriteActionPriority(::doCheck, indicator)
         }
         return result
     }
@@ -144,11 +128,10 @@ class TypoResolver private constructor(
         var done = false
         appManager.invokeAndWait {
             appManager.runWriteAction {
-                if (refreshElement(prefix)) {
-                    if (project.isOpen && !isTooLate()) {
-                        CommandProcessor.getInstance().executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
-                        done = true
-                    }
+                if (refreshElement(prefix) && project.isOpen && !isTooLate()) {
+                    val commandProcessor = CommandProcessor.getInstance()
+                    commandProcessor.executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
+                    done = true
                 }
             }
         }
@@ -157,6 +140,15 @@ class TypoResolver private constructor(
 
     private fun replaceText(old: String, new: String) {
         document.replaceString(elementStartOffset, elementStartOffset + old.length, new)
+    }
+
+    private fun refreshElement(startingText: String = ""): Boolean {
+        refreshPsi()
+        val newElement = psiFile.findElementAt(elementStartOffset)
+        if (newElement == null || !newElement.text.startsWith(startingText)) return false
+        element = newElement
+        elementStartOffset = element.textOffset
+        return true
     }
 
     @TestOnly

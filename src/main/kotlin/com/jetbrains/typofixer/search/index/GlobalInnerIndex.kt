@@ -9,7 +9,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaDirectoryService
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.TypoFixerComponent
@@ -17,59 +16,8 @@ import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 import java.util.*
 
-abstract class Index(val signature: Signature) {
 
-    abstract fun getSize(): Int
-
-    open fun getAll(signatures: Set<Int>) = signatures.flatMap { getWithDefault(it) }
-
-    open fun addAll(strings: Set<String>) {
-        strings.groupBy { signature.get(it) }.forEach { addAll(it.key, it.value.toSet()) }
-    }
-
-    protected abstract fun getWithDefault(signature: Int): HashSet<String>
-    protected abstract fun addAll(signature: Int, strings: Set<String>)
-
-    abstract fun clear()
-
-    @TestOnly
-    abstract fun contains(str: String): Boolean
-}
-
-class LocalIndex(signature: Signature, val getWords: (element: PsiElement) -> Set<String>) : Index(signature) {
-
-    override fun getSize() = index.entries.sumBy { it.value.size }
-
-    override fun clear() = index.clear()
-
-    private val index = HashMap<Int, HashSet<String>>()
-
-    fun refresh(element: PsiElement?) {
-        index.clear()
-        element ?: return
-        addAll(getWords(element))
-    }
-
-    fun refreshWithWords(words: List<String>) {
-        index.clear()
-        addAll(words.toSet())
-    }
-
-    override fun getWithDefault(signature: Int): HashSet<String> {
-        val result = index[signature] ?: return hashSetOf()
-        return result
-    }
-
-    override fun addAll(signature: Int, strings: Set<String>) {
-        index[signature] = getWithDefault(signature)
-        index[signature]!!.addAll(strings)
-    }
-
-    @TestOnly
-    override fun contains(str: String) = index[signature.get(str)]?.contains(str) ?: false
-}
-
-class GlobalIndex(val project: Project, signature: Signature) : Index(signature) {
+class GlobalInnerIndex(val project: Project, signature: Signature) : InnerIndex(signature) {
 
     override fun getSize() = synchronized(this) { index.entries.sumBy { it.value.size } }
 
@@ -96,6 +44,14 @@ class GlobalIndex(val project: Project, signature: Signature) : Index(signature)
         }
     }
 
+    override fun getAll(signatures: Set<Int>) = synchronized(this) {
+        if (isUsable()) super.getAll(signatures)
+        else throw TriedToAccessIndexWhileItIsRefreshing()
+    }
+
+    override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
+
+
     override fun getWithDefault(signature: Int): HashSet<String> {
         val result = index[signature] ?: return hashSetOf()
         return result
@@ -106,8 +62,7 @@ class GlobalIndex(val project: Project, signature: Signature) : Index(signature)
         index[signature]!!.addAll(strings)
     }
 
-    override fun getAll(signatures: Set<Int>) = synchronized(this) { super.getAll(signatures) }
-    override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
+    class TriedToAccessIndexWhileItIsRefreshing : RuntimeException()
 
     inner private class CollectProjectNames(val project: Project) : ReadTask() {
 
@@ -193,7 +148,7 @@ class GlobalIndex(val project: Project, signature: Signature) : Index(signature)
                 }
             }
 
-            if (this@GlobalIndex.isUsable()) {
+            if (this@GlobalInnerIndex.isUsable()) {
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
             }
             done = true
