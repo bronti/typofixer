@@ -4,6 +4,7 @@ import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
 import com.jetbrains.typofixer.search.distance.DistanceTo
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.index.CombinedIndex.WordType
+import com.jetbrains.typofixer.search.index.GlobalInnerIndex
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -30,7 +31,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
         constructor() : this(null, maxError + 1, WordType.GLOBAL)
 
         // don't compare results from different outer classes!!!
-        fun betterThan(other: SearchResult): Boolean {
+        infix fun betterThan(other: SearchResult): Boolean {
 //      todo:      assert(this@SearchAlgorithm == other???)
             if (!isValid) return false
             if (error != other.error) return error < other.error
@@ -82,7 +83,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
         var realCandidatesCount = 0
         var result = this.SearchResult()
 
-        errorsLoop@ for (error in signaturesByError.indices) {
+        for (error in signaturesByError.indices) {
             val signatures = signaturesByError[error]
 
             fun getMinimumOfType(type: CombinedIndex.WordType): SearchAlgorithm.SearchResult {
@@ -102,20 +103,24 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
 
                 if (!newResult.isValid) return false
 
-                if (newResult.betterThan(result)) {
+                if (newResult betterThan result) {
                     result = newResult
                 }
                 return newResult.error == error
             }
 
-            for (type in wordTypes) {
-                if (searchForType(type) || isTooLate()) {
-                    break@errorsLoop
+            try {
+                for (type in wordTypes) {
+                    if (searchForType(type) || isTooLate()) {
+                        return result to realCandidatesCount
+                    }
                 }
+            } catch (e: GlobalInnerIndex.TriedToAccessIndexWhileItIsRefreshing) {
+                return SearchResult() to realCandidatesCount
             }
         }
 
-        return Pair(result, realCandidatesCount)
+        return result to realCandidatesCount
     }
 }
 
