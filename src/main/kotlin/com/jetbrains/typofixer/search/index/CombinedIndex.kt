@@ -17,7 +17,10 @@ import org.jetbrains.annotations.TestOnly
 class CombinedIndex(val project: Project, val signature: Signature) {
 
     enum class WordType {
-        KEYWORD, LOCAL_IDENTIFIER, KOTLIN_SPECIFIC_FIELD, GLOBAL;
+        KEYWORD,
+        LOCAL_IDENTIFIER,
+        KOTLIN_SPECIFIC_FIELD,
+        GLOBAL;
 
         fun isLocal() = this == KEYWORD || this == LOCAL_IDENTIFIER
         fun isGlobal() = !isLocal()
@@ -61,7 +64,7 @@ class CombinedIndex(val project: Project, val signature: Signature) {
         return getLocalSize() + getGlobalSize()
     }
 
-    fun isUsable() = globalIndex.isUsable()
+    fun isUsable() = globalIndex.isUsable() && kotlinSpecificFieldsIndex.isUsable()
 
     var canRefreshGlobal = true
 

@@ -12,30 +12,38 @@ import java.util.*
 
 
 class GlobalInnerIndex(project: Project, signature: Signature) : GlobalInnerIndexBase(project, signature) {
-    private var methodNamesCollected = false
-    private var fieldNamesCollected = false
-    private var classNamesCollected = false
-    private val dirsToCollectPackages = ArrayList<PsiDirectory>()
-    private val packageNames = HashSet<String>()
 
     override fun getRefreshingTask(): CollectProjectNamesBase = CollectProjectNames()
 
     private inner class CollectProjectNames : CollectProjectNamesBase() {
+
+        // todo: refactor
+        private var methodNamesCollected = false
+        private var fieldNamesCollected = false
+        private var classNamesCollected = false
+        private val dirsToCollectPackages = ArrayList<PsiDirectory>()
+        private var dirsForPackageNamesCollected = false
+        private val packageNames = HashSet<String>()
+        private var packagaNamesCollected = false
+
         override fun doCollect(indicator: ProgressIndicator?) {
             val cache = PsiShortNamesCache.getInstance(project)
 
             // todo: refactor
-            checkedCollect(indicator, methodNamesCollected, { cache.allMethodNames }) { methodNamesCollected = true }
-            checkedCollect(indicator, fieldNamesCollected, { cache.allFieldNames }) { fieldNamesCollected = true }
-            checkedCollect(indicator, classNamesCollected, { cache.allClassNames }) { classNamesCollected = true }
+            checkedCollect(indicator, methodNamesCollected, { cache.allMethodNames.toSet() }) { methodNamesCollected = true }
+            checkedCollect(indicator, fieldNamesCollected, { cache.allFieldNames.toSet() }) { fieldNamesCollected = true }
+            checkedCollect(indicator, classNamesCollected, { cache.allClassNames.toSet() }) { classNamesCollected = true }
 
             val initialPackage = JavaPsiFacade.getInstance(project).findPackage("")
             val javaDirService = JavaDirectoryService.getInstance()
             val scope = GlobalSearchScope.allScope(project)
 
-            dirsToCollectPackages.addAll(
-                    initialPackage?.getDirectories(scope)?.flatMap { it.subdirectories.toList() } ?: emptyList()
-            )
+            if (!dirsForPackageNamesCollected && shouldCollect(indicator)) {
+                dirsToCollectPackages.addAll(
+                        initialPackage?.getDirectories(scope)?.flatMap { it.subdirectories.toList() } ?: emptyList()
+                )
+                dirsForPackageNamesCollected = true
+            }
 
             //doesn't work:
 //            PackageIndexUtil.getSubPackageFqNames(FqName.ROOT, scope, project, { true })
@@ -55,12 +63,7 @@ class GlobalInnerIndex(project: Project, signature: Signature) : GlobalInnerInde
                 }
             }
 
-            if (shouldCollect(indicator) && packageNames.isNotEmpty()) {
-                synchronized(this) {
-                    if (shouldCollect(indicator)) packageNames.addAllToIndex()
-                    packageNames.clear()
-                }
-            }
+            checkedCollect(indicator, packagaNamesCollected, { packageNames }) { packagaNamesCollected = true }
         }
     }
 }
