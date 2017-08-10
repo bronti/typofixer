@@ -24,7 +24,7 @@ class TypoFixEnterHandler: EnterHandlerDelegate {
 
         if (caret.caretCount > 1) return Result.Continue
 
-        TypoResolver.getInstance('\n', editor, psiFile)?.resolve()
+        TypoResolver.getResolver('\n', editor, psiFile)?.resolve()
         caretOffset.set(editor.caretModel.offset)
 
         return Result.Continue

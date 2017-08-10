@@ -4,7 +4,7 @@ package ru.jetbrains.yaveyn.fuzzysearch.test.search.replacement
  * @author bronti.
  */
 
-class SimpleReplacementTest : BaseReplacementTest() {
+class SimpleJavaReplacementTest : BaseReplacementTest() {
 
     fun testReplacementAfterTyped() = doTest(
             "clasa<caret>",
@@ -29,12 +29,12 @@ class SimpleReplacementTest : BaseReplacementTest() {
     fun testReplacementAfterEnterInSolidText() = doTest(
             "clasa<caret>Some",
             '\n',
-            "class\n<caret>Some")
+            "class\n        <caret>Some")
 
     fun testReplacementInIdentifier() = doTest(
-            "class Some { voidd<caret>}",
+            "class Some { Somee<caret>}",
             ' ',
-            "class Some { void <caret>}")
+            "class Some { Some <caret>}")
 
     fun testReplacementInErrorElement() = doTest(
             "innerface<caret>",
@@ -60,4 +60,8 @@ class SimpleReplacementTest : BaseReplacementTest() {
             "nteface<caret>",
             ' ',
             "interface <caret>")
+
+    fun doTest(input: String, typed: Char, output: String) {
+        super.doTest(input, typed, output, false)
+    }
 }

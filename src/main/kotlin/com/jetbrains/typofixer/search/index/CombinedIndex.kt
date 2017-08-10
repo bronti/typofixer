@@ -1,6 +1,7 @@
 package com.jetbrains.typofixer.search.index
 
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -8,7 +9,6 @@ import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
-import java.util.*
 
 
 /**
@@ -16,42 +16,60 @@ import java.util.*
  */
 class CombinedIndex(val project: Project, val signature: Signature) {
 
-    enum class WordType { KEYWORD, LOCAL, GLOBAL }
+    enum class WordType {
+        KEYWORD, LOCAL_IDENTIFIER, KOTLIN_SPECIFIC_FIELD, GLOBAL;
+
+        fun isLocal() = this == KEYWORD || this == LOCAL_IDENTIFIER
+        fun isGlobal() = !isLocal()
+    }
+
+    private val WordType.index
+        get() = when (this) {
+            WordType.KEYWORD -> keywordsIndex
+            WordType.LOCAL_IDENTIFIER -> localIdentifiersIndex
+            WordType.KOTLIN_SPECIFIC_FIELD -> kotlinSpecificFieldsIndex
+            WordType.GLOBAL -> globalIndex
+        }
 
     private fun getDictCollector(file: PsiFile) = TypoFixerLanguageSupport.getSupport(file.language)?.getLocalDictionaryCollector()
 
     // not concurrent
-    private val keywordsIndex = LocalIndex(signature) { getDictCollector(it.containingFile)?.keyWords(it)?.toSet() ?: setOf() }
+    private val keywordsIndex = LocalInnerIndex(signature) { getDictCollector(it.containingFile)?.keyWords(it)?.toSet() ?: setOf() }
     // not concurrent
-    private val localIdentifiersIndex = LocalIndex(signature) { getDictCollector(it.containingFile)?.localIdentifiers(it.containingFile)?.toSet() ?: setOf() }
+    private val localIdentifiersIndex = LocalInnerIndex(signature) { getDictCollector(it.containingFile)?.localIdentifiers(it.containingFile)?.toSet() ?: setOf() }
     // concurrent
-    private val globalIndex = GlobalIndex(project, signature)
+    private val globalIndex = GlobalInnerIndex(project, signature)
+    // concurrent
+    private val kotlinSpecificFieldsIndex = InnerIndexForKotlinSpecificFields(project, signature)
+
+    private val indices = WordType.values().map { it.index }
 
     fun getLocalSize() = localIdentifiersIndex.getSize() + keywordsIndex.getSize()
 
-    // slow!!
-    fun getGlobalSize() = synchronized(globalIndex) { globalIndex.getSize() }
+    fun getGlobalSize(): Int {
+        assert(ApplicationManager.getApplication().isInternal)
+        return try {
+            globalIndex.getSize() + kotlinSpecificFieldsIndex.getSize()
+        } catch (e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
+            -1
+        }
+    }
 
-    // internal use only (works slowly for globalIndex!!!!
-    fun getSize() = getLocalSize() + getGlobalSize()
+    // internal use only (can works slowly for globalIndex!!!!)
+    fun getSize(): Int {
+        assert(ApplicationManager.getApplication().isInternal)
+        return getLocalSize() + getGlobalSize()
+    }
 
-    fun isUsable() = canRefreshGlobal && globalIndex.isUsable()
+    fun isUsable() = globalIndex.isUsable()
 
-    // when index is not active global refresh cannot be performed
     var canRefreshGlobal = true
-//        get() = synchronized(globalIndex) { field }
-//        set(value) = synchronized(globalIndex) { field = value }
 
     // internal use only
     var timesGlobalRefreshRequested = 0
         private set
 
-
-    fun getAll(type: WordType, signatures: Set<Int>) = when (type) {
-        WordType.KEYWORD -> keywordsIndex.getAll(signatures)
-        WordType.LOCAL -> localIdentifiersIndex.getAll(signatures)
-        WordType.GLOBAL -> globalIndex.getAll(signatures)
-    }
+    fun getAll(type: WordType, signatures: Set<Int>) = type.index.getAll(signatures)
 
     // not meant to be called concurrently
     fun refreshLocal(psiElement: PsiElement?) {
@@ -61,21 +79,26 @@ class CombinedIndex(val project: Project, val signature: Signature) {
         project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
     }
 
+    fun refreshLocalWithKeywords(words: List<String>) {
+        keywordsIndex.refreshWithWords(words)
+        localIdentifiersIndex.clear()
+    }
+
     fun refreshGlobal() {
         if (!canRefreshGlobal) return
         ++timesGlobalRefreshRequested
         globalIndex.refresh()
+        kotlinSpecificFieldsIndex.refresh()
     }
 
     @TestOnly
-    fun contains(str: String) = keywordsIndex.contains(str) ||
-            localIdentifiersIndex.contains(str) ||
-            globalIndex.contains(str)
+    fun contains(str: String) = indices.any { it.contains(str) }
 
     // can be interrupted by dumb mode
     @TestOnly
     fun waitForGlobalRefreshing() {
         globalIndex.waitForRefreshing()
+        kotlinSpecificFieldsIndex.waitForRefreshing()
     }
 
     @TestOnly
@@ -83,6 +106,6 @@ class CombinedIndex(val project: Project, val signature: Signature) {
 
 
     @TestOnly
-    fun getAltogether(signatures: Set<Int>) = WordType.values().fold(HashSet<String>() as Set<String>) { acc, type -> acc + getAll(type, signatures) }
+    fun getAltogether(signatures: Set<Int>) = indices.flatMap { it.getAll(signatures) }
 }
 

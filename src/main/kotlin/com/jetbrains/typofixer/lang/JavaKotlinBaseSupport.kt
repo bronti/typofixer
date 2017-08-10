@@ -3,43 +3,54 @@ package com.jetbrains.typofixer.lang
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
+import com.jetbrains.typofixer.TypoFixerComponent
+import com.jetbrains.typofixer.search.SearchAlgorithm
+import com.jetbrains.typofixer.search.index.CombinedIndex
 
 abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
-    override fun identifierChar(c: Char) = c.isJavaIdentifierPart()
+    companion object {
+        fun identifierChar(c: Char) = c.isJavaIdentifierPart()
+        fun isErrorElement(element: PsiElement) = element.parent is PsiErrorElement
+    }
 
-    override fun isBadReferenceOrKeyword(element: PsiElement, isReplaced: Boolean, isFast: Boolean): Boolean {
+    protected fun isBadIdentifier(element: PsiElement, isFast: Boolean): Boolean {
         ApplicationManager.getApplication().assertReadAccessAllowed()
+        return isIdentifier(element) && (isErrorElement(element) || if (isFast) isReference(element) else isUnresolvedReference(element))
+    }
 
-        val isIdentifierReference = isIdentifier(element) && isReference(element)
-        val isBadKeyword = isKeyword(element) && isErrorElement(element)
-        val isErrorIdentifier = isIdentifier(element) && isErrorElement(element)
+    protected fun isProperlyReplacedIdentifier(element: PsiElement): Boolean {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        val isGoodKeyword = isKeyword(element) && !isErrorElement(element)
 
-        if (isFast) {
-            assert(!isReplaced)
-            return isBadKeyword || isIdentifierReference || isErrorIdentifier
-        } else {
+        // other types of identifiers are bad
+        val isResolvedIdentifier = isIdentifier(element) && isReference(element) && !isUnresolvedReference(element)
 
-            val isUnresolvedReference = isIdentifierReference && isUnresolved(element)
-            val isIdentifierNotReference = isIdentifier(element) && !isReference(element)
-            val isSomethingElse = !isIdentifier(element) && !isKeyword(element)
+        return isGoodKeyword || isResolvedIdentifier
+    }
 
-            return isBadKeyword
-                    || isUnresolvedReference
-                    || isErrorIdentifier
-                    || (isReplaced && (isIdentifierNotReference || isSomethingElse))
+    private val BAD_IDENTIFIER = object : TypoCase {
+        override fun triggersTypoResolve(c: Char) = !identifierChar(c)
+        override fun needToReplace(element: PsiElement, fast: Boolean) = isBadIdentifier(element, fast)
+        override fun iaBadReplace(element: PsiElement) = !isProperlyReplacedIdentifier(element)
+        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+            val searcher = element.project.getComponent(TypoFixerComponent::class.java).searcher
+            return searcher.findClosest(element, oldText, correspondingWordTypes(), isTooLate)
         }
     }
 
-    override fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean {
-        // todo: difference between primary constructor and other cases
-        return if (!isReplaced) isParameter(element) else !isKeyword(element) || isErrorElement(element)
-    }
+    // order matters
+    override fun getTypoCases(): List<TypoCase> = listOf(BAD_IDENTIFIER)
 
-    protected fun isErrorElement(element: PsiElement) = element.parent is PsiErrorElement
+//    protected fun isBadParameter(element: PsiElement, isReplaced: Boolean): Boolean {
+//        // todo: difference between primary constructor and other cases
+//        return if (!isReplaced) isParameter(element) else !isKeyword(element) || isErrorElement(element)
+//    }
+
+    abstract protected fun correspondingWordTypes(): Array<CombinedIndex.WordType>
 
     abstract protected fun isReference(element: PsiElement): Boolean
     abstract protected fun isIdentifier(element: PsiElement): Boolean
     abstract protected fun isKeyword(element: PsiElement): Boolean
-    abstract protected fun isUnresolved(element: PsiElement): Boolean
+    abstract protected fun isUnresolvedReference(element: PsiElement): Boolean
     abstract protected fun isParameter(element: PsiElement): Boolean
 }

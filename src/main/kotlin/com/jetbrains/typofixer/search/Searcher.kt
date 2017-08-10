@@ -1,6 +1,7 @@
 package com.jetbrains.typofixer.search
 
 import com.intellij.ProjectTopics
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
@@ -28,7 +29,8 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String): SearchAlgorithm.SearchResult
+    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
+    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
     abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
     abstract fun getStatus(): Status
 }
@@ -76,26 +78,38 @@ open class DLSearcher(val project: Project) : Searcher() {
                     }
                 }
 
-                // todo:
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
-                }
+                // todo: ?
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {}
 
-                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {
-                }
+                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {}
             })
         }
     }
 
-    override fun getStatus() = if (DumbService.isDumb(project)) Status.DUMB_MODE else if (index.isUsable()) Status.ACTIVE else Status.INDEX_REFRESHING
+    override fun getStatus() = when {
+        DumbService.isDumb(project) -> Status.DUMB_MODE
+        index.isUsable() -> Status.ACTIVE
+        else -> Status.INDEX_REFRESHING
+    }
+
     private fun canSearch() = getStatus() == Status.ACTIVE
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
-    override fun findClosest(element: PsiElement?, str: String): SearchAlgorithm.SearchResult {
+    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
         return if (canSearch()) {
+            // todo: isTooLate into refreshLocal?
             index.refreshLocal(element)
-            getSearch(false).findClosest(str)
-        } else getSearch(false).SearchResult()
+            getSearch(false).findClosest(str, isTooLate, wordTypes)
+        } else getSearch(false).EMPTY_RESULT
+    }
+
+    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+        return if (canSearch()) {
+            // todo: isTooLate into refreshLocal?
+            index.refreshLocalWithKeywords(keywords)
+            getSearch(false).findClosest(str, isTooLate, arrayOf(CombinedIndex.WordType.KEYWORD))
+        } else getSearch(false).EMPTY_RESULT
     }
 
     private fun updateIndex() {
@@ -104,7 +118,10 @@ open class DLSearcher(val project: Project) : Searcher() {
     }
 
     // internal use only
-    fun getStatistics() = Pair(index.getSize(), index.timesGlobalRefreshRequested)
+    fun getStatistics(): Pair<Int, Int> {
+        assert(ApplicationManager.getApplication().isInternal)
+        return Pair(index.getSize(), index.timesGlobalRefreshRequested)
+    }
 
     @TestOnly
     override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
