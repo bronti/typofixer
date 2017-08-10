@@ -28,8 +28,10 @@ class TypoResolver private constructor(
 
     companion object {
         //todo: make settings
-        private const val MAX_MILLIS_TO_FIND = 200
-        private const val MAX_MILLIS_TO_RESOLVE = 1000
+        private const val MAX_MILLIS_TO_FIND = 20000
+        private const val MAX_MILLIS_TO_RESOLVE = 100000
+//        private const val MAX_MILLIS_TO_FIND = 200
+//        private const val MAX_MILLIS_TO_RESOLVE = 1000
 
         private fun isTooLateForFind(timeOfStart: Long) = System.currentTimeMillis() >= timeOfStart + MAX_MILLIS_TO_FIND
 

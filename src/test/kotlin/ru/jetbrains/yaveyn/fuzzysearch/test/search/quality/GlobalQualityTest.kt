@@ -40,6 +40,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
             println(it.name)
         }
 
+        // todo: (?)
 //        if (!DumbService.isDumb(project)) {
 //            FileBasedIndex.getResolver().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, null)
 //            FileBasedIndex.getResolver().ensureUpToDate<TodoIndexEntry>(TodoIndex.NAME, project, null)

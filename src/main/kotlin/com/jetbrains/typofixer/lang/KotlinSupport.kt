@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.types.ErrorUtils
 
 /**
  * @author bronti.
@@ -57,7 +58,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     override fun isParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
     override fun isUnresolvedReference(element: PsiElement): Boolean {
         val parent = element.parent
-        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
+        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().filter { !ErrorUtils.isError(it) }.isEmpty()
                 || parent is KtReference && parent.resolve() == null
     }
 

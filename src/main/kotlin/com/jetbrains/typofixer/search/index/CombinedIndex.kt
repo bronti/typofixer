@@ -94,6 +94,7 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     @TestOnly
     fun waitForGlobalRefreshing() {
         globalIndex.waitForRefreshing()
+        kotlinSpecificFieldsIndex.waitForRefreshing()
     }
 
     @TestOnly
