@@ -20,7 +20,7 @@ class InnerIndexForKotlinSpecificFields(project: Project, signature: Signature) 
                             .filter { it.length >= 4 && it[3].isUpperCase() }
                             .map { it.substring(3) }
                             .map { it[0].toLowerCase() + it.substring(1) }
-                            .toTypedArray()
+                            .toSet()
 
             checkedCollect(indicator, allCollected, { extractFieldNamesFromGettersOrSetters() }) { allCollected = true }
         }

@@ -7,7 +7,9 @@ import com.intellij.openapi.progress.util.ReadTask
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.jetbrains.typofixer.TypoFixerComponent
+//todo: TestOnly doesn't work
 import com.jetbrains.typofixer.search.signature.Signature
+//todo: TestOnly doesn't work
 import org.jetbrains.annotations.TestOnly
 import java.util.*
 
@@ -69,20 +71,20 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             return null
         }
 
-        private fun performCollection(indicator: ProgressIndicator?) {
-            if (project.isInitialized) {
-                doCollect(indicator)
-                onCompletionDone(indicator)
-            } else done = true
-        }
-
-        abstract fun doCollect(indicator: ProgressIndicator?)
-
         override fun onCanceled(p0: ProgressIndicator) {
             if (!done) {
                 ProgressIndicatorUtils.scheduleWithWriteActionPriority(this)
             }
         }
+
+        private fun performCollection(indicator: ProgressIndicator?) {
+            if (project.isInitialized) {
+                doCollect(indicator)
+            }
+            onCompletionDone(indicator)
+        }
+
+        abstract fun doCollect(indicator: ProgressIndicator?)
 
         protected fun isCurrentRefreshingTask() = this === lastRefreshingTask
 
@@ -94,19 +96,19 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             return !done
         }
 
-        protected fun checkedCollect(indicator: ProgressIndicator?, isCollected: Boolean, getToCollect: () -> Array<String>, markCollected: () -> Unit) {
-            if (!shouldCollect(indicator) || isCollected) return
+        protected fun checkedCollect(indicator: ProgressIndicator?, isCollected: Boolean, getToCollect: () -> Set<String>, markCollected: () -> Unit) {
+            if (isCollected || !shouldCollect(indicator)) return
             synchronized(this) {
                 if (shouldCollect(indicator) && !isCollected) {
-                    getToCollect().toSet().addAllToIndex()
-                } else return@checkedCollect
+                    getToCollect().addAllToIndex()
+                    markCollected()
+                }
             }
-            markCollected()
         }
 
         protected fun onCompletionDone(indicator: ProgressIndicator?) {
             // todo: check that index is refreshing after each stub index refreshment
-            if (shouldCollect(indicator)) {
+            if (DumbService.isDumb(project) || shouldCollect(indicator)) {
                 synchronized(this) {
                     if (isCurrentRefreshingTask()) lastRefreshingTask = null
                 }
@@ -115,6 +117,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             if (this@GlobalInnerIndexBase.isUsable()) {
                 project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
             }
+
             done = true
         }
 
