@@ -18,7 +18,9 @@ class LocalInnerIndex(signature: Signature, val getWords: (element: PsiElement) 
     }
 
     override fun addAll(signature: Int, strings: Set<String>) {
-        index[signature] = getWithDefault(signature)
+        if (index[signature] == null) {
+            index[signature] = hashSetOf()
+        }
         index[signature]!!.addAll(strings)
     }
 

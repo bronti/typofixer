@@ -2,7 +2,6 @@ package com.jetbrains.typofixer.search.index
 
 import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
-import java.util.*
 
 abstract class InnerIndex(val signature: Signature) {
 
@@ -16,7 +15,7 @@ abstract class InnerIndex(val signature: Signature) {
 
     protected fun Set<String>.addAllToIndex() = addAll(this)
 
-    protected abstract fun getWithDefault(signature: Int): HashSet<String>
+    protected abstract fun getWithDefault(signature: Int): Set<String>
     protected abstract fun addAll(signature: Int, strings: Set<String>)
 
     @TestOnly

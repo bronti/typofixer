@@ -1,5 +1,7 @@
 package com.jetbrains.typofixer.search.index
 
+//todo: TestOnly doesn't work
+//todo: TestOnly doesn't work
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
@@ -7,9 +9,7 @@ import com.intellij.openapi.progress.util.ReadTask
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.jetbrains.typofixer.TypoFixerComponent
-//todo: TestOnly doesn't work
 import com.jetbrains.typofixer.search.signature.Signature
-//todo: TestOnly doesn't work
 import org.jetbrains.annotations.TestOnly
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -49,8 +49,8 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
         }
     }
 
-    override fun getWithDefault(signature: Int): HashSet<String> {
-        val result = index[signature]?.getAll() ?: return hashSetOf()
+    override fun getWithDefault(signature: Int): Set<String> {
+        val result = index[signature]?.getAll() ?: return setOf()
         return result
     }
 
@@ -75,22 +75,31 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
         private var wordCount: Int = 0
 
-        // todo: private
-        private var outputBytes = ByteArrayOutputStream()
-        private val outputStream = ObjectOutputStream(GZIPOutputStream(outputBytes))
+        var isCompressed = false
+            private set
+
+        private var content: HashSet<String>? = hashSetOf()
         private var bytes: ByteArray? = null
 
         fun addAll(strings: Set<String>) {
-            strings.forEach { outputStream.writeObject(it) }
-            wordCount += strings.size
+            content!!.addAll(strings)
+            wordCount = content!!.size
         }
 
+        // called once
         fun prepareToBeRead() {
+            if (isCompressed) throw IllegalStateException()
+            val outputBytes = ByteArrayOutputStream()
+            val outputStream = ObjectOutputStream(GZIPOutputStream(outputBytes))
+            content!!.forEach { outputStream.writeObject(it) }
+            content = null
             outputStream.close()
             bytes = outputBytes.toByteArray()
+            isCompressed = true
         }
 
-        fun getAll(): HashSet<String> {
+        fun getAll(): Set<String> {
+            if (!isCompressed) throw IllegalStateException()
             val inputStream = ObjectInputStream(GZIPInputStream(ByteArrayInputStream(bytes!!)))
             val result = hashSetOf<String>()
             for (i in 1..wordCount) {
@@ -99,7 +108,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             return result
         }
 
-        fun getSize() = getAll().size
+        fun getSize() = wordCount
 
         fun contains(str: String) = getAll().contains(str)
     }
