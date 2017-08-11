@@ -22,13 +22,13 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
     fun findClosest(str: String, isTooLate: () -> Boolean, wordTypes: Array<CombinedIndex.WordType>): SearchResult
             = findClosestWithRealCandidatesCount(str, wordTypes, isTooLate).first
 
-    inner class SearchResult(foundWord: String?, val error: Int, val type: WordType) {
+    inner class SearchResult(foundWord: String?, val error: Double, val type: WordType) {
         val word = foundWord
             get() = if (isValid) field else null
 
         val isValid = foundWord != null && error <= maxError
 
-        constructor() : this(null, maxError + 1, WordType.GLOBAL)
+        constructor() : this(null, maxError + 1.0, WordType.GLOBAL)
 
         // don't compare results from different outer classes!!!
         infix fun betterThan(other: SearchResult): Boolean {
@@ -62,7 +62,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
     }
 
     @TestOnly
-    fun search(str: String): Map<Int, List<String>> {
+    fun search(str: String): Map<Double, List<String>> {
         val distance = getDistanceTo(str)
         return getCandidates(str).groupBy { it: String -> distance.measure(it) }.filter { it.key <= maxError }
     }
@@ -91,13 +91,13 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
                 // todo: isTooLate (?)
                 val best = candidates.filter { it != str }.minBy { distance.measure(it) }
                 realCandidatesCount += candidates.size
-                val bestError = if (best == null) maxError + 1 else distance.measure(best)
+                val bestError = if (best == null) maxError + 1.0 else distance.measure(best)
                 assert(bestError >= error) // something wrong with index and/or signature
                 return this.SearchResult(best, bestError, type)
             }
 
             fun searchForType(type: CombinedIndex.WordType): Boolean {
-                if (result.isValid && result.type == type && result.error == error) return true
+                if (result.isValid && result.type == type && result.error <= error.toDouble()) return true
 
                 val newResult = getMinimumOfType(type)
 
@@ -106,7 +106,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
                 if (newResult betterThan result) {
                     result = newResult
                 }
-                return newResult.error == error
+                return newResult.error <= error.toDouble()
             }
 
             try {

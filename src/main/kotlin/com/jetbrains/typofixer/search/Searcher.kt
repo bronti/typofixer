@@ -31,7 +31,7 @@ abstract class Searcher {
 
     abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
     abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
-    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
+    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
     abstract fun getStatus(): Status
 }
 
@@ -48,7 +48,8 @@ open class DLSearcher(val project: Project) : Searcher() {
         // 9: search result prioritizing
         // 10: compressed global index
         // 11: compressing fixed
-        val VERSION = 11
+        // 12: distance is Double (misclicked shift and swap costs lowered)
+        val VERSION = 12
     }
 
     private val maxError = 2
@@ -125,7 +126,7 @@ open class DLSearcher(val project: Project) : Searcher() {
     }
 
     @TestOnly
-    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
+    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
             getSearch(precise).search(str)

@@ -2,31 +2,39 @@ package com.jetbrains.typofixer.search.distance
 
 interface DistanceTo {
     val target: String
-    fun measure(str: String): Int
+    fun measure(str: String): Double
 }
 
 class DamerauLevenshteinDistanceTo(override val target: String, private val maxError: Int) : DistanceTo {
+
+    companion object {
+        private const val SWAP_PENALTY = 0.9
+        private const val REMOVE_PENALTY = 1.0
+        private const val REPLACE_PENALTY = 1.0
+        private const val CHANGE_CASE_PENALTY = 0.8
+        private const val ADD_PENALTY = 1.0
+    }
 
     /*
      * returns distance if it is less or equals to maxError and maxError + 1 otherwise
      */
     // todo: bigger identifiers should allow more mistakes (?)
-    override fun measure(str: String): Int {
+    override fun measure(str: String): Double {
 
-        val bigDistance = maxError + 1
+        val bigDistance = maxError + 1.0
 
-        if (target.isEmpty()) return Math.min(str.length, bigDistance)
-        if (str.isEmpty()) return Math.min(target.length, bigDistance)
+        if (target.isEmpty()) return Math.min(str.length.toDouble(), bigDistance)
+        if (str.isEmpty()) return Math.min(target.toDouble(), bigDistance)
         if (Math.abs(target.length - str.length) > maxError) return bigDistance
 
         val (left, right) = if (target.length > str.length) Pair(str, target) else Pair(str, target)
 
         val gapSize = 2 * maxError + 1
 
-        var prevPrev = Array(gapSize) { Integer.MAX_VALUE }
-        var prev = Array(gapSize) { if (it - maxError >= 0) it - maxError else Integer.MAX_VALUE }
-        var curr = Array(gapSize) { Integer.MAX_VALUE }
-        var tempArrayHolder: Array<Int>
+        var prevPrev = Array(gapSize) { Double.MAX_VALUE }
+        var prev = Array(gapSize) { if (it - maxError >= 0) it.toDouble() - maxError else Double.MAX_VALUE }
+        var curr = Array(gapSize) { Double.MAX_VALUE }
+        var tempArrayHolder: Array<Double>
 
         for (rightInd in 1..right.length) {
             val rightChar = right[rightInd - 1]
@@ -34,7 +42,7 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
             val minK = Math.max(maxError - rightInd, 0)
             val maxK = Math.min(gapSize - 1, left.length - rightInd + maxError)
 
-            curr[minK] = rightInd
+            curr[minK] = rightInd.toDouble()
 
             assert(minK <= maxK)
 
@@ -48,18 +56,20 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
                     }
                     // swap
                     if (rightInd > 1 && leftInd > 1 && leftChar == right[rightInd - 2] && rightChar == left[leftInd - 2]) {
-                        curr[k] = Math.min(prevPrev[k] + 1, curr[k])
+                        curr[k] = Math.min(prevPrev[k] + SWAP_PENALTY, curr[k])
                     }
                     // remove (from left)
                     if (k > 0) {
-                        curr[k] = Math.min(curr[k], curr[k - 1] + 1)
+                        curr[k] = Math.min(curr[k], curr[k - 1] + REMOVE_PENALTY)
                     }
                     // replace
-                    curr[k] = Math.min(curr[k], prev[k] + 1)
+                    val isEqualCharsWithDifferentCase = leftChar.toLowerCase() == rightChar.toLowerCase()
+                    val actualReplacePenalty = if (isEqualCharsWithDifferentCase) CHANGE_CASE_PENALTY else REPLACE_PENALTY
+                    curr[k] = Math.min(curr[k], prev[k] + actualReplacePenalty)
                 }
                 // add (to left)
                 if (k + 1 < gapSize) {
-                    curr[k] = Math.min(curr[k], prev[k + 1] + 1)
+                    curr[k] = Math.min(curr[k], prev[k + 1] + ADD_PENALTY)
                 }
             }
             if ((minK..maxK).all { curr[it] > maxError }) {
@@ -70,7 +80,7 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
             prevPrev = prev
             prev = curr
             curr = tempArrayHolder
-            curr.fill(Integer.MAX_VALUE)
+            curr.fill(Double.MAX_VALUE)
         }
         return Math.min(prev[maxError + left.length - right.length], bigDistance)
     }
