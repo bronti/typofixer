@@ -47,7 +47,8 @@ open class DLSearcher(val project: Project) : Searcher() {
         // 8: less concurrent index
         // 9: search result prioritizing
         // 10: compressed global index
-        val VERSION = 10
+        // 11: compressing fixed
+        val VERSION = 11
     }
 
     private val maxError = 2

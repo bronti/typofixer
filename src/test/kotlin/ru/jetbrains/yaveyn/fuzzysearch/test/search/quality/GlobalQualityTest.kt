@@ -6,7 +6,6 @@ import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.DLSearcher
-import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -15,7 +14,7 @@ import kotlin.system.measureTimeMillis
 /**
  * @author bronti.
  */
-@Ignore
+//@Ignore
 class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
 
     private val testDataDir = File("testData")
@@ -34,9 +33,12 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         super.setUp()
         myFixture.testDataPath = testDataDir.canonicalPath
 
+        searcher = project.getComponent(TypoFixerComponent::class.java).searcher
         searcher!!.getIndex().canRefreshGlobal = false
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.sortedBy { it.name }.toList()
+//        val dependenciesScope = myModule.getModuleWithDependenciesAndLibrariesScope(false)
         dependencies.forEach {
+            //            JavaPsiFacade.getInstance(project).findPackage(it.)
             PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath)
             println(it.name)
         }
@@ -49,7 +51,6 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
 //        }
 
         DumbService.getInstance(project).waitForSmartMode()
-        searcher = project.getComponent(TypoFixerComponent::class.java).searcher
         searcher!!.forceGlobalIndexRefreshing()
         // 589671
 
