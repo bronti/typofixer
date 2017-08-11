@@ -24,7 +24,7 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
         val bigDistance = maxError + 1.0
 
         if (target.isEmpty()) return Math.min(str.length.toDouble(), bigDistance)
-        if (str.isEmpty()) return Math.min(target.toDouble(), bigDistance)
+        if (str.isEmpty()) return Math.min(target.length.toDouble(), bigDistance)
         if (Math.abs(target.length - str.length) > maxError) return bigDistance
 
         val (left, right) = if (target.length > str.length) Pair(str, target) else Pair(str, target)

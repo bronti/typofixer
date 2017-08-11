@@ -13,14 +13,14 @@ class DamerauLevenshteinDistanceToTest {
     fun equalsTest() {
         val word = "theWord"
 
-        doTest(word, word, 0)
+        doTest(word, word, 0.0)
     }
 
     @Test
     fun emptyWordTest() {
         val word = "ord"
 
-        doTest(word, "", 3)
+        doTest(word, "", 3.0)
     }
 
     @Test
@@ -28,7 +28,7 @@ class DamerauLevenshteinDistanceToTest {
         val word1 = "ord"
         val word2 = "odd"
 
-        doTest(word1, word2, 1)
+        doTest(word1, word2, 1.0)
     }
 
     @Test
@@ -36,7 +36,7 @@ class DamerauLevenshteinDistanceToTest {
         val word1 = "ord"
         val word2 = "od"
 
-        doTest(word1, word2, 1)
+        doTest(word1, word2, 1.0)
     }
 
     @Test
@@ -44,7 +44,7 @@ class DamerauLevenshteinDistanceToTest {
         val word1 = "ord"
         val word2 = "lord"
 
-        doTest(word1, word2, 1)
+        doTest(word1, word2, 1.0)
     }
 
     @Test
@@ -52,7 +52,15 @@ class DamerauLevenshteinDistanceToTest {
         val word1 = "lordoVldemorto"
         val word2 = "lordVoldemorto"
 
-        doTest(word1, word2, 1)
+        doTest(word1, word2, 0.9)
+    }
+
+    @Test
+    fun shiftTest() {
+        val word1 = "lordoVldemorto"
+        val word2 = "lordovldemorto"
+
+        doTest(word1, word2, 0.8)
     }
 
     @Test
@@ -60,17 +68,17 @@ class DamerauLevenshteinDistanceToTest {
         val word1 = "ord"
         val word2 = "lordVoldemort"
 
-        doTest(word1, word2, 10)
+        doTest(word1, word2, 10.0)
     }
 
-    private fun doTest(word1: String, word2: String, expectedDistance: Int) {
+    private fun doTest(word1: String, word2: String, expectedDistance: Double) {
         for (maxError in 0..4) {
             doTestWithMaxError(maxError, word1, word2, expectedDistance)
         }
     }
 
-    private fun doTestWithMaxError(maxError: Int, word1: String, word2: String, expectedDistance: Int) {
-        val expectedResult = Math.min(maxError + 1, expectedDistance)
+    private fun doTestWithMaxError(maxError: Int, word1: String, word2: String, expectedDistance: Double) {
+        val expectedResult = Math.min(maxError + 1.0, expectedDistance)
         val distance = distanceWithMaxError(maxError)
 
         assert.that(distance(word1).measure(word2), equalTo(expectedResult))
