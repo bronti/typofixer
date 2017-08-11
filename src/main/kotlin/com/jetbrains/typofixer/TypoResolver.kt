@@ -7,7 +7,6 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -26,24 +25,37 @@ class TypoResolver private constructor(
         private var element: PsiElement,
         private val oldText: String,
         private val newText: String,
-        private val timeOfStart: Long) {
+        private val resolveTimeChecker: TimeLimitsChecker) {
 
     companion object {
-        private fun isTooLateForFind(timeOfStart: Long, project: Project)
-                = System.currentTimeMillis() >= timeOfStart + TypoFixerSettings.getInstance(project).maxMillisForFind
+        class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
+            private var abortReported = false
+            private val startTime = System.currentTimeMillis()
+            fun isTooLate(): Boolean {
+                val result = startTime + timeConstraint <= System.currentTimeMillis()
+                if (result && !abortReported) reportAbort()
+                return result
+            }
+        }
 
         fun getResolver(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
             if (!psiFile.project.typoFixerComponent.isActive) return null
 
-            return doGetResolver(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
+            return doGetResolver(nextChar, editor, psiFile, langSupport)
         }
 
         private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
 
-        private fun doGetResolver(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport, timeOfStart: Long): TypoResolver? {
-            val nextCharOffset = editor.caretModel.offset
+        private fun doGetResolver(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport): TypoResolver? {
             val project = psiFile.project
+            val settings = TypoFixerSettings.getInstance(project)
+            val stats = project.statistics
+
+            val findChecker = TimeLimitsChecker(settings.maxMillisForFind.toLong(), { stats.onFindAbortedBecauseOfTimeLimits() })
+            val resolveChecker = TimeLimitsChecker(settings.maxMillisForResolve.toLong(), { stats.onResolveAbortedBecauseOfTimeLimits() })
+
+            val nextCharOffset = editor.caretModel.offset
 
             var element: PsiElement? = null
             for (typoCase in langSupport.getTypoCases()) {
@@ -59,12 +71,12 @@ class TypoResolver private constructor(
                 if (typoCase.needToReplace(element, fast = true)) {
 
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
-                    val newText = typoCase.getReplacement(element, oldText, { isTooLateForFind(timeOfStart, project) }).word
+                    val newText = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() }).word
 
-                    if (newText == null || isTooLateForFind(timeOfStart, project)) return null
+                    if (newText == null || findChecker.isTooLate()) return null
 
                     project.statistics.onTypoResolverCreated()
-                    return TypoResolver(psiFile, editor, typoCase, element, oldText, newText, timeOfStart)
+                    return TypoResolver(psiFile, editor, typoCase, element, oldText, newText, resolveChecker)
                 }
             }
             return null
@@ -73,13 +85,11 @@ class TypoResolver private constructor(
         @TestOnly
         fun getInstanceIgnoreIsActive(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
-            return doGetResolver(nextChar, editor, psiFile, langSupport, System.currentTimeMillis())
+            return doGetResolver(nextChar, editor, psiFile, langSupport)
         }
     }
 
     private fun refreshPsi() = refreshPsi(editor)
-    private fun isTooLate()
-            = System.currentTimeMillis() >= timeOfStart + TypoFixerSettings.getInstance(project).maxMillisForResolve
 
     private val document: Document = editor.document
 
@@ -93,9 +103,9 @@ class TypoResolver private constructor(
     fun resolve() = Thread { doResolve() }.start()
 
     private fun doResolve() {
-        checkElementIsBad(true) && !isTooLate()
-                && fixTypo() && !isTooLate()
-                && checkElementIsBad(false) && !isTooLate()
+        checkElementIsBad(true) && !resolveTimeChecker.isTooLate()
+                && fixTypo() && !resolveTimeChecker.isTooLate()
+                && checkElementIsBad(false) && !resolveTimeChecker.isTooLate()
                 && undoFix()
     }
 
@@ -124,7 +134,7 @@ class TypoResolver private constructor(
 
             var elementIsRefreshed = false
             appManager.invokeAndWait { appManager.runReadAction { elementIsRefreshed = refreshElement(expectedText) } }
-            if (!elementIsRefreshed || isTooLate()) return false
+            if (!elementIsRefreshed || resolveTimeChecker.isTooLate()) return false
 
             resultCalculated =
                     if (appManager.isDispatchThread) {
@@ -138,7 +148,7 @@ class TypoResolver private constructor(
         var done = false
         appManager.invokeAndWait {
             appManager.runWriteAction {
-                if (refreshElement(prefix) && project.isOpen && !isTooLate()) {
+                if (refreshElement(prefix) && project.isOpen && !resolveTimeChecker.isTooLate()) {
                     val commandProcessor = CommandProcessor.getInstance()
                     commandProcessor.executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
                     done = true

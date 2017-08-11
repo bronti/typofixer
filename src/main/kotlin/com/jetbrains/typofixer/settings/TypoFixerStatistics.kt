@@ -7,6 +7,10 @@ class TypoFixerStatistics {
         private set
     var timesRolledBack: Int = 0
         private set
+    var timesFindAbortedBecauseOfTimeLimits: Int = 0
+        private set
+    var timesResolveAbortedBecauseOfTimeLimits: Int = 0
+        private set
 
     fun onTypoResolverCreated() {
         ++timesResolverCreated
@@ -18,5 +22,13 @@ class TypoFixerStatistics {
 
     fun onReplacementRolledBack() {
         ++timesRolledBack
+    }
+
+    fun onFindAbortedBecauseOfTimeLimits() {
+        ++timesFindAbortedBecauseOfTimeLimits
+    }
+
+    fun onResolveAbortedBecauseOfTimeLimits() {
+        ++timesResolveAbortedBecauseOfTimeLimits
     }
 }
