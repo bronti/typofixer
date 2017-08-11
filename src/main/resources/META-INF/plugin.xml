@@ -26,6 +26,11 @@
     <extensions defaultExtensionNs="com.intellij">
         <typedHandler implementation="com.jetbrains.typofixer.event.handler.TypoFixTypedHandler" order="first"/>
         <enterHandlerDelegate implementation="com.jetbrains.typofixer.event.handler.TypoFixEnterHandler" order="first"/>
+
+        <projectConfigurable instance="com.jetbrains.typofixer.settings.TypoFixerConfigurable"
+                             displayName="Typo Fixer" groupId="editor"/>
+        <projectService serviceInterface="com.jetbrains.typofixer.settings.TypoFixerSettings"
+                        serviceImplementation="com.jetbrains.typofixer.settings.TypoFixerSettings"/>
     </extensions>
 
     <project-components>

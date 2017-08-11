@@ -4,9 +4,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
-import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.SearchAlgorithm
 import com.jetbrains.typofixer.search.index.CombinedIndex
+import com.jetbrains.typofixer.searcher
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
@@ -31,7 +31,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
         override fun iaBadReplace(element: PsiElement) = isErrorElement(element)
         override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
-            val searcher = element.project.getComponent(TypoFixerComponent::class.java).searcher
+            val searcher = element.project.searcher
             return searcher.findClosestAmongKeywords(oldText, allowedKeywords, isTooLate)
         }
 

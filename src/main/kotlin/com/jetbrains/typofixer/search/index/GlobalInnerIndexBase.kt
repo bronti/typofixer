@@ -8,8 +8,8 @@ import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.progress.util.ReadTask
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.signature.Signature
+import com.jetbrains.typofixer.typoFixerComponent
 import org.jetbrains.annotations.TestOnly
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -41,7 +41,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             lastRefreshingTask = refreshingTask
             index.clear()
         }
-        project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
+        project.typoFixerComponent.onSearcherStatusMaybeChanged()
         DumbService.getInstance(project).smartInvokeLater {
             if (project.isInitialized) {
                 ProgressIndicatorUtils.scheduleWithWriteActionPriority(refreshingTask)
@@ -170,7 +170,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             }
 
             if (this@GlobalInnerIndexBase.isUsable()) {
-                project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
+                project.typoFixerComponent.onSearcherStatusMaybeChanged()
             }
 
             done = true

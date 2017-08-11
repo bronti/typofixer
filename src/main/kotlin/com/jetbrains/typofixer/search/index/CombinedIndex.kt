@@ -5,9 +5,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.signature.Signature
+import com.jetbrains.typofixer.typoFixerComponent
 import org.jetbrains.annotations.TestOnly
 
 
@@ -79,7 +79,7 @@ class CombinedIndex(val project: Project, val signature: Signature) {
         val psiFile = psiElement?.containingFile ?: return
         keywordsIndex.refresh(psiFile)
         localIdentifiersIndex.refresh(psiFile)
-        project.getComponent(TypoFixerComponent::class.java).onSearcherStatusMaybeChanged()
+        project.typoFixerComponent.onSearcherStatusMaybeChanged()
     }
 
     fun refreshLocalWithKeywords(words: List<String>) {

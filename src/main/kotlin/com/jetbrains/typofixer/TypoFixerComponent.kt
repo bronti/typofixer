@@ -7,14 +7,25 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.WindowManager
 import com.jetbrains.typofixer.search.DLSearcher
+import com.jetbrains.typofixer.settings.TypoFixerStatistics
 import com.jetbrains.typofixer.widget.RefreshingIndicator
 
 /**
  * @author bronti.
  */
+val Project.typoFixerComponent: TypoFixerComponent
+    get() = getComponent(TypoFixerComponent::class.java)
+
+val Project.statistics: TypoFixerStatistics
+    get() = typoFixerComponent.statistics
+
+val Project.searcher: DLSearcher
+    get() = typoFixerComponent.searcher
+
 class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 
     var isActive: Boolean = true
+    val statistics = TypoFixerStatistics()
 
     private var mySearcher: DLSearcher? = null
     private var myStatusBarWidget: RefreshingIndicator? = null

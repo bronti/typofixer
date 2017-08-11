@@ -4,8 +4,8 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Computable
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
-import com.jetbrains.typofixer.TypoFixerComponent
 import com.jetbrains.typofixer.search.DLSearcher
+import com.jetbrains.typofixer.searcher
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -33,7 +33,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         super.setUp()
         myFixture.testDataPath = testDataDir.canonicalPath
 
-        searcher = project.getComponent(TypoFixerComponent::class.java).searcher
+        searcher = project.searcher
         searcher!!.getIndex().canRefreshGlobal = false
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.sortedBy { it.name }.toList()
 //        val dependenciesScope = myModule.getModuleWithDependenciesAndLibrariesScope(false)
