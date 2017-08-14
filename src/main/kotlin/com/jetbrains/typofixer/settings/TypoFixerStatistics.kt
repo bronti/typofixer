@@ -1,5 +1,6 @@
 package com.jetbrains.typofixer.settings
 
+// not exact because of concurrency
 class TypoFixerStatistics {
     var timesResolverCreated: Int = 0
         private set
@@ -11,6 +12,7 @@ class TypoFixerStatistics {
         private set
     var timesResolveAbortedBecauseOfTimeLimits: Int = 0
         private set
+
 
     fun onTypoResolverCreated() {
         ++timesResolverCreated
