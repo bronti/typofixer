@@ -4,7 +4,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
-import com.jetbrains.typofixer.search.SearchAlgorithm
+import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.searcher
 import org.jetbrains.kotlin.idea.references.KtReference
@@ -30,7 +30,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
         override fun iaBadReplace(element: PsiElement) = isErrorElement(element)
-        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchResults {
             val searcher = element.project.searcher
             return searcher.findClosestAmongKeywords(oldText, allowedKeywords, isTooLate)
         }

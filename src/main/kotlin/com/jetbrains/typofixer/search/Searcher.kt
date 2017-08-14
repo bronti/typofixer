@@ -29,9 +29,9 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
-    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
-    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Int, List<String>>
+    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults
+    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchResults
+    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
     abstract fun getStatus(): Status
 }
 
@@ -48,7 +48,8 @@ open class DLSearcher(val project: Project) : Searcher() {
         // 9: search result prioritizing
         // 10: compressed global index
         // 11: compressing fixed
-        val VERSION = 11
+        // 12: distance is Double (misclicked shift and swap costs lowered)
+        val VERSION = 12
     }
 
     private val maxError = 2
@@ -97,19 +98,19 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
-    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocal(element)
-            getSearch(false).findClosest(str, isTooLate, wordTypes)
+            getSearch(false).findClosest(str, wordTypes, isTooLate)
         } else getSearch(false).EMPTY_RESULT
     }
 
-    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult {
+    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchResults {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocalWithKeywords(keywords)
-            getSearch(false).findClosest(str, isTooLate, arrayOf(CombinedIndex.WordType.KEYWORD))
+            getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), isTooLate)
         } else getSearch(false).EMPTY_RESULT
     }
 
@@ -125,7 +126,7 @@ open class DLSearcher(val project: Project) : Searcher() {
     }
 
     @TestOnly
-    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Int, List<String>> {
+    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
         return if (canSearch()) {
             index.refreshLocal(psiFile)
             getSearch(precise).search(str)
@@ -134,14 +135,6 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     @TestOnly
     fun getIndex() = index
-
-    @TestOnly
-    fun findClosestWithInfo(str: String, psiFile: PsiFile?): Pair<String?, Pair<Int, Int>> {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(false).findClosestWithInfo(str)
-        } else Pair(null, Pair(-1, -1))
-    }
 
     @TestOnly
     fun forceGlobalIndexRefreshing() {

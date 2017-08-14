@@ -158,11 +158,11 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         return Pair(time, candidates)
     }
 
-    private fun checkPrecision(preciseResult: Map<Int, List<String>>,
-                               result: Map<Int, List<String>>,
+    private fun checkPrecision(preciseResult: Map<Double, List<String>>,
+                               result: Map<Double, List<String>>,
                                word: String, precs: List<Double>,
                                resultLoggingNeeded: Boolean) {
-        fun handle(getSize: (Map<Int, List<String>>) -> Int,
+        fun handle(getSize: (Map<Double, List<String>>) -> Int,
                    expectedPrecision: Double,
                    toOutput: (String) -> String): String {
             val size = getSize(result)
@@ -180,9 +180,9 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         print(word + ": ")
         val output =
                 word + ": " +
-                        handle({ it[0]?.size ?: 0 }, precs[0], { "$it, " }) +
-                        handle({ it[1]?.size ?: 0 }, precs[1], { "$it, " }) +
-                        handle({ it[2]?.size ?: 0 }, precs[2], { "$it. " }) +
+                        handle({ it[0.0]?.size ?: 0 }, precs[0], { "$it, " }) +
+                        handle({ it.entries.filter { it.key <= 1.0 && it.key > 0.0 }.flatMap { it.value }.size }, precs[1], { "$it, " }) +
+                        handle({ it.entries.filter { it.key <= 2.0 && it.key > 1.0 }.flatMap { it.value }.size }, precs[2], { "$it. " }) +
                         handle({ simplifySearchResult(it).size }, precs[3], { "total: $it." })
         println()
         if (resultLoggingNeeded) {
@@ -190,5 +190,5 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         }
     }
 
-    private fun simplifySearchResult(result: Map<Int, List<String>>) = result.entries.flatMap { it.value }
+    private fun simplifySearchResult(result: Map<*, List<String>>) = result.entries.flatMap { it.value }
 }

@@ -4,7 +4,7 @@ import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.search.SearchAlgorithm
+import com.jetbrains.typofixer.search.SearchResults
 
 /**
  * @author bronti.
@@ -35,7 +35,7 @@ interface TypoCase {
     // TypoResolver handles the first case for which needToReplace(element, fast = true) is true
     fun needToReplace(element: PsiElement, fast: Boolean = false): Boolean
     fun iaBadReplace(element: PsiElement): Boolean
-    fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchAlgorithm.SearchResult
+    fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchResults
 }
 
 interface LocalDictionaryCollector {

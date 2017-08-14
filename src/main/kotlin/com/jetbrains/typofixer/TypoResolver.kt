@@ -12,6 +12,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
+import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
 
@@ -24,8 +25,9 @@ class TypoResolver private constructor(
         private val typoCase: TypoCase,
         private var element: PsiElement,
         private val oldText: String,
-        private val newText: String,
+        searchResults: SearchResults,
         private val resolveTimeChecker: TimeLimitsChecker) {
+
 
     companion object {
         class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
@@ -71,12 +73,12 @@ class TypoResolver private constructor(
                 if (typoCase.needToReplace(element, fast = true)) {
 
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
-                    val newText = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() }).word
+                    val searchResults = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() })
 
-                    if (newText == null || findChecker.isTooLate()) return null
+                    if (!searchResults.hasNext()) return null
 
                     project.statistics.onTypoResolverCreated()
-                    return TypoResolver(psiFile, editor, typoCase, element, oldText, newText, resolveChecker)
+                    return TypoResolver(psiFile, editor, typoCase, element, oldText, searchResults, resolveChecker)
                 }
             }
             return null
@@ -89,6 +91,8 @@ class TypoResolver private constructor(
         }
     }
 
+
+    private val newText = searchResults.next().word
     private fun refreshPsi() = refreshPsi(editor)
 
     private val document: Document = editor.document
