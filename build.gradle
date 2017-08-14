@@ -26,6 +26,7 @@ apply plugin: 'kotlin'
 intellij {
     version 'IC-2017.2'
     plugins = ["org.jetbrains.kotlin:$kotlin_plugin_version"]
+    pluginName 'Typo Fixer'
 }
 
 sourceCompatibility = 1.8

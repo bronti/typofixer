@@ -1,8 +1,8 @@
 <idea-plugin>
     <id>com.jetbrains.typofixer</id>
-    <name>my_plugin</name>
-    <version>0.0.1</version>
-    <vendor email="dummy" url="dummy">dummy</vendor>
+    <name>Typo Fixer</name>
+    <version>0.1.0</version>
+    <vendor email="anya.yaveyn@yandex.ru" url="dummy">dummy</vendor>
 
     <description><![CDATA[
       Sample plugin.<br>

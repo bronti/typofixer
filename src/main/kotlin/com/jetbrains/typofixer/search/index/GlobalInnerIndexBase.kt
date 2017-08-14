@@ -16,6 +16,7 @@ import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -71,12 +72,16 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
 
     // todo: make it lazy
-    private class IndexEntry {
+    private inner class IndexEntry {
 
         private var wordCount: Int = 0
 
+        @Volatile
         var isCompressed = false
             private set
+
+        @Volatile
+        var compressionInitiated = AtomicBoolean(false)
 
         private var content: HashSet<String>? = hashSetOf()
         private var bytes: ByteArray? = null
@@ -86,23 +91,34 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             wordCount = content!!.size
         }
 
-        // called once
-        fun prepareToBeRead() {
-            if (isCompressed) throw IllegalStateException()
+        fun compress() {
+            if (!compressionInitiated.compareAndSet(/* expect = */false, /* update = */true)) return
+
             val outputBytes = ByteArrayOutputStream()
             val outputStream = ObjectOutputStream(GZIPOutputStream(outputBytes))
             content!!.forEach { outputStream.writeObject(it) }
-            content = null
             outputStream.close()
-            bytes = outputBytes.toByteArray()
-            isCompressed = true
+            val newBytes = outputBytes.toByteArray()
+            // todo: can do without lock
+            synchronized(this) {
+                if (!isCompressed) {
+                    bytes = newBytes
+                    content = null
+                    isCompressed = true
+                }
+            }
         }
 
         fun getAll(): Set<String> {
+            synchronized(this) {
+                if (!isCompressed) {
+                    return content!!
+                }
+            }
             if (!isCompressed) throw IllegalStateException()
             val inputStream = ObjectInputStream(GZIPInputStream(ByteArrayInputStream(bytes!!)))
             val result = hashSetOf<String>()
-            for (i in 1..wordCount) {
+            repeat(wordCount) {
                 result.add(inputStream.readObject() as String)
             }
             return result
@@ -141,6 +157,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
         protected fun isCurrentRefreshingTask() = this === lastRefreshingTask
 
+        // once false -> always false after that
         protected fun shouldCollect(indicator: ProgressIndicator?): Boolean {
             indicator?.checkCanceled()
             if (DumbService.isDumb(project) || !isCurrentRefreshingTask()) {
@@ -160,11 +177,23 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
         }
 
         protected fun onCompletionDone(indicator: ProgressIndicator?) {
+            var toSynchronize: List<IndexEntry>? = null
+            synchronized(this) {
+                if (shouldCollect(indicator)) {
+                    // todo: toLis -> toList rolles back
+                    toSynchronize = index.values.toList()
+                }
+            }
+            if (shouldCollect(indicator)) {
+                val doCompress = Thread { toSynchronize!!.forEach { it.compress() } }
+                doCompress.priority = Thread.MIN_PRIORITY
+                doCompress.start()
+            }
+
             // todo: check that index is refreshing after each stub index refreshment
             if (DumbService.isDumb(project) || shouldCollect(indicator)) {
+                // todo: synchronized rolls back
                 synchronized(this) {
-                    // todo: here?
-                    index.entries.forEach { it.value.prepareToBeRead() }
                     if (isCurrentRefreshingTask()) lastRefreshingTask = null
                 }
             }
@@ -172,6 +201,8 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             if (this@GlobalInnerIndexBase.isUsable()) {
                 project.typoFixerComponent.onSearcherStatusMaybeChanged()
             }
+
+            // todo: initiate zipping here
 
             done = true
         }

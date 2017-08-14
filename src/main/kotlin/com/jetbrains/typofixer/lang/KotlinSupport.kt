@@ -58,6 +58,8 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     override fun isParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
     override fun isUnresolvedReference(element: PsiElement): Boolean {
         val parent = element.parent
+//        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
+        // todo: research
         return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().filter { !ErrorUtils.isError(it) }.isEmpty()
                 || parent is KtReference && parent.resolve() == null
     }
