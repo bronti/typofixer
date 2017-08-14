@@ -10,6 +10,7 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
     companion object {
         private const val SWAP_PENALTY = 0.9
         private const val REMOVE_PENALTY = 1.0
+        // todo: replace penalty should depend on distance between keys
         private const val REPLACE_PENALTY = 1.0
         private const val CHANGE_CASE_PENALTY = 0.8
         private const val ADD_PENALTY = 1.0

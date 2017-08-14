@@ -7,8 +7,8 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 @State(name = "TypoFixerSettings", storages = arrayOf(Storage(StoragePathMacros.WORKSPACE_FILE), Storage("typo_fixer_settings.xml")))
 class TypoFixerSettings : PersistentStateComponent<TypoFixerSettings> {
 
-    var maxMillisForFind = 100
-    var maxMillisForResolve = 500
+    var maxMillisForFind = 200
+    var maxMillisForResolve = 1000
 
     override fun getState(): TypoFixerSettings? = this
 
