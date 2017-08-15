@@ -24,7 +24,7 @@ class TypoResolver private constructor(
         private val typoCase: TypoCase,
         private var element: PsiElement,
         private val oldText: String,
-        searchResults: Iterator<String>,
+        private val searchResults: Iterator<String>,
         private val resolveTimeChecker: TimeLimitsChecker) {
 
 
@@ -76,6 +76,7 @@ class TypoResolver private constructor(
 
                     if (!searchResults.hasNext()) return null
 
+
                     project.statistics.onTypoResolverCreated()
                     return TypoResolver(psiFile, editor, typoCase, element, oldText, searchResults, resolveChecker)
                 }
@@ -90,8 +91,6 @@ class TypoResolver private constructor(
         }
     }
 
-
-    private val newText = searchResults.next()
     private fun refreshPsi() = refreshPsi(editor)
 
     private val document: Document = editor.document
@@ -106,23 +105,39 @@ class TypoResolver private constructor(
     fun resolve() = Thread { doResolve() }.start()
 
     private fun doResolve() {
-        checkElementIsBad(true) && !resolveTimeChecker.isTooLate()
-                && fixTypo() && !resolveTimeChecker.isTooLate()
-                && checkElementIsBad(false) && !resolveTimeChecker.isTooLate()
-                && undoFix()
+        if (!elementIsBad(true, oldText) || resolveTimeChecker.isTooLate()) return
+        while (!doOneResolve() && !resolveTimeChecker.isTooLate()) {
+            // do nothing
+        }
     }
 
-    private fun fixTypo(): Boolean = performCommand("Resolve typo", oldText) {
+    // return true is resolve should be ended
+    private fun doOneResolve(): Boolean {
+        if (!searchResults.hasNext()) return true
+        val newText = searchResults.next()
+        if (newText == oldText) return false
+        fixTypo(newText)
+        if (resolveTimeChecker.isTooLate()) {
+            undoFix(newText)
+            return true
+        }
+        if (!elementIsBad(false, newText)) return true
+        undoFix(newText)
+        return false
+    }
+
+
+    private fun fixTypo(newText: String): Boolean = performCommand("Resolve typo", oldText) {
         replaceText(oldText, newText)
         project.statistics.onWordReplaced()
     }
 
-    private fun undoFix(): Boolean = performCommand("Undo incorrect typo resolve", newText) {
+    private fun undoFix(newText: String): Boolean = performCommand("Undo incorrect typo resolve", newText) {
         replaceText(newText, oldText)
         project.statistics.onReplacementRolledBack()
     }
 
-    private fun checkElementIsBad(isBeforeReplace: Boolean): Boolean {
+    private fun elementIsBad(isBeforeReplace: Boolean, expectedText: String): Boolean {
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
@@ -133,7 +148,6 @@ class TypoResolver private constructor(
 
         var resultCalculated = false
         while (!resultCalculated) {
-            val expectedText = if (isBeforeReplace) oldText else newText
 
             var elementIsRefreshed = false
             appManager.invokeAndWait { appManager.runReadAction { elementIsRefreshed = refreshElement(expectedText) } }
