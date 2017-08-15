@@ -11,11 +11,9 @@ import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.signature.ComplexSignature
-import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
@@ -29,9 +27,9 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults
-    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchResults
-    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
+    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String>
+    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): Sequence<String>
+//    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
     abstract fun getStatus(): Status
 }
 
@@ -98,20 +96,20 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
-    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults {
+    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String> {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocal(element)
             getSearch(false).findClosest(str, wordTypes, isTooLate)
-        } else getSearch(false).EMPTY_RESULT
+        } else emptySequence()
     }
 
-    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchResults {
+    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): Sequence<String> {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocalWithKeywords(keywords)
             getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), isTooLate)
-        } else getSearch(false).EMPTY_RESULT
+        } else emptySequence()
     }
 
     private fun updateIndex() {
@@ -124,25 +122,25 @@ open class DLSearcher(val project: Project) : Searcher() {
         assert(ApplicationManager.getApplication().isInternal)
         return Pair(index.getSize(), index.timesGlobalRefreshRequested)
     }
-
-    @TestOnly
-    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
-        return if (canSearch()) {
-            index.refreshLocal(psiFile)
-            getSearch(precise).search(str)
-        } else mapOf()
-    }
-
-    @TestOnly
-    fun getIndex() = index
-
-    @TestOnly
-    fun forceGlobalIndexRefreshing() {
-        index.waitForGlobalRefreshing()
-    }
-
-    @TestOnly
-    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
-        index.refreshLocal(psiFile)
-    }
+//
+//    @TestOnly
+//    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
+//        return if (canSearch()) {
+//            index.refreshLocal(psiFile)
+//            getSearch(precise).search(str)
+//        } else mapOf()
+//    }
+//
+//    @TestOnly
+//    fun getIndex() = index
+//
+//    @TestOnly
+//    fun forceGlobalIndexRefreshing() {
+//        index.waitForGlobalRefreshing()
+//    }
+//
+//    @TestOnly
+//    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
+//        index.refreshLocal(psiFile)
+//    }
 }

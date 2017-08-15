@@ -8,11 +8,11 @@ interface DistanceTo {
 class DamerauLevenshteinDistanceTo(override val target: String, private val maxError: Int) : DistanceTo {
 
     companion object {
-        private const val SWAP_PENALTY = 0.9
+        // all penalties are equal because of multiple try
+        private const val SWAP_PENALTY = 1.0
         private const val REMOVE_PENALTY = 1.0
-        // todo: replace penalty should depend on distance between keys
         private const val REPLACE_PENALTY = 1.0
-        private const val CHANGE_CASE_PENALTY = 0.8
+        private const val CHANGE_CASE_PENALTY = 1.0
         private const val ADD_PENALTY = 1.0
     }
 

@@ -8,7 +8,8 @@ abstract class InnerIndex(val signature: Signature) {
     abstract fun getSize(): Int
     abstract fun clear()
 
-    open fun getAll(signatures: Set<Int>) = signatures.flatMap { getWithDefault(it) }
+    // todo: make lazy
+    open fun getAll(signatures: Set<Int>) = signatures.flatMap { getWithDefault(it) }.iterator().asSequence()
     open fun addAll(strings: Set<String>) {
         strings.groupBy { signature.get(it) }.forEach { addAll(it.key, it.value.toSet()) }
     }

@@ -2,25 +2,55 @@ package com.jetbrains.typofixer.search
 
 import com.jetbrains.typofixer.search.index.CombinedIndex
 
-
 class WordFromResult(val word: String, val type: CombinedIndex.WordType)
 
 private fun emptyIterator() = listOf<WordFromResult>().listIterator()
 
-class SearchResults(private val maxError: Int, private val error: Double, iter: Iterator<WordFromResult>)
-    : Iterator<WordFromResult> by (if (error <= maxError) iter else emptyIterator()) {
+class SearchResultsBuilder private constructor(
+        private val maxError: Int,
+        private val minErrorPossible: Double,
+        private val error: Double,
+        val result: Sequence<String>,
+        // todo: Dtring -> String rolls back
+        private val measure: (String) -> Double) {
 
-    constructor(maxError: Int) : this(maxError, maxError + 1.0, emptyIterator())
+    val isActive = minErrorPossible == error
 
-    constructor(maxError: Int, error: Double, words: List<WordFromResult>) : this(maxError, error, words.listIterator())
+    constructor(maxError: Int, measure: (String) -> Double) : this(maxError, 0.0, maxError.toDouble(), emptySequence(), measure)
 
-    operator fun plus(other: SearchResults): SearchResults {
-        assert(maxError == other.maxError)
+    private fun withMinErrorPossible(newMinErrorPossible: Double): SearchResultsBuilder {
+        assert(!isActive && minErrorPossible <= newMinErrorPossible && error >= newMinErrorPossible)
+        return SearchResultsBuilder(maxError, newMinErrorPossible, error, result, measure)
+    }
+
+    private fun withAddedIfMinPossibleEquals(candidates: Sequence<String>): SearchResultsBuilder {
+        return if (!isActive) {
+            val measured = mutableListOf<Pair<String, Double>>()
+            candidates.forEach { measured.add(it to measure(it)) }
+            val newMinError = measured.map { it.second }.min() ?: maxError + 1.0
+            if (newMinError > error) return this
+            assert(minErrorPossible <= newMinError)
+            val additionalResult = measured.asSequence().filter { it.second == newMinError }.map { it.first }
+            if (newMinError < error) return SearchResultsBuilder(maxError, minErrorPossible, newMinError, additionalResult, measure)
+            SearchResultsBuilder(maxError, minErrorPossible, error, result + additionalResult, measure)
+        } else {
+            // laziness here
+            SearchResultsBuilder(maxError, minErrorPossible, error, result + candidates.filter { measure(it) == error }, measure)
+        }
+    }
+
+    // invalidates builder
+    fun withAdded(newMinErrorPossible: Double, newCandidates: Sequence<String>): SearchResultsBuilder {
+        assert(minErrorPossible <= newMinErrorPossible)
+        if (isActive && minErrorPossible < newMinErrorPossible) return this
+        return withMinErrorPossible(newMinErrorPossible).withAddedIfMinPossibleEquals(newCandidates)
+    }
+
+    // invalidates builder
+    fun withAdded(other: SearchResultsBuilder): SearchResultsBuilder {
+        assert(maxError == other.maxError && other.isActive)
+        if (error == other.error) return SearchResultsBuilder(maxError, minErrorPossible, error, result + other.result, measure)
         if (error < other.error) return this
-        if (error > other.error) return other
-        return SearchResults(maxError, error, object : Iterator<WordFromResult> {
-            override fun hasNext() = this@SearchResults.hasNext() || other.hasNext()
-            override fun next() = if (this@SearchResults.hasNext()) this@SearchResults.next() else other.next()
-        })
+        else return other
     }
 }
