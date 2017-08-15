@@ -12,14 +12,13 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    protected abstract fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean): SearchResultsBuilder
+    protected abstract fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResultsBuilder
 
     // order in wordTypes matters
     fun findClosest(str: String, types: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String> {
         val result = types.fold(getEmptyResultBuilder(str, maxError)) { acc, type ->
             if (isTooLate()) return emptySequence()
-            // todo: bound error by prev results
-            acc.withAdded(findClosest(str, type, isTooLate))
+            acc.withAdded(findClosest(str, type, isTooLate, acc.error.toInt()))
         }
         assert(result.isActive)
         return result.result
@@ -50,13 +49,14 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
     : SearchAlgorithm(maxError, { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }, index) {
 
     // todo: candidates count
-    override fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean): SearchResultsBuilder {
+    override fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResultsBuilder {
         val signaturesByError = getSignatures(str)
 
         // todo: it -> if in {it: ...}
-        val result = signaturesByError.foldIndexed(getEmptyResultBuilder(str, maxError)) { error, acc, signatures ->
+        val result = (0..currentBestError).fold(getEmptyResultBuilder(str, currentBestError)) { acc, error ->
             if (isTooLate()) return acc
 
+            val signatures = signaturesByError[error]
             val candidates = index.getAll(type, signatures)
             acc.withAdded(error.toDouble(), candidates)
         }
