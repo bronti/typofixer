@@ -12,9 +12,9 @@ class LocalInnerIndex(signature: Signature, val getWords: (element: PsiElement) 
     override fun getSize() = index.entries.sumBy { it.value.size }
     override fun clear() = index.clear()
 
-    override fun getWithDefault(signature: Int): HashSet<String> {
-        val result = index[signature] ?: return hashSetOf()
-        return result
+    override fun getWithDefault(signature: Int): Sequence<String> {
+        val result = index[signature] ?: return emptySequence()
+        return result.asSequence().constrainOnce()
     }
 
     override fun addAll(signature: Int, strings: Set<String>) {

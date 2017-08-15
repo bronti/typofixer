@@ -40,14 +40,14 @@ class SearchResultsBuilder private constructor(
     }
 
     // invalidates builder
-    fun withAdded(newMinErrorPossible: Double, newCandidates: Sequence<String>): SearchResultsBuilder {
+    fun combineWith(newMinErrorPossible: Double, newCandidates: Sequence<String>): SearchResultsBuilder {
         assert(newMinErrorPossible in minErrorPossible..maxError.toDouble())
         if (error < newMinErrorPossible) return this
         return withMinErrorPossible(newMinErrorPossible).withAddedIfMinPossibleEquals(newCandidates)
     }
 
     // invalidates builder
-    fun withAdded(other: SearchResultsBuilder): SearchResultsBuilder {
+    fun combineWith(other: SearchResultsBuilder): SearchResultsBuilder {
         assert(maxError >= other.maxError && other.isActive)
         if (error == other.error) return SearchResultsBuilder(maxError, minErrorPossible, error, result + other.result, measure)
         if (error < other.error) return this

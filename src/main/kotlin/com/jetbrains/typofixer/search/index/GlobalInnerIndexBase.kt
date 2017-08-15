@@ -50,8 +50,8 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
         }
     }
 
-    override fun getWithDefault(signature: Int): Set<String> {
-        val result = index[signature]?.getAll() ?: return setOf()
+    override fun getWithDefault(signature: Int): Sequence<String> {
+        val result = index[signature]?.getAll() ?: return emptySequence()
         return result
     }
 
@@ -109,19 +109,16 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             }
         }
 
-        fun getAll(): Set<String> {
+        fun getAll(): Sequence<String> {
             synchronized(this) {
                 if (!isCompressed) {
-                    return content!!
+                    return content!!.asSequence().constrainOnce()
                 }
             }
             if (!isCompressed) throw IllegalStateException()
             val inputStream = ObjectInputStream(GZIPInputStream(ByteArrayInputStream(bytes!!)))
-            val result = hashSetOf<String>()
-            repeat(wordCount) {
-                result.add(inputStream.readObject() as String)
-            }
-            return result
+
+            return generateSequence { inputStream.readObject() as String }.take(wordCount)
         }
 
         fun getSize() = wordCount
