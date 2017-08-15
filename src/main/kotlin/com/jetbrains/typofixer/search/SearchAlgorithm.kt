@@ -18,7 +18,7 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
     fun findClosest(str: String, types: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String> {
         val result = types.fold(getEmptyResultBuilder(str, maxError)) { acc, type ->
             if (isTooLate()) return emptySequence()
-            acc.combineWith(findClosest(str, type, isTooLate, acc.error.toInt()))
+            acc.combinedWith(findClosest(str, type, isTooLate, acc.error.toInt()))
         }
         assert(result.isActive)
         return result.result
@@ -58,7 +58,7 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
 
             val signatures = signaturesByError[error]
             val candidates = index.getAll(type, signatures)
-            acc.combineWith(error.toDouble(), candidates)
+            acc.combinedWith(error.toDouble(), candidates)
         }
         return result
     }
