@@ -33,8 +33,8 @@ class JavaSupport : JavaKotlinBaseSupport() {
         override fun keyWords(element: PsiElement) = javaKeywords
 
         // todo: make it right
-        override fun localIdentifiers(psiFile: PsiFile): List<String> {
-            val result = mutableListOf<String>()
+        override fun localIdentifiers(psiFile: PsiFile): Set<String> {
+            val result = mutableSetOf<String>()
 
             val visitor = object : JavaRecursiveElementVisitor() {
                 override fun visitIdentifier(identifier: PsiIdentifier) {
@@ -51,7 +51,7 @@ class JavaSupport : JavaKotlinBaseSupport() {
 }
 
 // JavaLexer.KEYWORDS and JavaLexer.JAVA9_KEYWORDS are private :(
-private val javaKeywords = listOf(
+private val javaKeywords = setOf(
         PsiKeyword.ABSTRACT,
         PsiKeyword.ASSERT,
         PsiKeyword.BOOLEAN,

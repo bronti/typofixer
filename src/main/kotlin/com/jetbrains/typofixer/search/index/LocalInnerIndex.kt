@@ -12,12 +12,9 @@ class LocalInnerIndex(signature: Signature, val getWords: (wordsCollector: Local
     private val index = HashMap<Int, HashSet<String>>()
 
     override fun getSize() = index.entries.sumBy { it.value.size }
-    override fun clear() = index.clear()
+    fun clear() = index.clear()
 
-    override fun getWithDefault(signature: Int): Sequence<String> {
-        val result = index[signature] ?: return emptySequence()
-        return result.asSequence().constrainOnce()
-    }
+    override fun getWithDefault(signature: Int) = index[signature]?.asSequence()?.constrainOnce() ?: emptySequence()
 
     override fun addAll(signature: Int, strings: Set<String>) {
         if (index[signature] == null) {

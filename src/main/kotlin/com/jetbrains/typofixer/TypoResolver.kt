@@ -13,6 +13,8 @@ import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
+import com.jetbrains.typofixer.search.ResolveAbortedException
+import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
 
@@ -73,7 +75,13 @@ class TypoResolver private constructor(
                 if (typoCase.needToReplace(element, fast = true)) {
 
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
-                    val searchResults = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() })
+
+                    val searchResults: SearchResults
+                    try {
+                        searchResults = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() })
+                    } catch (e: ResolveAbortedException) {
+                        return null
+                    }
 
                     if (searchResults.none()) return null
 

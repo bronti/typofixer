@@ -30,10 +30,11 @@ abstract class Searcher {
 
     abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults
     abstract fun findClosestAmongKeywords(str: String, keywords: Set<String>, isTooLate: () -> Boolean): SearchResults
-//    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
-    abstract fun getStatus(): Status
 
     abstract val distanceProvider: Distance
+
+    // internal use only
+    abstract fun getStatus(): Status
 }
 
 open class DLSearcher(val project: Project) : Searcher() {
@@ -50,7 +51,8 @@ open class DLSearcher(val project: Project) : Searcher() {
         // 10: compressed global index
         // 11: compressing fixed
         // 12: distance is Double (misclicked shift and swap costs lowered)
-        val VERSION = 12
+        // 13: lazy search returning multiple results
+        val VERSION = 13
     }
 
     private val maxError = 2
@@ -62,7 +64,8 @@ open class DLSearcher(val project: Project) : Searcher() {
     private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(project).outOfCodeBlockModificationCount
 
     private val simpleSearch = DLSearchAlgorithm(maxError, index)
-    private val preciceSearch = DLPreciseSearchAlgorithm(maxError, index)
+    private val preciseSearch = DLPreciseSearchAlgorithm(maxError, index)
+    private fun getSearch(precise: Boolean) = if (precise) preciseSearch else simpleSearch
 
     override val distanceProvider = simpleSearch.distance
 
@@ -85,36 +88,21 @@ open class DLSearcher(val project: Project) : Searcher() {
 
                 // todo: ?
                 override fun fileOpened(source: FileEditorManager, file: VirtualFile) {}
-
                 override fun fileClosed(source: FileEditorManager, file: VirtualFile) {}
             })
         }
     }
 
-    override fun getStatus() = when {
-        DumbService.isDumb(project) -> Status.DUMB_MODE
-        index.isUsable() -> Status.ACTIVE
-        else -> Status.INDEX_REFRESHING
-    }
-
-    private fun canSearch() = getStatus() == Status.ACTIVE
-
-    private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
-
     override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults {
-        return if (canSearch()) {
-            // todo: isTooLate into refreshLocal?
-            index.refreshLocal(element)
-            getSearch(false).findClosest(str, wordTypes, isTooLate)
-        } else getSearch(false).getEmptyResult()
+        // todo: isTooLate into refreshLocal?
+        index.refreshLocal(element)
+        return getSearch(false).findClosest(str, wordTypes, isTooLate)
     }
 
     override fun findClosestAmongKeywords(str: String, keywords: Set<String>, isTooLate: () -> Boolean): SearchResults {
-        return if (canSearch()) {
-            // todo: isTooLate into refreshLocal?
-            index.refreshLocalWithKeywords(keywords)
-            getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), isTooLate)
-        } else getSearch(false).getEmptyResult()
+        // todo: isTooLate into refreshLocal?
+        index.refreshLocalWithKeywords(keywords)
+        return getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), isTooLate)
     }
 
     private fun updateIndex() {
@@ -127,10 +115,17 @@ open class DLSearcher(val project: Project) : Searcher() {
         assert(ApplicationManager.getApplication().isInternal)
         return Pair(index.getSize(), index.timesGlobalRefreshRequested)
     }
+
+    // internal use only
+    override fun getStatus() = when {
+        DumbService.isDumb(project) -> Status.DUMB_MODE
+        index.isUsable() -> Status.ACTIVE
+        else -> Status.INDEX_REFRESHING
+    }
 //
 //    @TestOnly
 //    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
-//        return if (canSearch()) {
+//        return if (isUsable()) {
 //            index.refreshLocal(psiFile)
 //            getSearch(precise).search(str)
 //        } else mapOf()

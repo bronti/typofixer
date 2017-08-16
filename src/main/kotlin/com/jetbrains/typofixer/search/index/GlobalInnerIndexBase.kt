@@ -23,17 +23,17 @@ import java.util.zip.GZIPOutputStream
 
 abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) : InnerIndex(signature) {
 
-    @Volatile
-    protected var lastRefreshingTask: CollectProjectNamesBase? = null
     private val index = HashMap<Int, IndexEntry>()
 
+    @Volatile
+    protected var lastRefreshingTask: CollectProjectNamesBase? = null
     protected abstract fun getRefreshingTask(): CollectProjectNamesBase
 
     fun isUsable() = lastRefreshingTask == null
 
-    override fun clear() = index.clear()
     override fun getSize() = synchronizedAccess { index.entries.sumBy { it.value.getSize() } }
     override fun getAll(signatures: Set<Int>) = synchronizedAccess { super.getAll(signatures) }
+
     override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
 
     fun refresh() {
@@ -50,10 +50,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
         }
     }
 
-    override fun getWithDefault(signature: Int): Sequence<String> {
-        val result = index[signature]?.getAll() ?: return emptySequence()
-        return result
-    }
+    override fun getWithDefault(signature: Int) = index[signature]?.getAll() ?: emptySequence()
 
     override fun addAll(signature: Int, strings: Set<String>) {
         if (index[signature] == null) {
@@ -62,9 +59,12 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
         index[signature]!!.addAll(strings)
     }
 
-    private fun <T> synchronizedAccess(doGet: () -> T) = synchronized(this) {
-        if (isUsable()) doGet()
-        else throw TriedToAccessIndexWhileItIsRefreshing()
+    private fun <T> synchronizedAccess(doGet: () -> T): T {
+        if (!isUsable()) throw TriedToAccessIndexWhileItIsRefreshing()
+        synchronized(this) {
+            if (isUsable()) return doGet()
+            else throw TriedToAccessIndexWhileItIsRefreshing()
+        }
     }
 
 

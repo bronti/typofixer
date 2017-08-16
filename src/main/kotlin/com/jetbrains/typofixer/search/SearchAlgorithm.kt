@@ -2,6 +2,7 @@ package com.jetbrains.typofixer.search
 
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistance
 import com.jetbrains.typofixer.search.index.CombinedIndex
+import com.jetbrains.typofixer.search.index.GlobalInnerIndexBase
 
 /**
  * @author bronti.
@@ -24,6 +25,8 @@ abstract class SearchAlgorithm(val maxError: Int, val distance: DamerauLevenshte
     fun getEmptyResult() = SearchResults(maxError, maxError, emptySequence())
 }
 
+class ResolveAbortedException : RuntimeException()
+
 abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
     : SearchAlgorithm(maxError, DamerauLevenshteinDistance(maxError), index) {
 
@@ -39,7 +42,13 @@ abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
             if (isTooLate()) return acc.getResults()
 
             val signatures = signaturesByError[error]
-            val candidates = index.getAll(type, signatures)
+
+            val candidates = try {
+                index.getAll(type, signatures)
+            } catch(e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
+                throw ResolveAbortedException()
+            }
+
             acc.combinedWith(error, candidates)
         }
         return result.getResults()

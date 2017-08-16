@@ -6,7 +6,6 @@ import org.jetbrains.annotations.TestOnly
 abstract class InnerIndex(val signature: Signature) {
 
     abstract fun getSize(): Int
-    abstract fun clear()
 
     // todo: make signatures lazy (?)
     open fun getAll(signatures: Set<Int>) = signatures.asSequence().flatMap { getWithDefault(it) }
