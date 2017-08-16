@@ -11,6 +11,7 @@
     <change-notes><![CDATA[
       Release 1.0.0: Initial release.<br>
       Release 1.0.1: Description updated.<br>
+      Release 1.0.2: ConcurrentModificationException during index refreshing is fixed.<br>
     ]]></change-notes>
 
     <depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
