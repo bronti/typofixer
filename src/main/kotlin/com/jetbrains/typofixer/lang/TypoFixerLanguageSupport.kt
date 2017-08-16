@@ -39,6 +39,6 @@ interface TypoCase {
 }
 
 interface LocalDictionaryCollector {
-    fun keyWords(element: PsiElement): List<String>
-    fun localIdentifiers(psiFile: PsiFile): List<String>
+    fun keyWords(element: PsiElement): Set<String>
+    fun localIdentifiers(psiFile: PsiFile): Set<String>
 }

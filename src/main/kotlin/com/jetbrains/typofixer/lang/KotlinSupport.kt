@@ -35,7 +35,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
             return searcher.findClosestAmongKeywords(oldText, allowedKeywords, isTooLate)
         }
 
-        abstract val allowedKeywords: List<String>
+        abstract val allowedKeywords: Set<String>
     }
 
     private val BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR = object : BadKeywordBeforeParameter() {
@@ -69,8 +69,8 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     class KotlinLocalDictionaryCollector : LocalDictionaryCollector {
         override fun keyWords(element: PsiElement) = KEYWORDS + SOFT_KEYWORDS
 
-        override fun localIdentifiers(psiFile: PsiFile): List<String> {
-            val result = mutableListOf<String>()
+        override fun localIdentifiers(psiFile: PsiFile): Set<String> {
+            val result = mutableSetOf<String>()
 
             val visitor = object : KtTreeVisitorVoid() {
                 override fun visitNamedDeclaration(declaration: KtNamedDeclaration) {
@@ -108,4 +108,4 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     }
 }
 
-private fun Array<IElementType>.getNames() = this.map { it as KtKeywordToken }.map { it.value }
+private fun Array<IElementType>.getNames() = this.map { it as KtKeywordToken }.map { it.value }.toSet()
