@@ -111,7 +111,7 @@ class TypoResolver private constructor(
         }
     }
 
-    // return true is resolve should be ended
+    // return true if resolve should be ended
     private fun doOneResolve(): Boolean {
         if (!searchResults.hasNext()) return true
         val newText = searchResults.next()

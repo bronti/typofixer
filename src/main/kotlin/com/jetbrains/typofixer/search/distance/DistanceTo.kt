@@ -3,16 +3,17 @@ package com.jetbrains.typofixer.search.distance
 interface DistanceTo {
     val target: String
     fun measure(str: String): Double
+    fun roughMeasure(str: String): Int
 }
 
 class DamerauLevenshteinDistanceTo(override val target: String, private val maxError: Int) : DistanceTo {
 
     companion object {
         // all penalties are equal because of multiple try
-        private const val SWAP_PENALTY = 1.0
+        private const val SWAP_PENALTY = 0.9
         private const val REMOVE_PENALTY = 1.0
         private const val REPLACE_PENALTY = 1.0
-        private const val CHANGE_CASE_PENALTY = 1.0
+        private const val CHANGE_CASE_PENALTY = 0.8
         private const val ADD_PENALTY = 1.0
     }
 
@@ -85,4 +86,6 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
         }
         return Math.min(prev[maxError + left.length - right.length], bigDistance)
     }
+
+    override fun roughMeasure(str: String): Int = Math.round(measure(str)).toInt()
 }

@@ -1,37 +1,30 @@
 package com.jetbrains.typofixer.search
 
-import com.jetbrains.typofixer.search.index.CombinedIndex
-
-class WordFromResult(val word: String, val type: CombinedIndex.WordType)
-
-private fun emptyIterator() = listOf<WordFromResult>().listIterator()
-
 class SearchResultsBuilder private constructor(
         private val maxError: Int,
-        private val minErrorPossible: Double,
-        val error: Double,
+        private val minErrorPossible: Int,
+        val error: Int,
         val result: Sequence<String>,
         // todo: Dtring -> String rolls back
-        private val measure: (String) -> Double) {
+        private val measure: (String) -> Int) {
 
     val isActive = minErrorPossible == error
 
-    constructor(maxError: Int, measure: (String) -> Double) : this(maxError, 0.0, maxError.toDouble(), emptySequence(), measure)
+    constructor(maxError: Int, measure: (String) -> Int) : this(maxError, 0, maxError, emptySequence(), measure)
 
-    private fun withMinErrorPossible(newMinErrorPossible: Double): SearchResultsBuilder {
+    private fun withMinErrorPossible(newMinErrorPossible: Int): SearchResultsBuilder {
         assert(newMinErrorPossible in minErrorPossible..error)
         return SearchResultsBuilder(maxError, newMinErrorPossible, error, result, measure)
     }
 
-
     private fun withAddedIfMinPossibleEquals(candidates: Sequence<String>): SearchResultsBuilder {
         return if (!isActive) {
-            val measured = mutableListOf<Pair<String, Double>>()
+            val measured = mutableListOf<Pair<String, Int>>()
             candidates.forEach { measured.add(it to measure(it)) }
 
             // hack in case str which is going to be replaced is inside index
             // (in this case error is still 1 so strings with error == 1 can also be in result)
-            val newMinError = Math.max(measured.map { it.second }.min() ?: maxError + 1.0, 1.0)
+            val newMinError = Math.max(measured.map { it.second }.min() ?: maxError + 1, 1)
             if (newMinError > error) return this
             assert(minErrorPossible <= newMinError)
             val additionalResult = measured.asSequence().filter { it.second == newMinError }.map { it.first }
@@ -44,8 +37,8 @@ class SearchResultsBuilder private constructor(
     }
 
     // invalidates builder
-    fun combinedWith(newMinErrorPossible: Double, newCandidates: Sequence<String>): SearchResultsBuilder {
-        assert(newMinErrorPossible in minErrorPossible..maxError.toDouble())
+    fun combinedWith(newMinErrorPossible: Int, newCandidates: Sequence<String>): SearchResultsBuilder {
+        assert(newMinErrorPossible in minErrorPossible..maxError)
         if (error < newMinErrorPossible) return this
         return withMinErrorPossible(newMinErrorPossible).withAddedIfMinPossibleEquals(newCandidates)
     }
