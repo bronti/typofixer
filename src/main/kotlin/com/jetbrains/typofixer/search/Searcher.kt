@@ -12,6 +12,7 @@ import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiModificationTracker
+import com.jetbrains.typofixer.search.distance.Distance
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.signature.ComplexSignature
 
@@ -31,6 +32,8 @@ abstract class Searcher {
     abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): Sequence<String>
 //    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
     abstract fun getStatus(): Status
+
+    abstract val distanceProvider: Distance
 }
 
 open class DLSearcher(val project: Project) : Searcher() {
@@ -60,6 +63,8 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private val simpleSearch = DLSearchAlgorithm(maxError, index)
     private val preciceSearch = DLPreciseSearchAlgorithm(maxError, index)
+
+    override val distanceProvider = simpleSearch.distance
 
     init {
         val connection = project.messageBus.connect(project)

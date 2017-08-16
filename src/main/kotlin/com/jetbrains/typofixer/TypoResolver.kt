@@ -24,9 +24,8 @@ class TypoResolver private constructor(
         private val typoCase: TypoCase,
         private var element: PsiElement,
         private val oldText: String,
-        private val searchResults: Iterator<String>,
+        private val replacements: Sequence<String>,
         private val resolveTimeChecker: TimeLimitsChecker) {
-
 
     companion object {
         class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
@@ -72,13 +71,14 @@ class TypoResolver private constructor(
                 if (typoCase.needToReplace(element, fast = true)) {
 
                     val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
-                    val searchResults = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() }).iterator()
+                    val searchResults = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() })
 
-                    if (!searchResults.hasNext()) return null
+                    if (searchResults.none()) return null
 
+                    val replacements = searchResults.sortedBy { project.searcher.distanceProvider.measure(oldText, it) }
 
                     project.statistics.onTypoResolverCreated()
-                    return TypoResolver(psiFile, editor, typoCase, element, oldText, searchResults, resolveChecker)
+                    return TypoResolver(psiFile, editor, typoCase, element, oldText, replacements, resolveChecker)
                 }
             }
             return null
@@ -94,11 +94,11 @@ class TypoResolver private constructor(
     private fun refreshPsi() = refreshPsi(editor)
 
     private val document: Document = editor.document
+    private var elementStartOffset = element.textOffset
+    // todo: make sure distance is calculated once for each word
 
     private val project
         get() = psiFile.project
-
-    private var elementStartOffset = element.textOffset
 
     private val appManager = ApplicationManager.getApplication()
 
@@ -106,15 +106,14 @@ class TypoResolver private constructor(
 
     private fun doResolve() {
         if (!elementIsBad(true, oldText) || resolveTimeChecker.isTooLate()) return
-        while (!doOneResolve() && !resolveTimeChecker.isTooLate()) {
-            // do nothing
+        // index unzipping laziness is forced here
+        replacements.forEach {
+            if (doOneResolve(it) || resolveTimeChecker.isTooLate()) return
         }
     }
 
     // return true if resolve should be ended
-    private fun doOneResolve(): Boolean {
-        if (!searchResults.hasNext()) return true
-        val newText = searchResults.next()
+    private fun doOneResolve(newText: String): Boolean {
         if (newText == oldText) return false
         fixTypo(newText)
         if (resolveTimeChecker.isTooLate()) {

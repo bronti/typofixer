@@ -1,14 +1,13 @@
 package com.jetbrains.typofixer.search
 
-import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistanceTo
-import com.jetbrains.typofixer.search.distance.DistanceTo
+import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistance
 import com.jetbrains.typofixer.search.index.CombinedIndex
 
 /**
  * @author bronti.
  */
 
-abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) -> DistanceTo, val index: CombinedIndex) {
+abstract class SearchAlgorithm(val maxError: Int, val distance: DamerauLevenshteinDistance, protected val index: CombinedIndex) {
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
@@ -24,29 +23,12 @@ abstract class SearchAlgorithm(val maxError: Int, val getDistanceTo: (String) ->
         return result.result
     }
 
-//    @TestOnly
-//    fun getCandidates(str: String): List<String> {
-//        return getSignatures(str).flatMap { index.getAltogether(it) }
-//    }
-//
-//    @TestOnly
-//    fun simpleSearch(str: String): List<String> {
-//        val distance = getDistanceTo(str)
-//        return getCandidates(str).filter { distance.measure(it) <= maxError }
-//    }
-//
-//    @TestOnly
-//    fun search(str: String): Map<Double, List<String>> {
-//        val distance = getDistanceTo(str)
-//        return getCandidates(str).groupBy { it: String -> distance.measure(it) }.filter { it.key <= maxError }
-//    }
-
     protected fun getEmptyResultBuilder(str: String, maxError: Int)
-            = SearchResultsBuilder(maxError, getDistanceTo(str)::roughMeasure)
+            = SearchResultsBuilder(maxError, { distance.roughMeasure(str, it) })
 }
 
 abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
-    : SearchAlgorithm(maxError, { it: String -> DamerauLevenshteinDistanceTo(it, maxError) }, index) {
+    : SearchAlgorithm(maxError, DamerauLevenshteinDistance(maxError), index) {
 
     // todo: candidates count
     override fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResultsBuilder {

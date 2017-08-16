@@ -1,12 +1,11 @@
 package com.jetbrains.typofixer.search.distance
 
-interface DistanceTo {
-    val target: String
-    fun measure(str: String): Double
-    fun roughMeasure(str: String): Int
+interface Distance {
+    fun measure(str1: String, str2: String): Double
+    fun roughMeasure(str1: String, str2: String): Int
 }
 
-class DamerauLevenshteinDistanceTo(override val target: String, private val maxError: Int) : DistanceTo {
+class DamerauLevenshteinDistance(private val maxError: Int) : Distance {
 
     companion object {
         // all penalties are equal because of multiple try
@@ -21,15 +20,15 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
      * returns distance if it is less or equals to maxError and maxError + 1 otherwise
      */
     // todo: bigger identifiers should allow more mistakes (?)
-    override fun measure(str: String): Double {
+    override fun measure(str1: String, str2: String): Double {
 
         val bigDistance = maxError + 1.0
 
-        if (target.isEmpty()) return Math.min(str.length.toDouble(), bigDistance)
-        if (str.isEmpty()) return Math.min(target.length.toDouble(), bigDistance)
-        if (Math.abs(target.length - str.length) > maxError) return bigDistance
+        if (str1.isEmpty()) return Math.min(str2.length.toDouble(), bigDistance)
+        if (str2.isEmpty()) return Math.min(str1.length.toDouble(), bigDistance)
+        if (Math.abs(str1.length - str2.length) > maxError) return bigDistance
 
-        val (left, right) = if (target.length > str.length) Pair(str, target) else Pair(str, target)
+        val (left, right) = if (str1.length > str2.length) Pair(str2, str1) else Pair(str2, str1)
 
         val gapSize = 2 * maxError + 1
 
@@ -87,5 +86,5 @@ class DamerauLevenshteinDistanceTo(override val target: String, private val maxE
         return Math.min(prev[maxError + left.length - right.length], bigDistance)
     }
 
-    override fun roughMeasure(str: String): Int = Math.round(measure(str)).toInt()
+    override fun roughMeasure(str1: String, str2: String): Int = Math.round(measure(str1, str2)).toInt()
 }
