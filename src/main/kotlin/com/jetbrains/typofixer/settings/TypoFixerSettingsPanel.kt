@@ -70,21 +70,29 @@ class TypoFixerSettingsPanel(val project: Project) {
     private var timesFindOutOfTimeText: JLabel? = null
     private var timesResolveOutOfTimeText: JLabel? = null
 
+    private val internalFields = mapOf(
+            timesResolverCreatedField to statistics::timesResolverCreated,
+            timesWordReplacedField to statistics::timesWordReplaced,
+            timesRolledBackField to statistics::timesRolledBack,
+            timesFindOutOfTimeField to statistics::timesFindAbortedBecauseOfTimeLimits,
+            timesResolveOutOfTimeField to statistics::timesResolveAbortedBecauseOfTimeLimits
+    )
+
+    private val internalTextFields = listOf(
+            timesResolverCreatedText,
+            timesWordReplacedText,
+            timesRolledBackText,
+            timesFindOutOfTimeText,
+            timesResolveOutOfTimeText
+    )
+
     fun refresh() {
         maxResolveDelay = settings.maxMillisForResolve
         maxFreezeTime = settings.maxMillisForFind
 
-        updateStaticticField(timesResolverCreatedField, statistics.timesResolverCreated)
-        updateStaticticField(timesWordReplacedField, statistics.timesWordReplaced)
-        updateStaticticField(timesRolledBackField, statistics.timesRolledBack)
-        updateStaticticField(timesFindOutOfTimeField, statistics.timesFindAbortedBecauseOfTimeLimits)
-        updateStaticticField(timesResolveOutOfTimeField, statistics.timesResolveAbortedBecauseOfTimeLimits)
-        updateStaticticField(successfulResolvesField, statistics.timesWordReplaced - statistics.timesRolledBack, false)
+        internalFields.forEach { updateStaticticField(it.key, it.value.get()) }
+        internalTextFields.forEach { updateTextVisibility(it) }
 
-        updateTextVisibility(timesResolverCreatedText)
-        updateTextVisibility(timesWordReplacedText)
-        updateTextVisibility(timesRolledBackText)
-        updateTextVisibility(timesFindOutOfTimeText)
-        updateTextVisibility(timesResolveOutOfTimeText)
+        updateStaticticField(successfulResolvesField, statistics.timesWordReplaced - statistics.timesRolledBack, false)
     }
 }

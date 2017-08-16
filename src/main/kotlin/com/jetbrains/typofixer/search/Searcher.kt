@@ -28,8 +28,8 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String>
-    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): Sequence<String>
+    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults
+    abstract fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchResults
 //    abstract fun search(str: String, psiFile: PsiFile?, precise: Boolean = false): Map<Double, List<String>>
     abstract fun getStatus(): Status
 
@@ -101,20 +101,20 @@ open class DLSearcher(val project: Project) : Searcher() {
 
     private fun getSearch(precise: Boolean) = if (precise) preciceSearch else simpleSearch
 
-    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String> {
+    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocal(element)
             getSearch(false).findClosest(str, wordTypes, isTooLate)
-        } else emptySequence()
+        } else getSearch(false).getEmptyResult()
     }
 
-    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): Sequence<String> {
+    override fun findClosestAmongKeywords(str: String, keywords: List<String>, isTooLate: () -> Boolean): SearchResults {
         return if (canSearch()) {
             // todo: isTooLate into refreshLocal?
             index.refreshLocalWithKeywords(keywords)
             getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), isTooLate)
-        } else emptySequence()
+        } else getSearch(false).getEmptyResult()
     }
 
     private fun updateIndex() {

@@ -12,6 +12,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
+import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
 
@@ -24,7 +25,7 @@ class TypoResolver private constructor(
         private val typoCase: TypoCase,
         private var element: PsiElement,
         private val oldText: String,
-        private val replacements: Sequence<String>,
+        private val replacements: Sequence<FoundWord>,
         private val resolveTimeChecker: TimeLimitsChecker) {
 
     companion object {
@@ -61,6 +62,7 @@ class TypoResolver private constructor(
             for (typoCase in langSupport.getTypoCases()) {
                 if (!typoCase.triggersTypoResolve(nextChar)) continue
 
+                // I don't want to call refresh if resolve is never triggered
                 if (element == null) {
                     refreshPsi(editor)
                     element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
@@ -75,7 +77,7 @@ class TypoResolver private constructor(
 
                     if (searchResults.none()) return null
 
-                    val replacements = searchResults.sortedBy { project.searcher.distanceProvider.measure(oldText, it) }
+                    val replacements = searchResults.sortedBy { project.searcher.distanceProvider.measure(oldText, it.word) }
 
                     project.statistics.onTypoResolverCreated()
                     return TypoResolver(psiFile, editor, typoCase, element, oldText, replacements, resolveChecker)
@@ -106,9 +108,9 @@ class TypoResolver private constructor(
 
     private fun doResolve() {
         if (!elementIsBad(true, oldText) || resolveTimeChecker.isTooLate()) return
-        // index unzipping laziness is forced here
+        // index unzipping laziness is forced here:
         replacements.forEach {
-            if (doOneResolve(it) || resolveTimeChecker.isTooLate()) return
+            if (doOneResolve(it.word) || resolveTimeChecker.isTooLate()) return
         }
     }
 

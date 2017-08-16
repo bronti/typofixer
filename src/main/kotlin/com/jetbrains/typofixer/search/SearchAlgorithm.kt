@@ -11,38 +11,38 @@ abstract class SearchAlgorithm(val maxError: Int, val distance: DamerauLevenshte
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    protected abstract fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResultsBuilder
+    protected abstract fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResults
 
     // order in wordTypes matters
-    fun findClosest(str: String, types: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): Sequence<String> {
-        val result = types.fold(getEmptyResultBuilder(str, maxError)) { acc, type ->
-            if (isTooLate()) return emptySequence()
+    fun findClosest(str: String, types: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults {
+        return types.fold(getEmptyResult()) { acc, type ->
+            if (isTooLate()) return getEmptyResult()
             acc.combinedWith(findClosest(str, type, isTooLate, acc.error))
         }
-        assert(result.isActive)
-        return result.result
     }
 
-    protected fun getEmptyResultBuilder(str: String, maxError: Int)
-            = SearchResultsBuilder(maxError, { distance.roughMeasure(str, it) })
+    fun getEmptyResult() = SearchResults(maxError, maxError, emptySequence())
 }
 
 abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
     : SearchAlgorithm(maxError, DamerauLevenshteinDistance(maxError), index) {
 
+    private fun getEmptyResultBuilder(str: String, maxError: Int, type: CombinedIndex.WordType)
+            = SearchResultsBuilder(maxError, { distance.roughMeasure(str, it) }, type)
+
     // todo: candidates count
-    override fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResultsBuilder {
+    override fun findClosest(str: String, type: CombinedIndex.WordType, isTooLate: () -> Boolean, currentBestError: Int): SearchResults {
         val signaturesByError = getSignatures(str)
 
         // todo: it -> if in {it: ...}
-        val result = (0..currentBestError).fold(getEmptyResultBuilder(str, currentBestError)) { acc, error ->
-            if (isTooLate()) return acc
+        val result = (0..currentBestError).fold(getEmptyResultBuilder(str, currentBestError, type)) { acc: SearchResultsBuilder, error ->
+            if (isTooLate()) return acc.getResults()
 
             val signatures = signaturesByError[error]
             val candidates = index.getAll(type, signatures)
             acc.combinedWith(error, candidates)
         }
-        return result
+        return result.getResults()
     }
 }
 
