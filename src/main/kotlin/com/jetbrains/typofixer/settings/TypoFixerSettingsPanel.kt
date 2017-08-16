@@ -16,8 +16,8 @@ class TypoFixerSettingsPanel(val project: Project) {
     private var maxResolveDelayField: JFormattedTextField? = null
     private var maxFreezeTimeField: JFormattedTextField? = null
 
-    private fun JTextField.getTextValue() = text.toInt()
-    private fun JTextField.setTextValue(value: Int) {
+    private fun JTextField.getTextValue() = text.toLong()
+    private fun JTextField.setTextValue(value: Long) {
         text = value.toString()
     }
 

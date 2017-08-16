@@ -28,8 +28,8 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults
-    abstract fun findClosestAmongKeywords(str: String, keywords: Set<String>, isTooLate: () -> Boolean): SearchResults
+    abstract fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, checkTime: () -> Unit): SearchResults
+    abstract fun findClosestAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults
 
     abstract val distanceProvider: Distance
 
@@ -93,16 +93,16 @@ open class DLSearcher(val project: Project) : Searcher() {
         }
     }
 
-    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, isTooLate: () -> Boolean): SearchResults {
-        // todo: isTooLate into refreshLocal?
+    override fun findClosest(element: PsiElement?, str: String, wordTypes: Array<CombinedIndex.WordType>, checkTime: () -> Unit): SearchResults {
+        // todo: checkTime into refreshLocal?
         index.refreshLocal(element)
-        return getSearch(false).findClosest(str, wordTypes, isTooLate)
+        return getSearch(false).findClosest(str, wordTypes, checkTime)
     }
 
-    override fun findClosestAmongKeywords(str: String, keywords: Set<String>, isTooLate: () -> Boolean): SearchResults {
-        // todo: isTooLate into refreshLocal?
+    override fun findClosestAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults {
+        // todo: checkTime into refreshLocal?
         index.refreshLocalWithKeywords(keywords)
-        return getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), isTooLate)
+        return getSearch(false).findClosest(str, arrayOf(CombinedIndex.WordType.KEYWORD), checkTime)
     }
 
     private fun updateIndex() {

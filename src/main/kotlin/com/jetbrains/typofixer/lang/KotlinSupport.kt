@@ -30,9 +30,9 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
         override fun iaBadReplace(element: PsiElement) = isErrorElement(element)
-        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchResults {
+        override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
             val searcher = element.project.searcher
-            return searcher.findClosestAmongKeywords(oldText, allowedKeywords, isTooLate)
+            return searcher.findClosestAmongKeywords(oldText, allowedKeywords, checkTime)
         }
 
         abstract val allowedKeywords: Set<String>

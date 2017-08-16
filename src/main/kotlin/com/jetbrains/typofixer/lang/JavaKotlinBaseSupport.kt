@@ -32,9 +32,9 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c)
         override fun needToReplace(element: PsiElement, fast: Boolean) = isBadIdentifier(element, fast)
         override fun iaBadReplace(element: PsiElement) = !isProperlyReplacedIdentifier(element)
-        override fun getReplacement(element: PsiElement, oldText: String, isTooLate: () -> Boolean): SearchResults {
+        override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
             val searcher = element.project.searcher
-            return searcher.findClosest(element, oldText, correspondingWordTypes(), isTooLate)
+            return searcher.findClosest(element, oldText, correspondingWordTypes(), checkTime)
         }
     }
 

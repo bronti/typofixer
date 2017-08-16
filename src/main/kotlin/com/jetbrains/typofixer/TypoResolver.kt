@@ -13,7 +13,6 @@ import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
-import com.jetbrains.typofixer.search.ResolveAbortedException
 import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
@@ -28,16 +27,16 @@ class TypoResolver private constructor(
         private var element: PsiElement,
         private val oldText: String,
         private val replacements: Sequence<FoundWord>,
-        private val resolveTimeChecker: TimeLimitsChecker) {
+        private val checkTime: () -> Unit) {
 
     companion object {
         class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
             private var abortReported = false
             private val startTime = System.currentTimeMillis()
-            fun isTooLate(): Boolean {
+            fun checkTime(): Unit {
                 val result = startTime + timeConstraint <= System.currentTimeMillis()
                 if (result && !abortReported) reportAbort()
-                return result
+                if (result) throw ResolveAbortedException()
             }
         }
 
@@ -55,8 +54,8 @@ class TypoResolver private constructor(
             val settings = TypoFixerSettings.getInstance(project)
             val stats = project.statistics
 
-            val findChecker = TimeLimitsChecker(settings.maxMillisForFind.toLong(), { stats.onFindAbortedBecauseOfTimeLimits() })
-            val resolveChecker = TimeLimitsChecker(settings.maxMillisForResolve.toLong(), { stats.onResolveAbortedBecauseOfTimeLimits() })
+            val findTimeChecker = TimeLimitsChecker(settings.maxMillisForFind, stats::onFindAbortedBecauseOfTimeLimits)::checkTime
+            val resolveTimeChecker = TimeLimitsChecker(settings.maxMillisForResolve, stats::onResolveAbortedBecauseOfTimeLimits)::checkTime
 
             val nextCharOffset = editor.caretModel.offset
 
@@ -78,7 +77,7 @@ class TypoResolver private constructor(
 
                     val searchResults: SearchResults
                     try {
-                        searchResults = typoCase.getReplacement(element, oldText, { findChecker.isTooLate() })
+                        searchResults = typoCase.getReplacement(element, oldText, findTimeChecker)
                     } catch (e: ResolveAbortedException) {
                         return null
                     }
@@ -88,7 +87,7 @@ class TypoResolver private constructor(
                     val replacements = searchResults.sortedBy { project.searcher.distanceProvider.measure(oldText, it.word) }
 
                     project.statistics.onTypoResolverCreated()
-                    return TypoResolver(psiFile, editor, typoCase, element, oldText, replacements, resolveChecker)
+                    return TypoResolver(psiFile, editor, typoCase, element, oldText, replacements, resolveTimeChecker)
                 }
             }
             return null
@@ -112,25 +111,33 @@ class TypoResolver private constructor(
 
     private val appManager = ApplicationManager.getApplication()
 
-    fun resolve() = Thread { doResolve() }.start()
+    fun resolve() = Thread {
+        try {
+            doResolve()
+        } catch (e: ResolveAbortedException) {
+            // do nothing
+        }
+    }.start()
 
     private fun doResolve() {
-        if (!elementIsBad(true, oldText) || resolveTimeChecker.isTooLate()) return
+        if (!elementIsBad(true, oldText)) return
         // index unzipping laziness is forced here:
         replacements.forEach {
-            if (doOneResolve(it.word) || resolveTimeChecker.isTooLate()) return
+            checkTime()
+            if (doOneResolve(it.word)) return
         }
     }
 
-    // return true if resolve should be ended
+    // return true if resolve was successful
     private fun doOneResolve(newText: String): Boolean {
         if (newText == oldText) return false
         fixTypo(newText)
-        if (resolveTimeChecker.isTooLate()) {
-            undoFix(newText)
-            return true
+        try {
+            checkTime()
+            if (!elementIsBad(false, newText)) return true
+        } catch (e: ResolveAbortedException) {
+            // suppressing exception so we can rollback replacement
         }
-        if (!elementIsBad(false, newText)) return true
         undoFix(newText)
         return false
     }
@@ -150,22 +157,23 @@ class TypoResolver private constructor(
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
-        fun doCheck() {
+        fun doCheckElement() {
             ProgressIndicatorProvider.checkCanceled()
             result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
         }
 
         var resultCalculated = false
         while (!resultCalculated) {
-
+            checkTime()
             var elementIsRefreshed = false
             appManager.invokeAndWait { appManager.runReadAction { elementIsRefreshed = refreshElement(expectedText) } }
-            if (!elementIsRefreshed || resolveTimeChecker.isTooLate()) return false
+            if (!elementIsRefreshed) throw ResolveAbortedException() // something strange happened. we cannot do anything
 
+            checkTime()
             resultCalculated =
                     if (appManager.isDispatchThread) {
-                        doCheck(); true
-                    } else ProgressManager.getInstance().runInReadActionWithWriteActionPriority(::doCheck, indicator)
+                        doCheckElement(); true
+                    } else ProgressManager.getInstance().runInReadActionWithWriteActionPriority(::doCheckElement, indicator)
         }
         return result
     }
@@ -174,7 +182,7 @@ class TypoResolver private constructor(
         var done = false
         appManager.invokeAndWait {
             appManager.runWriteAction {
-                if (refreshElement(prefix) && project.isOpen && !resolveTimeChecker.isTooLate()) {
+                if (refreshElement(prefix) && project.isOpen) {
                     val commandProcessor = CommandProcessor.getInstance()
                     commandProcessor.executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
                     done = true
@@ -200,3 +208,5 @@ class TypoResolver private constructor(
     @TestOnly
     fun waitForResolve() = doResolve()
 }
+
+class ResolveAbortedException : RuntimeException()
