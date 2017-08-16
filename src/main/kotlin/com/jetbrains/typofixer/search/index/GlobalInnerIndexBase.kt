@@ -34,11 +34,11 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
     override fun getSize() = synchronizedAccess { index.entries.sumBy { it.value.getSize() } }
     override fun getAll(signatures: Set<Int>) = synchronizedAccess { super.getAll(signatures) }
 
-    override fun addAll(strings: Set<String>) = synchronized(this) { super.addAll(strings) }
+    override fun addAll(strings: Set<String>) = synchronized(this@GlobalInnerIndexBase) { super.addAll(strings) }
 
     fun refresh() {
         val refreshingTask = getRefreshingTask()
-        synchronized(this) {
+        synchronized(this@GlobalInnerIndexBase) {
             lastRefreshingTask = refreshingTask
             index.clear()
         }
@@ -61,7 +61,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
     private fun <T> synchronizedAccess(doGet: () -> T): T {
         if (!isUsable()) throw TriedToAccessIndexWhileItIsRefreshing()
-        synchronized(this) {
+        synchronized(this@GlobalInnerIndexBase) {
             if (isUsable()) return doGet()
             else throw TriedToAccessIndexWhileItIsRefreshing()
         }
@@ -100,7 +100,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             outputStream.close()
             val newBytes = outputBytes.toByteArray()
             // todo: can do without lock
-            synchronized(this) {
+            synchronized(this@IndexEntry) {
                 if (!isCompressed) {
                     bytes = newBytes
                     content = null
@@ -110,7 +110,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
         }
 
         fun getAll(): Sequence<String> {
-            synchronized(this) {
+            synchronized(this@IndexEntry) {
                 if (!isCompressed) {
                     return content!!.asSequence().constrainOnce()
                 }
@@ -165,7 +165,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
         protected fun checkedCollect(indicator: ProgressIndicator?, isCollected: Boolean, getToCollect: () -> Set<String>, markCollected: () -> Unit) {
             if (isCollected || !shouldCollect(indicator)) return
-            synchronized(this) {
+            synchronized(this@GlobalInnerIndexBase) {
                 if (shouldCollect(indicator) && !isCollected) {
                     getToCollect().addAllToIndex()
                     markCollected()
@@ -175,7 +175,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
         protected fun onCompletionDone(indicator: ProgressIndicator?) {
             var toSynchronize: List<IndexEntry>? = null
-            synchronized(this) {
+            synchronized(this@GlobalInnerIndexBase) {
                 if (shouldCollect(indicator)) {
                     // todo: toLis -> toList rolles back
                     toSynchronize = index.values.toList()
@@ -190,7 +190,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             // todo: check that index is refreshing after each stub index refreshment
             if (DumbService.isDumb(project) || shouldCollect(indicator)) {
                 // todo: synchronized rolls back
-                synchronized(this) {
+                synchronized(this@GlobalInnerIndexBase) {
                     if (isCurrentRefreshingTask()) lastRefreshingTask = null
                 }
             }
@@ -198,8 +198,6 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             if (this@GlobalInnerIndexBase.isUsable()) {
                 project.typoFixerComponent.onSearcherStatusMaybeChanged()
             }
-
-            // todo: initiate zipping here
 
             done = true
         }
@@ -216,7 +214,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
     @TestOnly
     fun waitForRefreshing() {
         val refreshingTask = getRefreshingTask()
-        synchronized(this) {
+        synchronized(this@GlobalInnerIndexBase) {
             lastRefreshingTask = refreshingTask
             index.clear()
         }
@@ -226,5 +224,5 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
     }
 
     @TestOnly
-    override fun contains(str: String) = synchronized(this) { index[signature.get(str)]?.contains(str) ?: false }
+    override fun contains(str: String) = synchronizedAccess { index[signature.get(str)]?.contains(str) ?: false }
 }

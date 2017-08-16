@@ -13,13 +13,13 @@ class InnerIndexForKotlinSpecificFields(project: Project, signature: Signature) 
         private var allCollected = false
 
         override fun doCollect(indicator: ProgressIndicator?) {
-            val cache = PsiShortNamesCache.getInstance(project)
             fun extractFieldNamesFromGettersOrSetters() =
-                    cache.allMethodNames
-                            .filter { it.startsWith("get") || it.startsWith("set") }
+                    PsiShortNamesCache
+                            .getInstance(project)
+                            .allMethodNames
                             .filter { it.length >= 4 && it[3].isUpperCase() }
-                            .map { it.substring(3) }
-                            .map { it[0].toLowerCase() + it.substring(1) }
+                            .filter { it.startsWith("get") || it.startsWith("set") }
+                            .map { it[3].toLowerCase() + it.substring(4) }
                             .toSet()
 
             checkedCollect(indicator, allCollected, { extractFieldNamesFromGettersOrSetters() }) { allCollected = true }
