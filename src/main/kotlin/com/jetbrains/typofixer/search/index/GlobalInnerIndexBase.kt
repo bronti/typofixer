@@ -1,7 +1,5 @@
 package com.jetbrains.typofixer.search.index
 
-//todo: TestOnly doesn't work
-//todo: TestOnly doesn't work
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils
@@ -177,7 +175,8 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             var toSynchronize: List<IndexEntry>? = null
             synchronized(this@GlobalInnerIndexBase) {
                 if (shouldCollect(indicator)) {
-                    // todo: toLis -> toList rolles back
+                    // todo: values looks terrifying
+                    // todo: valu -> val Oo
                     toSynchronize = index.values.toList()
                 }
             }
