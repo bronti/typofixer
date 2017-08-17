@@ -11,10 +11,10 @@ import com.jetbrains.typofixer.TypoResolver
  * @author bronti
  */
 
-class TypoFixTypedHandler: TypedHandlerDelegate() {
+class TypoFixTypedHandler : TypedHandlerDelegate() {
 
     override fun beforeCharTyped(c: Char, project: Project, editor: Editor?, psiFile: PsiFile?, fileType: FileType?): Result {
-        if (editor == null || psiFile ==  null) return Result.CONTINUE
+        if (editor == null || psiFile == null) return Result.CONTINUE
 
         // todo: multiple caret. do nothing?
         if (editor.caretModel.caretCount > 1) return Result.CONTINUE

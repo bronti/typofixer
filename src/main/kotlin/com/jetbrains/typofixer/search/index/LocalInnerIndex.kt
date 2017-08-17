@@ -7,7 +7,10 @@ import com.jetbrains.typofixer.search.signature.Signature
 import org.jetbrains.annotations.TestOnly
 import java.util.*
 
-class LocalInnerIndex(signature: Signature, val getWords: (wordsCollector: LocalDictionaryCollector, element: PsiElement) -> Set<String>) : InnerIndex(signature) {
+class LocalInnerIndex(
+        signature: Signature,
+        val getWords: (wordsCollector: LocalDictionaryCollector, element: PsiElement) -> Set<String>
+) : InnerIndex(signature) {
 
     private val index = HashMap<Int, HashSet<String>>()
 

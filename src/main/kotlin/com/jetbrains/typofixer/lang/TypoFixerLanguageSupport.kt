@@ -34,6 +34,7 @@ interface TypoCase {
     fun triggersTypoResolve(c: Char): Boolean
     // TypoResolver handles the first case for which needToReplace(element, fast = true) is true
     fun needToReplace(element: PsiElement, fast: Boolean = false): Boolean
+
     fun iaBadReplace(element: PsiElement): Boolean
     fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults
 }

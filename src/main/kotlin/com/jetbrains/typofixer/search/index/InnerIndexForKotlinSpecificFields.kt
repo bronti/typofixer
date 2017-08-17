@@ -5,7 +5,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.search.PsiShortNamesCache
 import com.jetbrains.typofixer.search.signature.Signature
 
-class InnerIndexForKotlinSpecificFields(project: Project, signature: Signature) : GlobalInnerIndexBase(project, signature) {
+class InnerIndexForKotlinSpecificFields(
+        project: Project,
+        signature: Signature
+) : GlobalInnerIndexBase(project, signature) {
+
     override fun getRefreshingTask(): CollectProjectNamesBase = CollectProjectNames()
 
     private inner class CollectProjectNames : CollectProjectNamesBase() {

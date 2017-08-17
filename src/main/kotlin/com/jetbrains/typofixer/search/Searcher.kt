@@ -88,6 +88,7 @@ open class DLSearcher(val project: Project) : Searcher() {
 
                 // todo: ?
                 override fun fileOpened(source: FileEditorManager, file: VirtualFile) {}
+
                 override fun fileClosed(source: FileEditorManager, file: VirtualFile) {}
             })
         }

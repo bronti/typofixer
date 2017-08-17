@@ -25,6 +25,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
     @Volatile
     protected var lastRefreshingTask: CollectProjectNamesBase? = null
+
     protected abstract fun getRefreshingTask(): CollectProjectNamesBase
 
     fun isUsable() = lastRefreshingTask == null
@@ -116,6 +117,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             if (!isCompressed) throw IllegalStateException()
             val inputStream = ObjectInputStream(GZIPInputStream(ByteArrayInputStream(bytes!!)))
 
+
             return generateSequence { inputStream.readObject() as String }.take(wordCount)
         }
 
@@ -175,8 +177,8 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             var toSynchronize: List<IndexEntry>? = null
             synchronized(this@GlobalInnerIndexBase) {
                 if (shouldCollect(indicator)) {
-                    // todo: values looks terrifying
-                    // todo: valu -> val Oo
+                    // todo: value -> values looks terrifying
+                    // todo: valu -> val Oo (I guess it's correct)
                     toSynchronize = index.values.toList()
                 }
             }

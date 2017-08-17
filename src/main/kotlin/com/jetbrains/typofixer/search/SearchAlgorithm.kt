@@ -9,7 +9,11 @@ import com.jetbrains.typofixer.search.index.GlobalInnerIndexBase
  * @author bronti.
  */
 
-abstract class SearchAlgorithm(val maxError: Int, val distance: DamerauLevenshteinDistance, protected val index: CombinedIndex) {
+abstract class SearchAlgorithm(
+        val maxError: Int,
+        val distance: DamerauLevenshteinDistance,
+        protected val index: CombinedIndex
+) {
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
@@ -27,8 +31,10 @@ abstract class SearchAlgorithm(val maxError: Int, val distance: DamerauLevenshte
 }
 
 
-abstract class DLSearchAlgorithmBase(maxError: Int, index: CombinedIndex)
-    : SearchAlgorithm(maxError, DamerauLevenshteinDistance(maxError), index) {
+abstract class DLSearchAlgorithmBase(
+        maxError: Int,
+        index: CombinedIndex
+) : SearchAlgorithm(maxError, DamerauLevenshteinDistance(maxError), index) {
 
     private fun getEmptyResultBuilder(str: String, maxError: Int, type: CombinedIndex.WordType)
             = SearchResultsBuilder(maxError, { distance.roughMeasure(str, it) }, type)

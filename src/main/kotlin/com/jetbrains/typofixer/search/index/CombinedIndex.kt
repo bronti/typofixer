@@ -32,13 +32,12 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     // concurrent
     private val kotlinSpecificFieldsIndex = InnerIndexForKotlinSpecificFields(project, signature)
 
-    private val WordType.index
-        get() = when (this) {
-            WordType.KEYWORD -> keywordsIndex
-            WordType.LOCAL_IDENTIFIER -> localIdentifiersIndex
-            WordType.KOTLIN_SPECIFIC_FIELD -> kotlinSpecificFieldsIndex
-            WordType.GLOBAL -> globalIndex
-        }
+    private val WordType.index get() = when (this) {
+        WordType.KEYWORD -> keywordsIndex
+        WordType.LOCAL_IDENTIFIER -> localIdentifiersIndex
+        WordType.KOTLIN_SPECIFIC_FIELD -> kotlinSpecificFieldsIndex
+        WordType.GLOBAL -> globalIndex
+    }
     private val indices = WordType.values().map { it.index }
 
     fun getSize() = getLocalSize() + getGlobalSize()

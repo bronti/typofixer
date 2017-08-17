@@ -27,19 +27,10 @@ class TypoResolver private constructor(
         private var element: PsiElement,
         private val oldText: String,
         private val replacements: Sequence<FoundWord>,
-        private val checkTime: () -> Unit) {
+        private val checkTime: () -> Unit
+) {
 
     companion object {
-        class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
-            private var abortReported = false
-            private val startTime = System.currentTimeMillis()
-            fun checkTime(): Unit {
-                val result = startTime + timeConstraint <= System.currentTimeMillis()
-                if (result && !abortReported) reportAbort()
-                if (result) throw ResolveAbortedException()
-            }
-        }
-
         fun getResolver(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
             if (!psiFile.project.typoFixerComponent.isActive) return null
@@ -59,17 +50,16 @@ class TypoResolver private constructor(
 
             val nextCharOffset = editor.caretModel.offset
 
-            var element: PsiElement? = null
+            // I don't want to call refresh if resolve is never triggered
+            val element: PsiElement? by lazy {
+                refreshPsi(editor)
+                psiFile.findElementAt(nextCharOffset - 1)
+            }
+
             for (typoCase in langSupport.getTypoCases()) {
                 if (!typoCase.triggersTypoResolve(nextChar)) continue
 
-                // I don't want to call refresh if resolve is never triggered
-                if (element == null) {
-                    refreshPsi(editor)
-                    element = psiFile.findElementAt(nextCharOffset - 1) ?: return null
-                }
-
-                val elementStartOffset = element.textOffset
+                val elementStartOffset = element?.textOffset ?: return null
 
                 if (typoCase.needToReplace(element, fast = true)) {
 
@@ -106,8 +96,7 @@ class TypoResolver private constructor(
     private var elementStartOffset = element.textOffset
     // todo: make sure distance is calculated once for each word
 
-    private val project
-        get() = psiFile.project
+    private val project get() = psiFile.project
 
     private val appManager = ApplicationManager.getApplication()
 
@@ -210,3 +199,13 @@ class TypoResolver private constructor(
 }
 
 class ResolveAbortedException : RuntimeException()
+
+private class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
+    private var abortReported = false
+    private val startTime = System.currentTimeMillis()
+    fun checkTime(): Unit {
+        val result = startTime + timeConstraint <= System.currentTimeMillis()
+        if (result && !abortReported) reportAbort()
+        if (result) throw ResolveAbortedException()
+    }
+}

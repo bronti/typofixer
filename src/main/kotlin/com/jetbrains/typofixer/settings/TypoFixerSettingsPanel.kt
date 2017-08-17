@@ -30,10 +30,8 @@ class TypoFixerSettingsPanel(val project: Project) {
         get() = maxFreezeTimeField!!.getTextValue()
         set(v) = maxFreezeTimeField!!.setTextValue(v)
 
-    private val settings
-        get() = TypoFixerSettings.getInstance(project)
-    private val statistics
-        get() = project.statistics
+    private val settings get() = TypoFixerSettings.getInstance(project)
+    private val statistics get() = project.statistics
 
     // todo: resolve for JTextField rolls back
     private fun updateStaticticField(field: JTextField?, stat: Int, internalOnly: Boolean = true) {

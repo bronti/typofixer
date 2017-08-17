@@ -12,7 +12,7 @@ import com.jetbrains.typofixer.TypoResolver
 /**
  * @author bronti.
  */
-class TypoFixEnterHandler: EnterHandlerDelegate {
+class TypoFixEnterHandler : EnterHandlerDelegate {
 
     override fun preprocessEnter(psiFile: PsiFile,
                                  editor: Editor,

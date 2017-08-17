@@ -13,14 +13,9 @@ import com.jetbrains.typofixer.widget.RefreshingIndicator
 /**
  * @author bronti.
  */
-val Project.typoFixerComponent: TypoFixerComponent
-    get() = getComponent(TypoFixerComponent::class.java)
-
-val Project.statistics: TypoFixerStatistics
-    get() = typoFixerComponent.statistics
-
-val Project.searcher: DLSearcher
-    get() = typoFixerComponent.searcher
+val Project.typoFixerComponent get() = getComponent(TypoFixerComponent::class.java)!!
+val Project.statistics get() = typoFixerComponent.statistics
+val Project.searcher get() = typoFixerComponent.searcher
 
 class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 
@@ -32,8 +27,7 @@ class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 
     private val appManager = ApplicationManager.getApplication()
 
-    val searcher: DLSearcher
-        get() = mySearcher!!
+    val searcher get() = mySearcher!!
 
     override fun initComponent() {
         mySearcher = DLSearcher(myProject)

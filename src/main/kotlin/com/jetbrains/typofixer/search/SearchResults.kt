@@ -9,7 +9,8 @@ class SearchResultsBuilder private constructor(
         private val result: Sequence<String>,
         // todo: Dtring -> String rolls back
         private val measure: (String) -> Int,
-        private val type: CombinedIndex.WordType) {
+        private val type: CombinedIndex.WordType
+) {
 
     val isActive = minErrorPossible == error
 
