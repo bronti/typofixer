@@ -190,7 +190,6 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
             // todo: check that index is refreshing after each stub index refreshment
             if (DumbService.isDumb(project) || shouldCollect(indicator)) {
-                // todo: synchronized rolls back
                 synchronized(this@GlobalInnerIndexBase) {
                     if (isCurrentRefreshingTask()) lastRefreshingTask = null
                 }
