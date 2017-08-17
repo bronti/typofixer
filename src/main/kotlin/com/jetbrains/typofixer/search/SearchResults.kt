@@ -3,7 +3,7 @@ package com.jetbrains.typofixer.search
 import com.jetbrains.typofixer.search.index.CombinedIndex
 
 class SearchResultsBuilder private constructor(
-        private val maxError: Int,
+        private val maxRoundedError: Int,
         private val minErrorPossible: Int,
         val error: Int,
         private val result: Sequence<String>,
@@ -17,10 +17,10 @@ class SearchResultsBuilder private constructor(
     private fun searchResultsBuilderWith(newMinErrorPossible: Int = minErrorPossible,
                                          newError: Int = error,
                                          newResult: Sequence<String> = result)
-            = SearchResultsBuilder(maxError, newMinErrorPossible, newError, newResult, measure, type)
+            = SearchResultsBuilder(maxRoundedError, newMinErrorPossible, newError, newResult, measure, type)
 
-    constructor(maxError: Int, measure: (String) -> Int, type: CombinedIndex.WordType)
-            : this(maxError, 0, maxError, emptySequence(), measure, type)
+    constructor(maxRoundedError: Int, measure: (String) -> Int, type: CombinedIndex.WordType)
+            : this(maxRoundedError, 0, maxRoundedError, emptySequence(), measure, type)
 
     private fun withMinErrorPossible(newMinErrorPossible: Int): SearchResultsBuilder {
         assert(newMinErrorPossible in minErrorPossible..error)
@@ -34,7 +34,7 @@ class SearchResultsBuilder private constructor(
 
             // hack in case str which is going to be replaced is inside index
             // (in this case error is still 1 so strings with error == 1 can also be in result)
-            val newMinError = Math.max(measured.map { it.second }.min() ?: maxError + 1, 1)
+            val newMinError = Math.max(measured.map { it.second }.min() ?: maxRoundedError + 1, 1)
             if (newMinError > error) return this
             assert(minErrorPossible <= newMinError)
             val additionalResult = measured.asSequence().filter { it.second == newMinError }.map { it.first }
@@ -48,22 +48,22 @@ class SearchResultsBuilder private constructor(
 
     // invalidates this
     fun combinedWith(newMinErrorPossible: Int, newCandidates: Sequence<String>): SearchResultsBuilder {
-        assert(newMinErrorPossible in minErrorPossible..maxError)
+        assert(newMinErrorPossible in minErrorPossible..maxRoundedError)
         if (error < newMinErrorPossible) return this
         return withMinErrorPossible(newMinErrorPossible).withAddedIfMinPossibleEquals(newCandidates)
     }
 
     fun getResults(): SearchResults {
         assert(isActive)
-        return SearchResults(maxError, error, result.map { FoundWord(it, type) })
+        return SearchResults(maxRoundedError, error, result.map { FoundWord(it, type) })
     }
 }
 
-class SearchResults(private val maxError: Int, val error: Int, private val result: Sequence<FoundWord>) : Sequence<FoundWord> by result {
+class SearchResults(private val maxRoundedError: Int, val error: Int, private val result: Sequence<FoundWord>) : Sequence<FoundWord> by result {
     // invalidates this
     fun combinedWith(other: SearchResults): SearchResults {
-        assert(maxError >= other.maxError)
-        if (error == other.error) return SearchResults(maxError, error, result + other.result)
+        assert(maxRoundedError >= other.maxRoundedError)
+        if (error == other.error) return SearchResults(maxRoundedError, error, result + other.result)
         if (error < other.error) return this
         else return other
     }

@@ -6,14 +6,14 @@ package com.jetbrains.typofixer.search.signature
 
 interface Signature {
     fun get(str: String): Int
-    fun getRange(str: String, maxError: Int): List<HashSet<Int>>
+    fun getRange(str: String, maxRoundedError: Int): List<HashSet<Int>>
 }
 
 
-// works only for maxError <= 2!! too big range otherwise
+// works only for maxRoundedError <= 2!! too big range otherwise
 abstract class SignatureBase : Signature {
 
-    abstract protected fun <T> doGetRange(base: Int, length: Int, maxError: Int, makeResult: (Int, Int) -> T)
+    abstract protected fun <T> doGetRange(base: Int, length: Int, maxRoundedError: Int, makeResult: (Int, Int) -> T)
             : List<HashSet<T>>
 
     override fun get(str: String): Int {
@@ -38,13 +38,13 @@ abstract class SignatureBase : Signature {
     }
 
     // should return nonempty collection
-    override fun getRange(str: String, maxError: Int): List<HashSet<Int>> {
+    override fun getRange(str: String, maxRoundedError: Int): List<HashSet<Int>> {
         val (base, length) = getRaw(str)
-        return doGetRange(base, length, maxError, this::combine)
+        return doGetRange(base, length, maxRoundedError, this::combine)
     }
 
-    fun getRawRange(base: Int, length: Int, maxError: Int): List<HashSet<Pair<Int, Int>>> {
-        return doGetRange(base, length, maxError, ::Pair)
+    fun getRawRange(base: Int, length: Int, maxRoundedError: Int): List<HashSet<Pair<Int, Int>>> {
+        return doGetRange(base, length, maxRoundedError, ::Pair)
     }
 
     companion object {

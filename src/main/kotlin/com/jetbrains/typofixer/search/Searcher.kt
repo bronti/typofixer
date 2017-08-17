@@ -11,10 +11,12 @@ import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.distance.Distance
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.signature.ComplexSignature
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
@@ -35,6 +37,9 @@ abstract class Searcher {
 
     // internal use only
     abstract fun getStatus(): Status
+
+    @TestOnly
+    abstract fun findAll(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>>
 }
 
 open class DLSearcher(val project: Project) : Searcher() {
@@ -55,7 +60,7 @@ open class DLSearcher(val project: Project) : Searcher() {
         val VERSION = 13
     }
 
-    private val maxError = 2
+    private val maxRoundedError = 2
     private val signature = ComplexSignature()
 
     private val index = CombinedIndex(project, signature)
@@ -63,8 +68,8 @@ open class DLSearcher(val project: Project) : Searcher() {
     private var lastPsiModificationCount = 0L
     private fun freshPsiModificationCount() = PsiModificationTracker.SERVICE.getInstance(project).outOfCodeBlockModificationCount
 
-    private val simpleSearch = DLSearchAlgorithm(maxError, index)
-    private val preciseSearch = DLPreciseSearchAlgorithm(maxError, index)
+    private val simpleSearch = DLSearchAlgorithm(maxRoundedError, index)
+    private val preciseSearch = DLPreciseSearchAlgorithm(maxRoundedError, index)
     private fun getSearch(precise: Boolean) = if (precise) preciseSearch else simpleSearch
 
     override val distanceProvider = simpleSearch.distance
@@ -123,25 +128,23 @@ open class DLSearcher(val project: Project) : Searcher() {
         index.isUsable() -> Status.ACTIVE
         else -> Status.INDEX_REFRESHING
     }
-//
-//    @TestOnly
-//    override fun search(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
-//        return if (isUsable()) {
-//            index.refreshLocal(psiFile)
-//            getSearch(precise).search(str)
-//        } else mapOf()
-//    }
-//
-//    @TestOnly
-//    fun getIndex() = index
-//
-//    @TestOnly
-//    fun forceGlobalIndexRefreshing() {
-//        index.waitForGlobalRefreshing()
-//    }
-//
-//    @TestOnly
-//    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
-//        index.refreshLocal(psiFile)
-//    }
+
+    @TestOnly
+    override fun findAll(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>> {
+        index.refreshLocal(psiFile)
+        return getSearch(precise).findAll(str).groupBy { distanceProvider.measure(str, it) }
+    }
+
+    @TestOnly
+    fun getIndex() = index
+
+    @TestOnly
+    fun forceGlobalIndexRefreshing() {
+        index.waitForGlobalRefreshing()
+    }
+
+    @TestOnly
+    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
+        index.refreshLocal(psiFile)
+    }
 }

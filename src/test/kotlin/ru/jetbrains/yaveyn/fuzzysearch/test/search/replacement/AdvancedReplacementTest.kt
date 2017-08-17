@@ -49,24 +49,22 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             "class Some { override <caret>}",
             true)
 
-    // todo: doesn't work in tests but works irl. wtf?
     fun testKotlinSpecificFields() = doTest(
-            "fun s() = Ololo().somePrettyMet<caret>",
+            "fun s() = project.testing.uniquepackagenameololo.Ololo().somePrettyMethod<caret>",
             ' ',
-            "fun s() = Ololo().somePrettyMethodU <caret>",
+            "fun s() = project.testing.uniquepackagenameololo.Ololo().somePrettyMethodU <caret>",
             true)
 
     fun testJavaFields() = doTest(
-            "class Cls { void funn() { UniqueLikeASnowflake().publicFieldWantsToSlee<caret>}}",
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSlee<caret>}}",
             ' ',
-            "class Cls { void funn() { UniqueLikeASnowflake().publicFieldWantsToSlee <caret>}}",
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSleep <caret>}}",
             false)
 
-    // todo: doesn't work in tests but works irl. wtf?
     fun testKotlinFields() = doTest(
-            "fun x() = UniqueLikeASnowflake().publicFieldWantsToSlee<caret>",
+            "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSlee<caret>",
             ' ',
-            "fun x() = UniqueLikeASnowflake().publicFieldWantsToSleep <caret>",
+            "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSleep <caret>",
             true)
 
     // todo: test kotlin specific fields (new projectfortesting needed?)

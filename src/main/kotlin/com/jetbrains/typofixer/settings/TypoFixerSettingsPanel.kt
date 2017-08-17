@@ -10,11 +10,11 @@ import javax.swing.JTextField
 
 class TypoFixerSettingsPanel(val project: Project) {
 
-    var mainPanel: JPanel? = null
+    lateinit var mainPanel: JPanel
     // todo: hardcoded labels (ok? localization?)
 
-    private var maxResolveDelayField: JFormattedTextField? = null
-    private var maxFreezeTimeField: JFormattedTextField? = null
+    private lateinit var maxResolveDelayField: JFormattedTextField
+    private lateinit var maxFreezeTimeField: JFormattedTextField
 
     private fun JTextField.getTextValue() = text.toLong()
     private fun JTextField.setTextValue(value: Long) {
@@ -23,28 +23,28 @@ class TypoFixerSettingsPanel(val project: Project) {
 
     // delegates?
     private var maxResolveDelay
-        get() = maxResolveDelayField!!.getTextValue()
-        set(v) = maxResolveDelayField!!.setTextValue(v)
+        get() = maxResolveDelayField.getTextValue()
+        set(v) = maxResolveDelayField.setTextValue(v)
 
     private var maxFreezeTime
-        get() = maxFreezeTimeField!!.getTextValue()
-        set(v) = maxFreezeTimeField!!.setTextValue(v)
+        get() = maxFreezeTimeField.getTextValue()
+        set(v) = maxFreezeTimeField.setTextValue(v)
 
     private val settings get() = TypoFixerSettings.getInstance(project)
     private val statistics get() = project.statistics
 
     // todo: resolve for JTextField rolls back
-    private fun updateStaticticField(field: JTextField?, stat: Int, internalOnly: Boolean = true) {
+    private fun updateStaticticField(field: JTextField, stat: Int, internalOnly: Boolean = true) {
         if (internalOnly && !ApplicationManager.getApplication().isInternal) {
-            field!!.isVisible = false
+            field.isVisible = false
         } else {
-            field!!.text = stat.toString()
+            field.text = stat.toString()
         }
     }
 
-    private fun updateTextVisibility(field: JLabel?) {
+    private fun updateTextVisibility(field: JLabel) {
         if (!ApplicationManager.getApplication().isInternal) {
-            field!!.isVisible = false
+            field.isVisible = false
         }
     }
 
@@ -55,18 +55,18 @@ class TypoFixerSettingsPanel(val project: Project) {
 
     fun isModified() = maxResolveDelay != settings.maxMillisForResolve || maxFreezeTime != settings.maxMillisForFind
 
-    private var timesResolverCreatedField: JTextField? = null
-    private var timesWordReplacedField: JTextField? = null
-    private var timesRolledBackField: JTextField? = null
-    private var timesFindOutOfTimeField: JTextField? = null
-    private var timesResolveOutOfTimeField: JTextField? = null
-    private var successfulResolvesField: JTextField? = null
+    private lateinit var timesResolverCreatedField: JTextField
+    private lateinit var timesWordReplacedField: JTextField
+    private lateinit var timesRolledBackField: JTextField
+    private lateinit var timesFindOutOfTimeField: JTextField
+    private lateinit var timesResolveOutOfTimeField: JTextField
+    private lateinit var successfulResolvesField: JTextField
 
-    private var timesResolverCreatedText: JLabel? = null
-    private var timesWordReplacedText: JLabel? = null
-    private var timesRolledBackText: JLabel? = null
-    private var timesFindOutOfTimeText: JLabel? = null
-    private var timesResolveOutOfTimeText: JLabel? = null
+    private lateinit var timesResolverCreatedText: JLabel
+    private lateinit var timesWordReplacedText: JLabel
+    private lateinit var timesRolledBackText: JLabel
+    private lateinit var timesFindOutOfTimeText: JLabel
+    private lateinit var timesResolveOutOfTimeText: JLabel
 
     private val internalFields = mapOf(
             timesResolverCreatedField to statistics::timesResolverCreated,

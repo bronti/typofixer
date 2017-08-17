@@ -4,13 +4,14 @@ import com.jetbrains.typofixer.ResolveAbortedException
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistance
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.index.GlobalInnerIndexBase
+import org.jetbrains.annotations.TestOnly
 
 /**
  * @author bronti.
  */
 
 abstract class SearchAlgorithm(
-        val maxError: Int,
+        val maxRoundedError: Int,
         val distance: DamerauLevenshteinDistance,
         protected val index: CombinedIndex
 ) {
@@ -27,17 +28,20 @@ abstract class SearchAlgorithm(
         }
     }
 
-    fun getEmptyResult() = SearchResults(maxError, maxError, emptySequence())
+    fun getEmptyResult() = SearchResults(maxRoundedError, maxRoundedError, emptySequence())
+
+    @TestOnly
+    abstract fun findAll(str: String): Sequence<String>
 }
 
 
 abstract class DLSearchAlgorithmBase(
-        maxError: Int,
+        maxRoundedError: Int,
         index: CombinedIndex
-) : SearchAlgorithm(maxError, DamerauLevenshteinDistance(maxError), index) {
+) : SearchAlgorithm(maxRoundedError, DamerauLevenshteinDistance(maxRoundedError), index) {
 
-    private fun getEmptyResultBuilder(str: String, maxError: Int, type: CombinedIndex.WordType)
-            = SearchResultsBuilder(maxError, { distance.roughMeasure(str, it) }, type)
+    private fun getEmptyResultBuilder(str: String, maxRoundedError: Int, type: CombinedIndex.WordType)
+            = SearchResultsBuilder(maxRoundedError, { distance.roundedMeasure(str, it) }, type)
 
     // todo: candidates count
     override fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.WordType, checkTime: () -> Unit): SearchResults {
@@ -58,13 +62,18 @@ abstract class DLSearchAlgorithmBase(
         }
         return result.getResults()
     }
+
+    @TestOnly
+    override fun findAll(str: String): Sequence<String> {
+        return index.getAltogether(getSignatures(str).flatten().toSet()).filter { distance.roundedMeasure(str, it) <= maxRoundedError }
+    }
 }
 
-class DLSearchAlgorithm(maxError: Int, index: CombinedIndex) : DLSearchAlgorithmBase(maxError, index) {
-    override fun getSignatures(str: String) = index.signature.getRange(str, maxError)
+class DLSearchAlgorithm(maxRoundedError: Int, index: CombinedIndex) : DLSearchAlgorithmBase(maxRoundedError, index) {
+    override fun getSignatures(str: String) = index.signature.getRange(str, maxRoundedError)
 }
 
-class DLPreciseSearchAlgorithm(maxError: Int, index: CombinedIndex) : DLSearchAlgorithmBase(maxError, index) {
+class DLPreciseSearchAlgorithm(maxRoundedError: Int, index: CombinedIndex) : DLSearchAlgorithmBase(maxRoundedError, index) {
     // todo: optimize precise
-    override fun getSignatures(str: String) = index.signature.getRange(str, 2 * maxError)
+    override fun getSignatures(str: String) = index.signature.getRange(str, 2 * maxRoundedError + 1)
 }

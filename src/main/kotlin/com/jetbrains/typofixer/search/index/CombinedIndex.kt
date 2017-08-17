@@ -94,8 +94,7 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     @TestOnly
     fun addToIndex(words: List<String>) = localIdentifiersIndex.addAll(words.toSet())
 
-//
-//    @TestOnly
-//    fun getAltogether(signatures: Set<Int>) = indices.flatMap { it.getAll(signatures) }
+    @TestOnly
+    fun getAltogether(signatures: Set<Int>) = indices.asSequence().flatMap { it.getAll(signatures) }
 }
 

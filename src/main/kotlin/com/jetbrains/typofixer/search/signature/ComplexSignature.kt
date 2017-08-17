@@ -13,13 +13,13 @@ class ComplexSignature : SignatureBase() {
 
     // returns list of signature sets.
     // set with index k can only contain signatures corresponding to words with error >= k
-    override fun <T> doGetRange(base: Int, length: Int, maxError: Int, makeResult: (Int, Int) -> T): List<HashSet<T>> {
+    override fun <T> doGetRange(base: Int, length: Int, maxRoundedError: Int, makeResult: (Int, Int) -> T): List<HashSet<T>> {
         // returns min value of real error which can be be produced by word with given baseError and lengthError
         fun errorsToMinRealError(baseError: Int, lengthError: Int): Int {
             return if (lengthError >= baseError) lengthError else (baseError + lengthError + 1) / 2
         }
 
-        val resultingRange = Array(maxError + 1) { HashSet<T>() }
+        val resultingRange = Array(maxRoundedError + 1) { HashSet<T>() }
 
         // returns list of signature sets.
         // result[0] == startingBases
@@ -47,10 +47,10 @@ class ComplexSignature : SignatureBase() {
         // and then bidirectionalMutation j times
         // but result[i][j] cannot intercept with result[k][l] when i <= k and j <= l
         fun baseMutationsWithFirstK(mutation: BaseMutation): List<List<HashSet<Int>>> {
-            val basicMutations = basesWithMutation(maxError, hashSetOf(base), mutation)
-            val restricted = ArrayList<HashSet<Int>>(maxError + 1)
+            val basicMutations = basesWithMutation(maxRoundedError, hashSetOf(base), mutation)
+            val restricted = ArrayList<HashSet<Int>>(maxRoundedError + 1)
             return basicMutations.mapIndexed { basicMutationCount, bases ->
-                val toReturn = basesWithMutation(maxError - basicMutationCount, bases, bidirectionalMutation, restricted)
+                val toReturn = basesWithMutation(maxRoundedError - basicMutationCount, bases, bidirectionalMutation, restricted)
                 if (restricted.isNotEmpty()) restricted.removeAt(restricted.size - 1)
                 restricted.forEachIndexed { index, set -> set.addAll(toReturn[index]) }
                 toReturn
@@ -60,8 +60,8 @@ class ComplexSignature : SignatureBase() {
         val forBiggerLength = baseMutationsWithFirstK(positiveMutation)
         val forLessLength = baseMutationsWithFirstK(negativeMutation)
 
-        for (lengthError in (0..maxError)) {
-            val maxBidirectionalError = maxError - lengthError
+        for (lengthError in (0..maxRoundedError)) {
+            val maxBidirectionalError = maxRoundedError - lengthError
 
             fun updateResultsForLengthError(newLength: Int, allBases: List<List<HashSet<Int>>>) {
                 for (startingBaseError in 0..lengthError) {

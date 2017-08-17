@@ -5,6 +5,7 @@ import com.intellij.openapi.util.Computable
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 import com.jetbrains.typofixer.search.DLSearcher
+import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.searcher
 import org.junit.Test
 import java.io.File
@@ -15,7 +16,7 @@ import kotlin.system.measureTimeMillis
  * @author bronti.
  */
 //@Ignore
-class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
+class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
 
     private val testDataDir = File("testData")
     private val currentTestResultsDir = File(File(testDataDir, "testResults"), DLSearcher.VERSION.toString())
@@ -24,7 +25,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     private val refreshingResults = File(currentTestResultsDir, "refreshing.txt")
     private val timeResults = File(currentTestResultsDir, "time.txt")
 
-    private var searcher: DLSearcher? = null
+    private lateinit var searcher: DLSearcher
 
     private val ANSI_RESET = "\u001B[0m"
     private val ANSI_RED = "\u001B[31m"
@@ -34,7 +35,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
         myFixture.testDataPath = testDataDir.canonicalPath
 
         searcher = project.searcher
-        searcher!!.getIndex().canRefreshGlobal = false
+        searcher.getIndex().canRefreshGlobal = false
         val dependencies = testDataDir.walk().filter { it.isFile && it.extension == "jar" }.sortedBy { it.name }.toList()
 //        val dependenciesScope = myModule.getModuleWithDependenciesAndLibrariesScope(false)
         dependencies.forEach {
@@ -42,7 +43,7 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
             PsiTestUtil.addLibrary(myFixture.module, it.canonicalPath)
             println(it.name)
         }
-        searcher!!.getIndex().canRefreshGlobal = true
+        searcher.getIndex().canRefreshGlobal = true
 
         // todo: (?)
 //        if (!DumbService.isDumb(project)) {
@@ -51,13 +52,13 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
 //        }
 
         DumbService.getInstance(project).waitForSmartMode()
-        searcher!!.forceGlobalIndexRefreshing()
+        searcher.forceGlobalIndexRefreshing()
         // 589671
 
-        println(searcher!!.getIndex().getGlobalSize())
+        println(searcher.getIndex().getGlobalSize())
 
-        assert(searcher!!.getIndex().contains("UniqueLikeASnowflake"))
-        assert(searcher!!.getIndex().contains("privateMethod666"))
+        assert(searcher.getIndex().contains("UniqueLikeASnowflake"))
+        assert(searcher.getIndex().contains("privateMethod666"))
 
         if (!currentTestResultsDir.exists()) {
             currentTestResultsDir.mkdir()
@@ -65,29 +66,29 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     }
 
     @Test
-//    @Ignore
+            //    @Ignore
     fun testRefreshGlobalIndex() {
-        val times = 1
-        val result = measureTimeMillis({ (1..times).forEach { searcher!!.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
+        val times = 20
+        val result = measureTimeMillis({ (1..times).forEach { searcher.forceGlobalIndexRefreshing() } }).toDouble() / times.toDouble()
         val resultLoggingNeeded = !refreshingResults.exists()
         if (resultLoggingNeeded) {
             refreshingResults.createNewFile()
             refreshingResults.appendText("$result\n")
-            refreshingResults.appendText("index size: ${searcher!!.getStatistics().first}")
+            refreshingResults.appendText("index size: ${searcher.getStatistics().first}")
         }
-        println("index size: ${searcher!!.getStatistics().first}")
+        println("index size: ${searcher.getStatistics().first}")
         println(result)
     }
 
     @Test
-//    @Ignore
+            //    @Ignore
     fun testPrecision() {
         val resultLoggingNeeded = !precisionResults.exists()
         if (resultLoggingNeeded) {
             precisionResults.createNewFile()
-            precisionResults.appendText("index size: ${searcher!!.getStatistics().first}\n")
+            precisionResults.appendText("index size: ${searcher.getStatistics().first}\n")
         }
-        println("index size: ${searcher!!.getStatistics().first}")
+        println("index size: ${searcher.getStatistics().first}")
         // todo: clear index (??)
         // todo: generate words
         // todo: different lengths
@@ -97,27 +98,26 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     }
 
     @Test
-//    @Ignore
+            //    @Ignore
     fun testTime() {
         val resultLoggingNeeded = !timeResults.exists()
         if (resultLoggingNeeded) {
             timeResults.createNewFile()
-            timeResults.appendText("index size: ${searcher!!.getStatistics().first}\n")
+            timeResults.appendText("index size: ${searcher.getStatistics().first}\n")
         }
-        println("index size: ${searcher!!.getStatistics().first}")
+        println("index size: ${searcher.getStatistics().first}")
         val chars = ('a'..'z').map { it.toString() }
         val chars2 = chars.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
         val chars3 = chars2.flatMap { c1 -> ('a'..'z').map { c2 -> "$c1$c2" } }
 
-        fun maxTime(words: List<String>): Pair<Long, Pair<Int, Int>> {
+        fun maxTime(words: List<String>): Long {
             val results = words.map { doTimeTest(it) }
-            val maxTime = results.maxBy { it.first }!!.first
-            val maxCandidates = Pair(results.maxBy { it.second.first }!!.second.first, results.maxBy { it.second.second }!!.second.second)
-            return Pair(maxTime, maxCandidates)
+            val maxTime = results.maxBy { it }!!
+            return maxTime
         }
 
-        fun flush(title: String, pr: Pair<Long, Pair<Int, Int>>) {
-            val output = "$title. time: ${pr.first} candidates: ${pr.second}"
+        fun flush(title: String, time: Long) {
+            val output = "$title. time: $time"
             println(output)
             if (resultLoggingNeeded) {
                 timeResults.appendText(output + "\n")
@@ -141,21 +141,24 @@ class GlobalQualityTest: LightPlatformCodeInsightFixtureTestCase() {
     private fun doPrecisionTest(str: String, precs: List<Double>, resultLoggingNeeded: Boolean) {
         val (preciseResult, result) = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
             val psiFile = null
-            val preciseResult = searcher!!.search(str, psiFile, true)
-            val result = searcher!!.search(str, psiFile)
+            val preciseResult = searcher.findAll(str, psiFile, true)
+            val result = searcher.findAll(str, psiFile, false)
             Pair(preciseResult, result)
         })
 
-//        println("index size: ${searcher.index.size}")
         checkPrecision(preciseResult, result, str, precs, resultLoggingNeeded)
     }
 
-    private fun doTimeTest(str: String): Pair<Long, Pair<Int, Int>> {
-        var candidates: Pair<Int, Int> = Pair(0, 0)
+    private fun doTimeTest(str: String): Long {
         val time = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
-            measureTimeMillis({ candidates = searcher!!.findClosestWithInfo(str, null).second })
+            measureTimeMillis({
+                searcher
+                        .findClosest(null, str, CombinedIndex.WordType.values(), { /* do nothing */ })
+                        .sortedBy { project.searcher.distanceProvider.measure(str, it.word) }
+                        .toList()
+            })
         })
-        return Pair(time, candidates)
+        return time
     }
 
     private fun checkPrecision(preciseResult: Map<Double, List<String>>,

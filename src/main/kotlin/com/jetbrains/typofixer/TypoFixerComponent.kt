@@ -21,37 +21,40 @@ class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 
     var isActive: Boolean = true
     val statistics = TypoFixerStatistics()
+    private var isInitialized = false
 
-    private var mySearcher: DLSearcher? = null
-    private var myStatusBarWidget: RefreshingIndicator? = null
+    lateinit var searcher: DLSearcher private set
+
+    // initialized only in internal mode!!!
+    private lateinit var statusBarWidget: RefreshingIndicator
 
     private val appManager = ApplicationManager.getApplication()
 
-    val searcher get() = mySearcher!!
-
     override fun initComponent() {
-        mySearcher = DLSearcher(myProject)
+        searcher = DLSearcher(myProject)
         if (appManager.isInternal) {
-            myStatusBarWidget = RefreshingIndicator(searcher)
+            statusBarWidget = RefreshingIndicator(searcher)
         }
+        isInitialized = true
     }
 
     override fun projectOpened() {
         val statusBar = WindowManager.getInstance().getStatusBar(myProject)
 
         if (appManager.isInternal) {
-            statusBar.addWidget(myStatusBarWidget!!, "before Position")
-            Disposer.register(myProject, myStatusBarWidget!!)
-            Disposer.register(myProject, Disposable { statusBar.removeWidget(myStatusBarWidget!!.ID()) })
+            statusBar.addWidget(statusBarWidget, "before Position")
+            Disposer.register(myProject, statusBarWidget)
+            Disposer.register(myProject, Disposable { statusBar.removeWidget(statusBarWidget.ID()) })
 
             onSearcherStatusMaybeChanged()
         }
     }
 
     fun onSearcherStatusMaybeChanged() {
-        if (appManager.isInternal && myStatusBarWidget != null) {
-            myStatusBarWidget!!.update()
-            WindowManager.getInstance().getStatusBar(myProject)?.updateWidget(myStatusBarWidget!!.ID())
+        if (!isInitialized) return
+        if (appManager.isInternal) {
+            statusBarWidget.update()
+            WindowManager.getInstance().getStatusBar(myProject)?.updateWidget(statusBarWidget.ID())
         }
     }
 }

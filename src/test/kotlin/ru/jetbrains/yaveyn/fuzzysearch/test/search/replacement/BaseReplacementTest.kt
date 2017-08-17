@@ -30,7 +30,7 @@ open class BaseReplacementTest : LightPlatformCodeInsightFixtureTestCase() {
         val fileName = "Foo." + if (isKotlin) "kt" else "java"
         myFixture.configureByText(fileName, input)
         DumbService.getInstance(project).waitForSmartMode()
-        val resolver = TypoResolver.getInstanceIgnoreIsActive(typed, myFixture.editor, myFixture.file)
+        val resolver = TypoResolver.getInstanceIgnoreIsActive(typed, myFixture.editor, myFixture.file, false)
         myFixture.type(typed)
         resolver?.waitForResolve()
         myFixture.checkResult(output)

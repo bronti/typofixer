@@ -35,18 +35,25 @@ class TypoResolver private constructor(
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
             if (!psiFile.project.typoFixerComponent.isActive) return null
 
-            return doGetResolver(nextChar, editor, psiFile, langSupport)
+            return doGetResolver(nextChar, editor, psiFile, langSupport, true)
         }
 
         private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
 
-        private fun doGetResolver(nextChar: Char, editor: Editor, psiFile: PsiFile, langSupport: TypoFixerLanguageSupport): TypoResolver? {
+        private fun doGetResolver(
+                nextChar: Char,
+                editor: Editor,
+                psiFile: PsiFile,
+                langSupport: TypoFixerLanguageSupport,
+                needTimeChecking: Boolean = false
+        ): TypoResolver? {
+
             val project = psiFile.project
             val settings = TypoFixerSettings.getInstance(project)
-            val stats = project.statistics
+            val statistics = project.statistics
 
-            val findTimeChecker = TimeLimitsChecker(settings.maxMillisForFind, stats::onFindAbortedBecauseOfTimeLimits)::checkTime
-            val resolveTimeChecker = TimeLimitsChecker(settings.maxMillisForResolve, stats::onResolveAbortedBecauseOfTimeLimits)::checkTime
+            val findTimeChecker = getTimeChecker(needTimeChecking, settings.maxMillisForFind, statistics::onFindAbortedBecauseOfTimeLimits)
+            val resolveTimeChecker = getTimeChecker(needTimeChecking, settings.maxMillisForResolve, statistics::onResolveAbortedBecauseOfTimeLimits)
 
             val nextCharOffset = editor.caretModel.offset
 
@@ -84,9 +91,9 @@ class TypoResolver private constructor(
         }
 
         @TestOnly
-        fun getInstanceIgnoreIsActive(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
+        fun getInstanceIgnoreIsActive(nextChar: Char, editor: Editor, psiFile: PsiFile, needTimeChecking: Boolean = false): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
-            return doGetResolver(nextChar, editor, psiFile, langSupport)
+            return doGetResolver(nextChar, editor, psiFile, langSupport, needTimeChecking)
         }
     }
 
@@ -148,7 +155,7 @@ class TypoResolver private constructor(
 
         fun doCheckElement() {
             ProgressIndicatorProvider.checkCanceled()
-            result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.iaBadReplace(element)
+            result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.isBadReplace(element)
         }
 
         var resultCalculated = false
@@ -200,7 +207,15 @@ class TypoResolver private constructor(
 
 class ResolveAbortedException : RuntimeException()
 
-private class TimeLimitsChecker(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
+private fun getTimeChecker(needed: Boolean, maxMillis: Long, onAborted: () -> Unit) =
+        TimeLimitsChecker.getChecker(needed, maxMillis, onAborted)
+
+private class TimeLimitsChecker private constructor(private val timeConstraint: Long, private val reportAbort: () -> Unit) {
+    companion object {
+        fun getChecker(needed: Boolean, maxMillis: Long, onAborted: () -> Unit) =
+                if (!needed) fun() { /* do nothing */ }
+                else TimeLimitsChecker(maxMillis, onAborted)::checkTime
+    }
     private var abortReported = false
     private val startTime = System.currentTimeMillis()
     fun checkTime(): Unit {

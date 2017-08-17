@@ -29,7 +29,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
 
     private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
-        override fun iaBadReplace(element: PsiElement) = isErrorElement(element)
+        override fun isBadReplace(element: PsiElement) = isErrorElement(element)
         override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
             val searcher = element.project.searcher
             return searcher.findClosestAmongKeywords(oldText, allowedKeywords, checkTime)
@@ -60,6 +60,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
         val parent = element.parent
 //        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
         // todo: research
+//        (parent as KtNameReferenceExpression).resolveMainReferenceToDescriptors().toList()[0].name == Name.special("<ERROR PROPERTY>")
         return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().filter { !ErrorUtils.isError(it) }.isEmpty()
                 || parent is KtReference && parent.resolve() == null
     }
