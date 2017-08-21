@@ -11,7 +11,7 @@ class DamerauLevenshteinDistanceTest {
     fun equalsTest() {
         val word = "theWord"
 
-        doTest(word, word, 0.0, 0.0)
+        doSymmetricTest(word, word, 0.0)
     }
 
     @Test
@@ -22,11 +22,35 @@ class DamerauLevenshteinDistanceTest {
     }
 
     @Test
-    fun replaceTest() {
+    fun adjacentReplaceTest() {
         val base = "ord"
         val replacement = "odd"
 
-        doTest(base, replacement, 1.0, 1.0)
+        doSymmetricTest(base, replacement, 0.9)
+    }
+
+    @Test
+    fun adjacentDiffCaseReplaceTest() {
+        val base = "ord"
+        val replacement = "oDd"
+
+        doSymmetricTest(base, replacement, 1.09)
+    }
+
+    @Test
+    fun diffCaseReplaceTest() {
+        val base = "ord"
+        val replacement = "oRd"
+
+        doSymmetricTest(base, replacement, 0.8)
+    }
+
+    @Test
+    fun regularReplaceReplaceTest() {
+        val base = "ord"
+        val replacement = "omd"
+
+        doSymmetricTest(base, replacement, 1.09)
     }
 
     @Test
@@ -42,7 +66,7 @@ class DamerauLevenshteinDistanceTest {
         val base = "lordoVldemorto"
         val replacement = "lordVoldemorto"
 
-        doTest(base, replacement, 0.9, 0.9)
+        doSymmetricTest(base, replacement, 0.9)
     }
 
     @Test
@@ -50,7 +74,7 @@ class DamerauLevenshteinDistanceTest {
         val base = "lordoVldemorto"
         val replacement = "lordovldemorto"
 
-        doTest(base, replacement, 0.8, 0.8)
+        doSymmetricTest(base, replacement, 0.8)
     }
 
     @Test
@@ -58,9 +82,10 @@ class DamerauLevenshteinDistanceTest {
         val base = "ord"
         val replacement = "lordVoldemort"
 
-        doTest(base, replacement, 10.0, 10.0)
+        doSymmetricTest(base, replacement, 10.0)
     }
 
+    private fun doSymmetricTest(word1: String, word2: String, expectedDistance: Double) = doTest(word1, word2, expectedDistance, expectedDistance)
     private fun doTest(word1: String, word2: String, expectedDistance: Double, expectedDistanceOtherOrder: Double) {
         for (maxError in 0..4) {
             doTestWithMaxError(maxError, word1, word2, expectedDistance, expectedDistanceOtherOrder)
@@ -72,8 +97,8 @@ class DamerauLevenshteinDistanceTest {
         val expectedResult = Math.min(distance.errorBiggerThanMax, expectedDistance)
         val expectedResultOtherOrder = Math.min(distance.errorBiggerThanMax, expectedDistanceOtherOrder)
 
-        assert.that(distance.measure(word1, word2), isWithin(expectedResult - 0.01..expectedResult + 0.01))
-        assert.that(distance.measure(word2, word1), isWithin(expectedResultOtherOrder - 0.01..expectedResultOtherOrder + 0.01))
+        assert.that(distance.measure(word1, word2), isWithin(expectedResult - 0.001..expectedResult + 0.001))
+        assert.that(distance.measure(word2, word1), isWithin(expectedResultOtherOrder - 0.001..expectedResultOtherOrder + 0.001))
     }
 
 }

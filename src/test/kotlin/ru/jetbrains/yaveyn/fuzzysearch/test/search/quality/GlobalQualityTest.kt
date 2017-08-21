@@ -184,8 +184,8 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
         val output =
                 word + ": " +
                         handle({ it[0.0]?.size ?: 0 }, precs[0], { "$it, " }) +
-                        handle({ it.entries.filter { it.key <= 1.0 && it.key > 0.0 }.flatMap { it.value }.size }, precs[1], { "$it, " }) +
-                        handle({ it.entries.filter { it.key <= 2.0 && it.key > 1.0 }.flatMap { it.value }.size }, precs[2], { "$it. " }) +
+                        handle({ it.entries.filter { Math.round(it.key) == 1L }.flatMap { it.value }.size }, precs[1], { "$it, " }) +
+                        handle({ it.entries.filter { Math.round(it.key) == 2L }.flatMap { it.value }.size }, precs[2], { "$it. " }) +
                         handle({ simplifySearchResult(it).size }, precs[3], { "total: $it." })
         println()
         if (resultLoggingNeeded) {

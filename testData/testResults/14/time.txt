@@ -1,0 +1,34 @@
+index size: 661461
+1 char length(max). time: 318
+2 char length(max). time: 24
+3 char length(max). time: 13
+java. time: 3
+howe. time: 2
+strr. time: 2
+parn. time: 2
+oloo. time: 4
+javv. time: 2
+java. time: 2
+goto. time: 2
+hzwe. time: 3
+langg. time: 6
+retrun. time: 2
+Stirng. time: 2
+biggest. time: 5
+morebiggest. time: 5
+sequentialLighhtFixturreOneTime. time: 14
+ClassWithVeryUglyName. time: 10
+worstCaseScennario. time: 10
+hubaDubaDoodle. time: 2
+pinkHairForever. time: 4
+imOutOfStupidNames. time: 10
+bananza. time: 2
+willBeNextDoctorWhoAWoman. time: 11
+colorPane. time: 4
+myFixture. time: 2
+InsertActionSorter. time: 5
+NnsertActionSorter. time: 5
+sertActionSorter. time: 11
+createNewAnnotation. time: 3
+createNewAnotation. time: 8
+createNewAonntation. time: 5

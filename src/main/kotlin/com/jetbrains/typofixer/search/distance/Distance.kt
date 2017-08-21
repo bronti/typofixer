@@ -13,8 +13,9 @@ class DamerauLevenshteinDistance(private val maxRoundedError: Int) : Distance {
         // all penalties are equal because of multiple try
         private const val SWAP_PENALTY = 0.9
         private const val REMOVE_PENALTY = 1.0
-        private const val REPLACE_PENALTY = 1.0
+        private const val REPLACE_PENALTY = 1.09
         private const val CHANGE_CASE_PENALTY = 0.8
+        private const val ADJACENT_REPLACE_PENALTY = 0.9
         private const val ADD_PENALTY = 0.95
 
         private val penalties = listOf(
@@ -24,6 +25,18 @@ class DamerauLevenshteinDistance(private val maxRoundedError: Int) : Distance {
                 CHANGE_CASE_PENALTY,
                 ADD_PENALTY
         )
+    }
+
+    private fun charDistance(c1: Char, c2: Char): Double {
+        return with(DEFAULT_KEYBOARD_LAYOUT) {
+            when {
+                c1 isSameKey c2 && c1 isSameCase c2 -> 0.0
+                c1 isSameKey c2 -> CHANGE_CASE_PENALTY
+                c1 isAdjacentKey c2 && c1 isSameCase c2 -> ADJACENT_REPLACE_PENALTY
+                else -> REPLACE_PENALTY
+            }
+        }
+
     }
 
     /*
@@ -59,10 +72,6 @@ class DamerauLevenshteinDistance(private val maxRoundedError: Int) : Distance {
                 val baseInd = replacementInd - maxRoundedError + k
                 if (baseInd > 0) {
                     val baseChar = base[baseInd - 1]
-                    // do nothing
-                    if (baseChar == replacementChar) {
-                        curr[k] = Math.min(prev[k], curr[k])
-                    }
                     // swap
                     if (replacementInd > 1 && baseInd > 1 && baseChar == replacement[replacementInd - 2] && replacementChar == base[baseInd - 2]) {
                         curr[k] = Math.min(prevPrev[k] + SWAP_PENALTY, curr[k])
@@ -72,9 +81,7 @@ class DamerauLevenshteinDistance(private val maxRoundedError: Int) : Distance {
                         curr[k] = Math.min(curr[k], curr[k - 1] + REMOVE_PENALTY)
                     }
                     // replace
-                    val isEqualCharsWithDifferentCase = baseChar.toLowerCase() == replacementChar.toLowerCase()
-                    val actualReplacePenalty = if (isEqualCharsWithDifferentCase) CHANGE_CASE_PENALTY else REPLACE_PENALTY
-                    curr[k] = Math.min(curr[k], prev[k] + actualReplacePenalty)
+                    curr[k] = Math.min(curr[k], prev[k] + charDistance(baseChar, replacementChar))
                 }
                 // add (to base)
                 if (k + 1 < gapSize) {

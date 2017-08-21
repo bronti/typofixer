@@ -57,7 +57,8 @@ open class DLSearcher(val project: Project) : Searcher() {
         // 11: compressing fixed
         // 12: distance is Double (misclicked shift and swap costs lowered)
         // 13: lazy search returning multiple results
-        val VERSION = 13
+        // 14: distance between keys
+        val VERSION = 14
     }
 
     private val maxRoundedError = 2
