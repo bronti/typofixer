@@ -9,7 +9,7 @@ class SearchResultsBuilder private constructor(
         private val result: Sequence<String>,
         // todo: Dtring -> String rolls back
         private val measure: (String) -> Int,
-        private val type: CombinedIndex.WordType
+        private val type: CombinedIndex.IndexType
 ) {
 
     val isActive = minErrorPossible == error
@@ -19,7 +19,7 @@ class SearchResultsBuilder private constructor(
                                          newResult: Sequence<String> = result)
             = SearchResultsBuilder(maxRoundedError, newMinErrorPossible, newError, newResult, measure, type)
 
-    constructor(maxRoundedError: Int, measure: (String) -> Int, type: CombinedIndex.WordType)
+    constructor(maxRoundedError: Int, measure: (String) -> Int, type: CombinedIndex.IndexType)
             : this(maxRoundedError, 0, maxRoundedError, emptySequence(), measure, type)
 
     private fun withMinErrorPossible(newMinErrorPossible: Int): SearchResultsBuilder {
@@ -55,7 +55,7 @@ class SearchResultsBuilder private constructor(
 
     fun getResults(): SearchResults {
         assert(isActive)
-        return SearchResults(maxRoundedError, error, result.map { FoundWord(it, type) })
+        return SearchResults(maxRoundedError, error, result.map { FoundWord(it, FoundWordType.getByIndexType(type)) })
     }
 }
 
@@ -69,4 +69,15 @@ class SearchResults(private val maxRoundedError: Int, val error: Int, private va
     }
 }
 
-class FoundWord(val word: String, val type: CombinedIndex.WordType)
+class FoundWord(val word: String, val type: FoundWordType)
+
+enum class FoundWordType {
+    KEYWORD, IDENTIFIER;
+
+    companion object {
+        fun getByIndexType(type: CombinedIndex.IndexType) = when (type) {
+            CombinedIndex.IndexType.KEYWORD -> KEYWORD
+            else -> IDENTIFIER
+        }
+    }
+}

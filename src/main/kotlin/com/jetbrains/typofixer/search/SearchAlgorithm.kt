@@ -18,10 +18,10 @@ abstract class SearchAlgorithm(
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    protected abstract fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.WordType, checkTime: () -> Unit): SearchResults
+    protected abstract fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.IndexType, checkTime: () -> Unit): SearchResults
 
     // order in wordTypes matters
-    fun findClosest(str: String, types: Array<CombinedIndex.WordType>, checkTime: () -> Unit): SearchResults {
+    fun findClosest(str: String, types: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
         return types.fold(getEmptyResult()) { acc, type ->
             checkTime()
             acc.combinedWith(findClosest(str, acc.error, type, checkTime))
@@ -40,11 +40,11 @@ abstract class DLSearchAlgorithmBase(
         index: CombinedIndex
 ) : SearchAlgorithm(maxRoundedError, DamerauLevenshteinDistance(maxRoundedError), index) {
 
-    private fun getEmptyResultBuilder(str: String, maxRoundedError: Int, type: CombinedIndex.WordType)
+    private fun getEmptyResultBuilder(str: String, maxRoundedError: Int, type: CombinedIndex.IndexType)
             = SearchResultsBuilder(maxRoundedError, { distance.roundedMeasure(str, it) }, type)
 
     // todo: candidates count
-    override fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.WordType, checkTime: () -> Unit): SearchResults {
+    override fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.IndexType, checkTime: () -> Unit): SearchResults {
         val signaturesByError = getSignatures(str)
 
         // todo: it -> if in {it: ...}

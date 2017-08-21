@@ -13,6 +13,7 @@ import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
+import com.jetbrains.typofixer.search.FoundWordType
 import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
@@ -116,28 +117,35 @@ class TypoResolver private constructor(
     }.start()
 
     private fun doResolve() {
-        if (!elementIsBad(true, oldText)) return
+        if (!checkElementInBackground(oldText) { typoCase.needToReplace(it, false) }) return
         // index unzipping laziness is forced here:
         replacements.forEach {
             checkTime()
-            if (doOneResolve(it.word)) return
+            val resolved = when (it.type) {
+                FoundWordType.KEYWORD -> resolveKeyword(it.word)
+                FoundWordType.IDENTIFIER -> resolveIdentifier(it.word)
+            }
+            if (resolved) return
         }
     }
 
-    // return true if resolve was successful
-    private fun doOneResolve(newText: String): Boolean {
+    private fun resolveKeyword(newText: String): Boolean {
         if (newText == oldText) return false
         fixTypo(newText)
-        try {
-            checkTime()
-            if (!elementIsBad(false, newText)) return true
-        } catch (e: ResolveAbortedException) {
-            // suppressing exception so we can rollback replacement
+        if (checkElementInBackground(newText, typoCase::isBadlyReplacedKeyword)) {
+            undoFix(newText)
+            return false
         }
-        undoFix(newText)
-        return false
+        return true
     }
 
+    private fun resolveIdentifier(newText: String): Boolean {
+        if (checkElementInBackground(oldText) { typoCase.isGoodReplacementForIdentifier(it, newText) }) {
+            fixTypo(newText)
+            return true
+        }
+        return false
+    }
 
     private fun fixTypo(newText: String): Boolean = performCommand("Resolve typo", oldText) {
         replaceText(oldText, newText)
@@ -149,13 +157,14 @@ class TypoResolver private constructor(
         project.statistics.onReplacementRolledBack()
     }
 
-    private fun elementIsBad(isBeforeReplace: Boolean, expectedText: String): Boolean {
+    // todo: refactor (?)
+    private fun checkElementInBackground(expectedText: String, doCheck: (PsiElement) -> Boolean): Boolean {
         var result = true
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
         fun doCheckElement() {
             ProgressIndicatorProvider.checkCanceled()
-            result = if (isBeforeReplace) typoCase.needToReplace(element) else typoCase.isBadReplace(element)
+            result = doCheck(element)
         }
 
         var resultCalculated = false
@@ -218,7 +227,7 @@ private class TimeLimitsChecker private constructor(private val timeConstraint: 
     }
     private var abortReported = false
     private val startTime = System.currentTimeMillis()
-    fun checkTime(): Unit {
+    fun checkTime() {
         val result = startTime + timeConstraint <= System.currentTimeMillis()
         if (result && !abortReported) reportAbort()
         if (result) throw ResolveAbortedException()

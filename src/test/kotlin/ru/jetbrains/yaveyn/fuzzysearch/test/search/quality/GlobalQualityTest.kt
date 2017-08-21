@@ -7,6 +7,7 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCa
 import com.jetbrains.typofixer.search.DLSearcher
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.searcher
+import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -15,7 +16,7 @@ import kotlin.system.measureTimeMillis
 /**
  * @author bronti.
  */
-//@Ignore
+@Ignore
 class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
 
     private val testDataDir = File("testData")
@@ -153,7 +154,7 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
         val time = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
             measureTimeMillis({
                 searcher
-                        .findClosest(null, str, CombinedIndex.WordType.values(), { /* do nothing */ })
+                        .findClosest(null, str, CombinedIndex.IndexType.values(), { /* do nothing */ })
                         .sortedBy { project.searcher.distanceProvider.measure(str, it.word) }
                         .toList()
             })

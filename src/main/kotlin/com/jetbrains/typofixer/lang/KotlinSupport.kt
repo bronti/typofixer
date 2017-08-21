@@ -21,15 +21,16 @@ import org.jetbrains.kotlin.types.ErrorUtils
 class KotlinSupport : JavaKotlinBaseSupport() {
 
     override fun correspondingWordTypes() = arrayOf(
-            CombinedIndex.WordType.KEYWORD,
-            CombinedIndex.WordType.LOCAL_IDENTIFIER,
-            CombinedIndex.WordType.KOTLIN_SPECIFIC_FIELD,
-            CombinedIndex.WordType.GLOBAL
+            CombinedIndex.IndexType.KEYWORD,
+            CombinedIndex.IndexType.LOCAL_IDENTIFIER,
+            CombinedIndex.IndexType.KOTLIN_SPECIFIC_FIELD,
+            CombinedIndex.IndexType.GLOBAL
     )
 
     private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
-        override fun isBadReplace(element: PsiElement) = isErrorElement(element)
+        override fun isBadlyReplacedKeyword(element: PsiElement) = !isErrorElement(element)
+        override fun isGoodReplacementForIdentifier(element: PsiElement, newText: String) = false
         override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
             val searcher = element.project.searcher
             return searcher.findClosestAmongKeywords(oldText, allowedKeywords, checkTime)
@@ -58,11 +59,12 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     override fun isParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
     override fun isUnresolvedReference(element: PsiElement): Boolean {
         val parent = element.parent
-//        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().isEmpty()
-        // todo: research
-//        (parent as KtNameReferenceExpression).resolveMainReferenceToDescriptors().toList()[0].name == Name.special("<ERROR PROPERTY>")
         return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().filter { !ErrorUtils.isError(it) }.isEmpty()
                 || parent is KtReference && parent.resolve() == null
+    }
+
+    override fun isResolvableText(text: String, context: PsiElement): Boolean {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun getLocalDictionaryCollector() = KotlinLocalDictionaryCollector()

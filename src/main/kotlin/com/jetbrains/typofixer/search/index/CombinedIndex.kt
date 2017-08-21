@@ -13,7 +13,7 @@ import org.jetbrains.annotations.TestOnly
  */
 class CombinedIndex(val project: Project, val signature: Signature) {
 
-    enum class WordType {
+    enum class IndexType {
         KEYWORD,
         LOCAL_IDENTIFIER,
         KOTLIN_SPECIFIC_FIELD,
@@ -32,13 +32,14 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     // concurrent
     private val kotlinSpecificFieldsIndex = InnerIndexForKotlinSpecificFields(project, signature)
 
-    private val WordType.index get() = when (this) {
-        WordType.KEYWORD -> keywordsIndex
-        WordType.LOCAL_IDENTIFIER -> localIdentifiersIndex
-        WordType.KOTLIN_SPECIFIC_FIELD -> kotlinSpecificFieldsIndex
-        WordType.GLOBAL -> globalIndex
+    private val IndexType.index
+        get() = when (this) {
+            IndexType.KEYWORD -> keywordsIndex
+            IndexType.LOCAL_IDENTIFIER -> localIdentifiersIndex
+            IndexType.KOTLIN_SPECIFIC_FIELD -> kotlinSpecificFieldsIndex
+            IndexType.GLOBAL -> globalIndex
     }
-    private val indices = WordType.values().map { it.index }
+    private val indices = IndexType.values().map { it.index }
 
     fun getSize() = getLocalSize() + getGlobalSize()
     fun getLocalSize() = localIdentifiersIndex.getSize() + keywordsIndex.getSize()
@@ -52,7 +53,7 @@ class CombinedIndex(val project: Project, val signature: Signature) {
 
     fun isUsable() = globalIndex.isUsable() && kotlinSpecificFieldsIndex.isUsable()
 
-    fun getAll(type: WordType, signatures: Set<Int>) = type.index.getAll(signatures)
+    fun getAll(type: IndexType, signatures: Set<Int>) = type.index.getAll(signatures)
 
     // not meant to be called concurrently
     fun refreshLocal(psiElement: PsiElement?) {

@@ -30,12 +30,12 @@ interface TypoFixerLanguageSupport {
 }
 
 interface TypoCase {
-
     fun triggersTypoResolve(c: Char): Boolean
     // TypoResolver handles the first case for which needToReplace(element, fast = true) is true
     fun needToReplace(element: PsiElement, fast: Boolean = false): Boolean
 
-    fun isBadReplace(element: PsiElement): Boolean
+    fun isBadlyReplacedKeyword(element: PsiElement): Boolean
+    fun isGoodReplacementForIdentifier(element: PsiElement, newText: String): Boolean
     fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults
 }
 

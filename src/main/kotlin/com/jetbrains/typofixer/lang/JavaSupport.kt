@@ -1,5 +1,6 @@
 package com.jetbrains.typofixer.lang
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.*
 import com.intellij.psi.tree.java.IKeywordElementType
 import com.jetbrains.typofixer.search.index.CombinedIndex
@@ -11,9 +12,9 @@ import com.jetbrains.typofixer.search.index.CombinedIndex
 class JavaSupport : JavaKotlinBaseSupport() {
 
     override fun correspondingWordTypes() = arrayOf(
-            CombinedIndex.WordType.KEYWORD,
-            CombinedIndex.WordType.LOCAL_IDENTIFIER,
-            CombinedIndex.WordType.GLOBAL
+            CombinedIndex.IndexType.KEYWORD,
+            CombinedIndex.IndexType.LOCAL_IDENTIFIER,
+            CombinedIndex.IndexType.GLOBAL
     )
 
     override fun isReference(element: PsiElement) = element.parent is PsiReference
@@ -24,6 +25,12 @@ class JavaSupport : JavaKotlinBaseSupport() {
         val parent = element.parent
         return parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
                 || parent is PsiReference && parent.resolve() == null
+    }
+
+    override fun isResolvableText(text: String, context: PsiElement): Boolean {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        val referenceElement = JavaPsiFacade.getElementFactory(context.project).createReferenceFromText(text, context)
+        return referenceElement.multiResolve(true).isNotEmpty()
     }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()

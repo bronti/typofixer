@@ -18,20 +18,15 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         return isIdentifier(element) && (isErrorElement(element) || if (isFast) isReference(element) else isUnresolvedReference(element))
     }
 
-    protected fun isProperlyReplacedIdentifier(element: PsiElement): Boolean {
-        ApplicationManager.getApplication().assertReadAccessAllowed()
-        val isGoodKeyword = isKeyword(element) && !isErrorElement(element)
-
-        // other types of identifiers are bad
-        val isResolvedIdentifier = isIdentifier(element) && isReference(element) && !isUnresolvedReference(element)
-
-        return isGoodKeyword || isResolvedIdentifier
-    }
+    protected fun isGoodKeyword(element: PsiElement) = isKeyword(element) && !isErrorElement(element)
 
     private val BAD_IDENTIFIER = object : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c)
         override fun needToReplace(element: PsiElement, fast: Boolean) = isBadIdentifier(element, fast)
-        override fun isBadReplace(element: PsiElement) = !isProperlyReplacedIdentifier(element)
+        override fun isGoodReplacementForIdentifier(element: PsiElement, newText: String)
+                = isIdentifier(element) && isReference(element) && isResolvableText(newText, element)
+
+        override fun isBadlyReplacedKeyword(element: PsiElement) = !isGoodKeyword(element)
         override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
             val searcher = element.project.searcher
             return searcher.findClosest(element, oldText, correspondingWordTypes(), checkTime)
@@ -46,11 +41,12 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 //        return if (!isReplaced) isParameter(element) else !isKeyword(element) || isErrorElement(element)
 //    }
 
-    abstract protected fun correspondingWordTypes(): Array<CombinedIndex.WordType>
+    abstract protected fun correspondingWordTypes(): Array<CombinedIndex.IndexType>
 
     abstract protected fun isReference(element: PsiElement): Boolean
     abstract protected fun isIdentifier(element: PsiElement): Boolean
     abstract protected fun isKeyword(element: PsiElement): Boolean
     abstract protected fun isUnresolvedReference(element: PsiElement): Boolean
     abstract protected fun isParameter(element: PsiElement): Boolean
+    abstract protected fun isResolvableText(text: String, context: PsiElement): Boolean
 }
