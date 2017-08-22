@@ -4,6 +4,7 @@ import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.search.SearchResults
 
 /**
@@ -29,13 +30,25 @@ interface TypoFixerLanguageSupport {
     }
 }
 
+// returns true if resolve was successful
+class Resolver private constructor(private val doResolve: (() -> Unit)?, val isSuccessful: Boolean) {
+    companion object {
+        val UNSUCCESSFUL = Resolver(null, false)
+    }
+
+    constructor(doResolve: () -> Unit) : this(doResolve, true)
+
+    fun resolve() = doResolve!!()
+}
+
 interface TypoCase {
     fun triggersTypoResolve(c: Char): Boolean
     // TypoResolver handles the first case for which needToReplace(element, fast = true) is true
     fun needToReplace(element: PsiElement, fast: Boolean = false): Boolean
 
-    fun isBadlyReplacedKeyword(element: PsiElement): Boolean
-    fun isGoodReplacementForIdentifier(element: PsiElement, newText: String): Boolean
+    //    fun isBadlyReplacedKeyword(element: PsiElement): Boolean
+//    fun isGoodReplacementForIdentifier(element: PsiElement, newText: String): Boolean
+    fun getResolver(element: PsiElement, newWord: FoundWord): Resolver
     fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults
 }
 

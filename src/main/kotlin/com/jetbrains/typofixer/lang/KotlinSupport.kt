@@ -4,9 +4,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
-import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.search.index.CombinedIndex
-import com.jetbrains.typofixer.searcher
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
@@ -29,41 +27,40 @@ class KotlinSupport : JavaKotlinBaseSupport() {
 
     private abstract class BadKeywordBeforeParameter : TypoCase {
         override fun triggersTypoResolve(c: Char) = !identifierChar(c) && c != ':'
-        override fun isBadlyReplacedKeyword(element: PsiElement) = !isErrorElement(element)
-        override fun isGoodReplacementForIdentifier(element: PsiElement, newText: String) = false
-        override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
-            val searcher = element.project.searcher
-            return searcher.findClosestAmongKeywords(oldText, allowedKeywords, checkTime)
-        }
+//        override fun isBadlyReplacedKeyword(element: PsiElement) = !isErrorElement(element)
+//        override fun isGoodReplacementForIdentifier(element: PsiElement, newText: String) = false
+//        override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
+//            val searcher = element.project.searcher
+//            return searcher.findClosestAmongKeywords(oldText, allowedKeywords, checkTime)
+//        }
 
         abstract val allowedKeywords: Set<String>
     }
 
-    private val BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR = object : BadKeywordBeforeParameter() {
-        override fun needToReplace(element: PsiElement, fast: Boolean) = isParameter(element) && isInPrimaryConstructor(element)
-        override val allowedKeywords = KEYWORDS_ALLOWED_IN_PRIMARY_CONSTRUCTOR
-    }
-    private val BAD_KEYWORD_IN_FUN_PARAMETER = object : BadKeywordBeforeParameter() {
-        override fun needToReplace(element: PsiElement, fast: Boolean) = isParameter(element)
-        override val allowedKeywords = KEYWORDS_ALLOWED_IN_FUN_PARAMETERS
-    }
+//    private val BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR = object : BadKeywordBeforeParameter() {
+//        override fun needToReplace(element: PsiElement, fast: Boolean) = isInParameter(element) && isInPrimaryConstructor(element)
+//        override val allowedKeywords = KEYWORDS_ALLOWED_IN_PRIMARY_CONSTRUCTOR
+//    }
+//    private val BAD_KEYWORD_IN_FUN_PARAMETER = object : BadKeywordBeforeParameter() {
+//        override fun needToReplace(element: PsiElement, fast: Boolean) = isInParameter(element)
+//        override val allowedKeywords = KEYWORDS_ALLOWED_IN_FUN_PARAMETERS
+//    }
 
     // order matters
-    override fun getTypoCases() = super.getTypoCases() + BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR + BAD_KEYWORD_IN_FUN_PARAMETER
+    override fun getTypoCases() = super.getTypoCases() // + BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR + BAD_KEYWORD_IN_FUN_PARAMETER
 
     fun isInPrimaryConstructor(element: PsiElement) = PsiTreeUtil.getParentOfType(element, KtPrimaryConstructor::class.java) != null
 
-    override fun isReference(element: PsiElement) = element.parent is KtReferenceExpression || element.parent is KtReference
+    override fun isInReference(element: PsiElement) = element.parent is KtReferenceExpression || element.parent is KtReference
     override fun isIdentifier(element: PsiElement) = element.node.elementType == KtTokens.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is KtKeywordToken
-    override fun isParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
+    override fun isInParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
     override fun isUnresolvedReference(element: PsiElement): Boolean {
-        val parent = element.parent
-        return parent is KtReferenceExpression && parent.resolveMainReferenceToDescriptors().filter { !ErrorUtils.isError(it) }.isEmpty()
-                || parent is KtReference && parent.resolve() == null
+        return element is KtReferenceExpression && element.resolveMainReferenceToDescriptors().any { !ErrorUtils.isError(it) }
+                || element is KtReference && element.resolve() == null
     }
 
-    override fun isResolvableText(text: String, context: PsiElement): Boolean {
+    override fun checkedResolveIdentifierReference(text: String, element: PsiElement): Resolver {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

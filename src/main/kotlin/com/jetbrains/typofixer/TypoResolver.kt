@@ -7,13 +7,13 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.util.Computable
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
-import com.jetbrains.typofixer.search.FoundWordType
 import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
@@ -39,7 +39,12 @@ class TypoResolver private constructor(
             return doGetResolver(nextChar, editor, psiFile, langSupport, true)
         }
 
-        private fun refreshPsi(editor: Editor) = PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
+        private fun refreshPsi(editor: Editor) {
+            ApplicationManager.getApplication().assertIsDispatchThread()
+            ApplicationManager.getApplication().runWriteAction {
+                PsiDocumentManager.getInstance(editor.project!!).commitDocument(editor.document)
+            }
+        }
 
         private fun doGetResolver(
                 nextChar: Char,
@@ -75,8 +80,9 @@ class TypoResolver private constructor(
 
                     val searchResults: SearchResults
                     try {
+                        // todo: check validity (?)
                         searchResults = typoCase.getReplacement(element, oldText, findTimeChecker)
-                    } catch (e: ResolveAbortedException) {
+                    } catch (e: ResolveCancelledException) {
                         return null
                     }
 
@@ -98,7 +104,13 @@ class TypoResolver private constructor(
         }
     }
 
-    private fun refreshPsi() = refreshPsi(editor)
+    private fun refreshElementAndCheckResolveCancelled() {
+        checkTime()
+        if (!refreshElement()) throw ResolveCancelledException()
+        checkTime()
+        // todo: refresh statistics
+        if (!project.isOpen) throw ResolveCancelledException()
+    }
 
     private val document: Document = editor.document
     private var elementStartOffset = element.textOffset
@@ -111,110 +123,71 @@ class TypoResolver private constructor(
     fun resolve() = Thread {
         try {
             doResolve()
-        } catch (e: ResolveAbortedException) {
+        } catch (e: ResolveCancelledException) {
             // do nothing
         }
     }.start()
 
     private fun doResolve() {
-        if (!checkElementInBackground(oldText) { typoCase.needToReplace(it, false) }) return
+        if (!getWithWritePriority { typoCase.needToReplace(element, false) }) return
         // index unzipping laziness is forced here:
-        replacements.forEach {
+        for (replacement in replacements) {
+            refreshElementAndCheckResolveCancelled()
+            val resolver = getWithWritePriority { typoCase.getResolver(element, replacement) }
+            if (!resolver.isSuccessful) continue
             checkTime()
-            val resolved = when (it.type) {
-                FoundWordType.KEYWORD -> resolveKeyword(it.word)
-                FoundWordType.IDENTIFIER -> resolveIdentifier(it.word)
-            }
-            if (resolved) return
+            performCommand("Resolve typo", resolver::resolve)
+            project.statistics.onWordReplaced()
+            return
         }
     }
 
-    private fun resolveKeyword(newText: String): Boolean {
-        if (newText == oldText) return false
-        fixTypo(newText)
-        if (checkElementInBackground(newText, typoCase::isBadlyReplacedKeyword)) {
-            undoFix(newText)
-            return false
-        }
-        return true
-    }
-
-    private fun resolveIdentifier(newText: String): Boolean {
-        if (checkElementInBackground(oldText) { typoCase.isGoodReplacementForIdentifier(it, newText) }) {
-            fixTypo(newText)
-            return true
-        }
-        return false
-    }
-
-    private fun fixTypo(newText: String): Boolean = performCommand("Resolve typo", oldText) {
-        replaceText(oldText, newText)
-        project.statistics.onWordReplaced()
-    }
-
-    private fun undoFix(newText: String): Boolean = performCommand("Undo incorrect typo resolve", newText) {
-        replaceText(newText, oldText)
-        project.statistics.onReplacementRolledBack()
-    }
-
-    // todo: refactor (?)
-    private fun checkElementInBackground(expectedText: String, doCheck: (PsiElement) -> Boolean): Boolean {
-        var result = true
+    private fun <T> getWithWritePriority(doGet: () -> T): T {
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
 
-        fun doCheckElement() {
-            ProgressIndicatorProvider.checkCanceled()
-            result = doCheck(element)
-        }
-
-        var resultCalculated = false
-        while (!resultCalculated) {
+        while (true) {
             checkTime()
-            var elementIsRefreshed = false
-            appManager.invokeAndWait { appManager.runReadAction { elementIsRefreshed = refreshElement(expectedText) } }
-            if (!elementIsRefreshed) throw ResolveAbortedException() // something strange happened. we cannot do anything
-
-            checkTime()
-            resultCalculated =
-                    if (appManager.isDispatchThread) {
-                        doCheckElement(); true
-                    } else ProgressManager.getInstance().runInReadActionWithWriteActionPriority(::doCheckElement, indicator)
-        }
-        return result
-    }
-
-    private fun performCommand(name: String, prefix: String, command: () -> Unit): Boolean {
-        var done = false
-        appManager.invokeAndWait {
-            appManager.runWriteAction {
-                if (refreshElement(prefix) && project.isOpen) {
-                    val commandProcessor = CommandProcessor.getInstance()
-                    commandProcessor.executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
-                    done = true
+            if (appManager.isDispatchThread) {
+                return doGet()
+            } else {
+                var result: T? = null
+                val resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
+                    result = doGet()
+                }, indicator)
+                if (resultFound) {
+                    return result!!
                 }
             }
         }
-        return done
     }
 
-    private fun replaceText(old: String, new: String) {
-        document.replaceString(elementStartOffset, elementStartOffset + old.length, new)
+    private fun performCommand(name: String, command: () -> Unit) {
+        appManager.invokeAndWait {
+            appManager.runWriteAction {
+                CommandProcessor
+                        .getInstance()
+                        .executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
+            }
+        }
     }
 
-    private fun refreshElement(startingText: String = ""): Boolean {
-        refreshPsi()
-        val newElement = psiFile.findElementAt(elementStartOffset)
-        if (newElement == null || !newElement.text.startsWith(startingText)) return false
-        element = newElement
-        elementStartOffset = element.textOffset
-        return true
+    private fun refreshElement(): Boolean {
+        appManager.invokeAndWait { refreshPsi(editor) }
+        return appManager.runReadAction(Computable {
+            val newElement = psiFile.findElementAt(elementStartOffset)
+            if (newElement != null && newElement.text.startsWith(oldText)) {
+                element = newElement
+                elementStartOffset = element.textOffset
+                true
+            } else false
+        })
     }
 
     @TestOnly
     fun waitForResolve() = doResolve()
 }
 
-class ResolveAbortedException : RuntimeException()
+class ResolveCancelledException : RuntimeException()
 
 private fun getTimeChecker(needed: Boolean, maxMillis: Long, onAborted: () -> Unit) =
         TimeLimitsChecker.getChecker(needed, maxMillis, onAborted)
@@ -230,6 +203,6 @@ private class TimeLimitsChecker private constructor(private val timeConstraint: 
     fun checkTime() {
         val result = startTime + timeConstraint <= System.currentTimeMillis()
         if (result && !abortReported) reportAbort()
-        if (result) throw ResolveAbortedException()
+        if (result) throw ResolveCancelledException()
     }
 }

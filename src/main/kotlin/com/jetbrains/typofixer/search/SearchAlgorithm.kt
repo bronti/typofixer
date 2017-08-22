@@ -1,6 +1,6 @@
 package com.jetbrains.typofixer.search
 
-import com.jetbrains.typofixer.ResolveAbortedException
+import com.jetbrains.typofixer.ResolveCancelledException
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistance
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.search.index.GlobalInnerIndexBase
@@ -55,7 +55,7 @@ abstract class DLSearchAlgorithmBase(
             val candidates = try {
                 index.getAll(type, signatures)
             } catch(e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
-                throw ResolveAbortedException()
+                throw ResolveCancelledException()
             }
 
             acc.combinedWith(error, candidates)

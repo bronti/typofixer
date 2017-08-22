@@ -1,9 +1,10 @@
 package com.jetbrains.typofixer.lang
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.*
 import com.intellij.psi.tree.java.IKeywordElementType
+import com.intellij.util.IncorrectOperationException
 import com.jetbrains.typofixer.search.index.CombinedIndex
+import org.jetbrains.kotlin.psi.psiUtil.getStartOffsetIn
 
 /**
  * @author bronti.
@@ -17,20 +18,40 @@ class JavaSupport : JavaKotlinBaseSupport() {
             CombinedIndex.IndexType.GLOBAL
     )
 
-    override fun isReference(element: PsiElement) = element.parent is PsiReference
+    override fun isInReference(element: PsiElement) = element.parent is PsiJavaCodeReferenceElement // todo: what is with PsiReference?
     override fun isIdentifier(element: PsiElement) = element.node.elementType == JavaTokenType.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is IKeywordElementType
-    override fun isParameter(element: PsiElement) = element.parent is PsiParameter && isIdentifier(element)
+    override fun isInParameter(element: PsiElement) = element.parent is PsiParameter && isIdentifier(element)
     override fun isUnresolvedReference(element: PsiElement): Boolean {
-        val parent = element.parent
-        return parent is PsiReferenceExpression && parent.multiResolve(true).isEmpty()
-                || parent is PsiReference && parent.resolve() == null
+        return element is PsiReferenceExpression && element.multiResolve(true).none { it.isAccessible }// todo: accessible
+                || element is PsiReference && element.resolve() == null
     }
 
-    override fun isResolvableText(text: String, context: PsiElement): Boolean {
-        ApplicationManager.getApplication().assertReadAccessAllowed()
-        val referenceElement = JavaPsiFacade.getElementFactory(context.project).createReferenceFromText(text, context)
-        return referenceElement.multiResolve(true).isNotEmpty()
+    override fun checkedResolveIdentifierReference(text: String, element: PsiElement): Resolver {
+        // todo: maybe copy all psi?
+        val factory = JavaPsiFacade.getElementFactory(element.project)
+        val referenceCopy =
+                if (element.parent.parent != null) {
+                    element.parent.parent.copy()
+                            .children
+                            .find { it.startOffsetInParent == element.parent.startOffsetInParent }
+                            as PsiJavaCodeReferenceElement
+                } else element.parent.copy() as PsiJavaCodeReferenceElement
+
+        val elementCopy = referenceCopy.findElementAt(element.getStartOffsetIn(element.parent))!!
+        val replacement = try {
+            factory.createIdentifier(text)
+        } catch (e: IncorrectOperationException) {
+            return Resolver.UNSUCCESSFUL
+        }
+        try {
+            elementCopy.replace(replacement)
+        } catch (e: IncorrectOperationException) {
+            throw IllegalStateException()
+        }
+
+        if (isUnresolvedReference(referenceCopy)) return Resolver.UNSUCCESSFUL
+        return Resolver { element.replace(replacement) }
     }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
