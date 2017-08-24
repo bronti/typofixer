@@ -2,7 +2,7 @@ package com.jetbrains.typofixer.lang
 
 import com.intellij.lang.Language
 import com.intellij.lang.LanguageExtension
-import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.TypoCase
@@ -15,8 +15,7 @@ interface TypoFixerLanguageSupport {
         fun getSupport(language: Language) = TypoFixerLanguageSupport.Extension.getSupport(language)
     }
 
-    fun getTypoCases(document: Document, checkTime: () -> Unit, getElement: () -> PsiElement?): List<TypoCase>
-
+    fun getTypoCases(editor: Editor, psiFile: PsiFile, elementStartOffset: Int, oldText: String, checkTime: () -> Unit): List<TypoCase>
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
 
     private class Extension : LanguageExtension<TypoFixerLanguageSupport>("com.jetbrains.typofixer.typoFixerLanguageSupport") {

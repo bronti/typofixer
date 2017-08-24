@@ -13,6 +13,7 @@ import com.jetbrains.typofixer.TypoResolver
  * @author bronti.
  */
 class TypoFixEnterHandler : EnterHandlerDelegate {
+    private var resolver: TypoResolver? = null
 
     override fun preprocessEnter(psiFile: PsiFile,
                                  editor: Editor,
@@ -24,13 +25,14 @@ class TypoFixEnterHandler : EnterHandlerDelegate {
 
         if (caret.caretCount > 1) return Result.Continue
 
-        TypoResolver.getResolver('\n', editor, psiFile)?.resolve()
+        resolver = TypoResolver.getResolver('\n', editor, psiFile)
         caretOffset.set(editor.caretModel.offset)
 
         return Result.Continue
     }
 
     override fun postProcessEnter(psiFile: PsiFile, editor: Editor, dataContext: DataContext): Result {
+        resolver?.resolve()
         return Result.Continue
     }
 

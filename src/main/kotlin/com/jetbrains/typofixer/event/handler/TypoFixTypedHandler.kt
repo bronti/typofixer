@@ -12,6 +12,7 @@ import com.jetbrains.typofixer.TypoResolver
  */
 
 class TypoFixTypedHandler : TypedHandlerDelegate() {
+    private var resolver: TypoResolver? = null
 
     override fun beforeCharTyped(c: Char, project: Project, editor: Editor?, psiFile: PsiFile?, fileType: FileType?): Result {
         if (editor == null || psiFile == null) return Result.CONTINUE
@@ -19,7 +20,10 @@ class TypoFixTypedHandler : TypedHandlerDelegate() {
         // todo: multiple caret. do nothing?
         if (editor.caretModel.caretCount > 1) return Result.CONTINUE
 
-        TypoResolver.getResolver(c, editor, psiFile)?.resolve()
+        resolver = TypoResolver.getResolver(c, editor, psiFile)
+
+        // todo: if c is going to be typed move to charTyped (?)
+        resolver?.resolve()
 
         return Result.CONTINUE
     }

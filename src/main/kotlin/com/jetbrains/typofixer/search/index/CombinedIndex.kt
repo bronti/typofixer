@@ -2,7 +2,7 @@ package com.jetbrains.typofixer.search.index
 
 
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.signature.Signature
 import com.jetbrains.typofixer.typoFixerComponent
 import org.jetbrains.annotations.TestOnly
@@ -56,8 +56,8 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     fun getAll(type: IndexType, signatures: Set<Int>) = type.index.getAll(signatures)
 
     // not meant to be called concurrently
-    fun refreshLocal(psiElement: PsiElement?) {
-        val psiFile = psiElement?.containingFile ?: return
+    fun refreshLocal(psiFile: PsiFile?) {
+        psiFile ?: return
         keywordsIndex.refresh(psiFile)
         localIdentifiersIndex.refresh(psiFile)
         project.typoFixerComponent.onSearcherStatusMaybeChanged()

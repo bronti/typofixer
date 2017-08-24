@@ -10,7 +10,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiModificationTracker
 import com.jetbrains.typofixer.search.distance.Distance
@@ -30,7 +29,7 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(element: PsiElement?, str: String, indexTypes: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
+    abstract fun findClosest(file: PsiFile?, str: String, indexTypes: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
     abstract fun findClosestAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults
 
     abstract val distanceProvider: Distance
@@ -100,9 +99,9 @@ open class DLSearcher(val project: Project) : Searcher() {
         }
     }
 
-    override fun findClosest(element: PsiElement?, str: String, indexTypes: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
+    override fun findClosest(file: PsiFile?, str: String, indexTypes: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
         // todo: checkTime into refreshLocal?
-        index.refreshLocal(element)
+        index.refreshLocal(file)
         return getSearch(false).findClosest(str, indexTypes, checkTime)
     }
 
