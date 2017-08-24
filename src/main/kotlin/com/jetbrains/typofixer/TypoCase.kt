@@ -69,7 +69,6 @@ abstract class TypoCase(
 
     protected abstract fun checkApplicable(fast: Boolean = false): Boolean
     protected abstract fun isGoodReplacement(newWord: FoundWord): Boolean
-    protected abstract fun doReplace(newWord: FoundWord)
 
     fun resolveAll(words: Sequence<FoundWord>): Boolean {
         assert(isSetUp)
@@ -77,6 +76,14 @@ abstract class TypoCase(
         val replacementWord = words.find { checkWithWritePriority { isGoodReplacement(it) } } ?: return false
         doReplace(replacementWord)
         return true
+    }
+
+    private fun doReplace(newWord: FoundWord) {
+        assert(isSetUp)
+        performReplacement {
+            //                element.replace(replacement!!) // caret placement in tests is wrong (why?)
+            editor.document.replaceString(elementStartOffset, elementStartOffset + oldText.length, newWord.word)
+        }
     }
 
     protected fun performReplacement(command: () -> Unit) {

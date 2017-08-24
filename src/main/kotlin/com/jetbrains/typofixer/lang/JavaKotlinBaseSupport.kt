@@ -1,6 +1,5 @@
 package com.jetbrains.typofixer.lang
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.*
@@ -17,14 +16,9 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         fun isErrorElement(element: PsiElement) = element.parent is PsiErrorElement
     }
 
-    protected fun isBadIdentifier(element: PsiElement, isFast: Boolean): Boolean {
-        ApplicationManager.getApplication().assertReadAccessAllowed()
-        return isIdentifier(element) && (isErrorElement(element) || if (isFast) isInReference(element) else isUnresolvedReference(element.parent))
-    }
+    protected fun isGoodKeyword(element: PsiElement) = isKeyword(element) && !isErrorElement(element)
 
-//    protected fun isGoodKeyword(element: PsiElement) = isKeyword(element) && !isErrorElement(element)
-
-    private open inner class BadIdentifier(
+    private abstract inner class BaseJavaKotlin(
             editor: Editor,
             psiFile: PsiFile,
             elementStartOffset: Int,
@@ -32,59 +26,98 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
             checkTime: () -> Unit
     ) : TypoCase(editor, psiFile, elementStartOffset, oldText, checkTime) {
 
+        override fun triggersResolve(c: Char) = !identifierChar(c)
+        override fun getReplacement(checkTime: () -> Unit)
+                = project.searcher.findClosest(psiFile, oldText, correspondingWordTypes(), checkTime)
+    }
+
+    private open inner class UnresolvedIdentifier(
+            editor: Editor,
+            psiFile: PsiFile,
+            elementStartOffset: Int,
+            oldText: String,
+            checkTime: () -> Unit
+    ) : BaseJavaKotlin(editor, psiFile, elementStartOffset, oldText, checkTime) {
+
         private val factory = JavaPsiFacade.getElementFactory(project)
         private val fileCopy by lazy { appManager.runReadAction(Computable { psiFile.copy() }) }
-        private val referenceCopy
-            get() = fileCopy.findReferenceAt(elementStartOffset) as PsiJavaCodeReferenceElement
         private val elementCopy
-            get() = referenceCopy.findElementAt(elementOffsetInParent)!!.apply { assert(isIdentifier(this)) }
+            get() = fileCopy.findElementAt(elementStartOffset)!!
+        private val referenceCopy
+            get() = elementCopy.parent as PsiJavaCodeReferenceElement
 
-        override fun triggersResolve(c: Char) = !identifierChar(c)
         override fun checkApplicable(fast: Boolean): Boolean {
             assert(isSetUp)
             appManager.assertReadAccessAllowed()
-            // todo: element.isValid?!
-            return isBadIdentifier(element, fast)
-        }
-
-        override fun getReplacement(checkTime: () -> Unit)
-                = project.searcher.findClosest(psiFile, oldText, correspondingWordTypes(), checkTime)
-
-        override fun doReplace(newWord: FoundWord) {
-            assert(isSetUp)
-            performReplacement {
-                //                element.replace(replacement!!) // doesn't work (why?)
-                editor.document.replaceString(elementStartOffset, elementStartOffset + oldText.length, newWord.word)
-            }
-        }
-
-        private fun getReplacement(newWord: FoundWord): PsiElement? = when (newWord.type) {
-            FoundWordType.IDENTIFIER -> try {
-                factory.createIdentifier(newWord.word)
-            } catch (e: IncorrectOperationException) {
-                //todo:
-                throw IllegalStateException()
-            }
-            FoundWordType.KEYWORD -> null //todo:
+            return isIdentifier(element) && (if (fast) isInReference(element) else isUnresolvedReference(element.parent))
         }
 
         override fun isGoodReplacement(newWord: FoundWord): Boolean {
             assert(isSetUp)
             appManager.assertReadAccessAllowed()
+            val replacement = getReplacement(newWord) ?: return false
+            try {
+                elementCopy.replace(replacement)
+            } catch (e: IncorrectOperationException) {
+                return false
+            }
             return when (newWord.type) {
-                FoundWordType.IDENTIFIER -> isGoodIdentifierReplacement(newWord)
-                FoundWordType.KEYWORD -> false // todo:
+                FoundWordType.IDENTIFIER -> !isUnresolvedReference(referenceCopy)
+                FoundWordType.KEYWORD -> isGoodKeyword(elementCopy)
             }
         }
 
-        private fun isGoodIdentifierReplacement(newWord: FoundWord): Boolean {
-            val replacement = getReplacement(newWord)
-            try {
-                elementCopy.replace(replacement!!)
-            } catch (e: IncorrectOperationException) {
-                throw IllegalStateException()
+        private fun getReplacement(newWord: FoundWord): PsiElement? = try {
+            when (newWord.type) {
+                FoundWordType.IDENTIFIER -> factory.createIdentifier(newWord.word)
+                FoundWordType.KEYWORD -> factory.createKeyword(newWord.word, elementCopy)
             }
-            return (!isUnresolvedReference(referenceCopy))
+        } catch (e: IncorrectOperationException) {
+            null
+        }
+    }
+
+    private open inner class ErrorElement(
+            editor: Editor,
+            psiFile: PsiFile,
+            elementStartOffset: Int,
+            oldText: String,
+            checkTime: () -> Unit
+    ) : BaseJavaKotlin(editor, psiFile, elementStartOffset, oldText, checkTime) {
+
+        private val factory = JavaPsiFacade.getElementFactory(project)
+        private val fileCopy by lazy { appManager.runReadAction(Computable { psiFile.copy() }) }
+        private val elementCopy
+            get() = fileCopy.findElementAt(elementStartOffset)!!
+
+        override fun checkApplicable(fast: Boolean): Boolean {
+            assert(isSetUp)
+            appManager.assertReadAccessAllowed()
+            return isIdentifier(element) && isErrorElement(element)
+        }
+
+        override fun isGoodReplacement(newWord: FoundWord): Boolean {
+            assert(isSetUp)
+            appManager.assertReadAccessAllowed()
+            val replacement = getReplacement(newWord) ?: return false
+            try {
+                elementCopy.parent.replace(replacement)
+            } catch (e: IncorrectOperationException) {
+                return false
+            }
+            return when (newWord.type) {
+                FoundWordType.IDENTIFIER -> false
+                FoundWordType.KEYWORD -> isGoodKeyword(elementCopy)
+            }
+        }
+
+        private fun getReplacement(newWord: FoundWord): PsiElement? = try {
+            when (newWord.type) {
+                FoundWordType.IDENTIFIER -> null
+                FoundWordType.KEYWORD -> factory.createKeyword(newWord.word, elementCopy)
+            }
+        } catch (e: IncorrectOperationException) {
+            null
         }
     }
 
@@ -95,7 +128,10 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
             elementStartOffset: Int,
             oldText: String,
             checkTime: () -> Unit
-    ): List<TypoCase> = listOf(BadIdentifier(editor, psiFile, elementStartOffset, oldText, checkTime))
+    ): List<TypoCase> = listOf(
+            UnresolvedIdentifier(editor, psiFile, elementStartOffset, oldText, checkTime),
+            ErrorElement(editor, psiFile, elementStartOffset, oldText, checkTime)
+    )
     abstract protected fun correspondingWordTypes(): Array<CombinedIndex.IndexType>
 
     abstract protected fun isInReference(element: PsiElement): Boolean
