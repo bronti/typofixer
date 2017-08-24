@@ -55,10 +55,34 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             "fun s() = project.testing.uniquepackagenameololo.Ololo().somePrettyMethodU <caret>",
             true)
 
-    fun testJavaFields() = doTest(
+    fun testJavaPublicFields() = doTest(
             "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSlee<caret>}}",
             ' ',
             "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSleep <caret>}}",
+            false)
+
+    fun testJavaPrivateFields() = doTest(
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateFieldOhSoPrivat<caret>}}",
+            ' ',
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateFieldOhSoPrivat <caret>}}",
+            false)
+
+    fun testJavaPublicMethods() = doTest(
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicMethodDanceWithM<caret>}}",
+            '(',
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicMethodDanceWithMe(<caret>)}}",
+            false)
+
+    fun testJavaSpaceAfterMethod() = doTest(
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicMethodDanceWithM<caret>}}",
+            ' ',
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicMethodDanceWithM <caret>}}",
+            false)
+
+    fun testJavaPrivateMethods() = doTest(
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateMethod66<caret>}}",
+            '(',
+            "class Cls { void funn() { new project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateMethod66(<caret>)}}",
             false)
 
     fun testKotlinFields() = doTest(

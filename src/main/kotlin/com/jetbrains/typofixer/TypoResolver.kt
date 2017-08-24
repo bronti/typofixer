@@ -11,7 +11,6 @@ import com.intellij.openapi.util.Computable
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.jetbrains.typofixer.lang.TypoCase
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.search.SearchResults
@@ -23,14 +22,10 @@ import org.jetbrains.annotations.TestOnly
  */
 class TypoResolver private constructor(
         private val psiFile: PsiFile,
-        private val editor: Editor,
         private val typoCase: TypoCase,
-        private var element: PsiElement,
-        private val oldText: String,
         private val replacements: Sequence<FoundWord>,
         private val checkTime: () -> Unit
 ) {
-
     companion object {
         fun getResolver(nextChar: Char, editor: Editor, psiFile: PsiFile): TypoResolver? {
             val langSupport = TypoFixerLanguageSupport.getSupport(psiFile.language) ?: return null
@@ -64,24 +59,37 @@ class TypoResolver private constructor(
             val nextCharOffset = editor.caretModel.offset
 
             // I don't want to call refresh if resolve is never triggered
-            val element: PsiElement? by lazy {
+            val element by lazy {
                 refreshPsi(editor)
                 psiFile.findElementAt(nextCharOffset - 1)
             }
 
-            for (typoCase in langSupport.getTypoCases()) {
-                if (!typoCase.triggersTypoResolve(nextChar)) continue
+            // accessed only if element != null
+            val elementStartOffset by lazy { element!!.textOffset }
+            // accessed only if element != null
+            val oldText by lazy { element!!.text.substring(0, nextCharOffset - elementStartOffset) }
 
-                val elementStartOffset = element?.textOffset ?: return null
+            fun getElement(): PsiElement? {
+                val appManager = ApplicationManager.getApplication()
+                appManager.invokeAndWait { refreshPsi(editor) }
+                return appManager.runReadAction(Computable {
+                    val newElement = psiFile.findElementAt(elementStartOffset)
+                    if (newElement != null && newElement.text.startsWith(oldText) && newElement.textOffset == elementStartOffset) newElement
+                    else null
+                })
+            }
 
-                if (typoCase.needToReplace(element, fast = true)) {
+            for (typoCase in langSupport.getTypoCases(editor.document, resolveTimeChecker, ::getElement)) {
+                if (!typoCase.triggersResolve(nextChar)) continue
 
-                    val oldText = element.text.substring(0, nextCharOffset - elementStartOffset)
+                element ?: return null
+
+                if (typoCase.isApplicable(fast = true)) {
 
                     val searchResults: SearchResults
                     try {
                         // todo: check validity (?)
-                        searchResults = typoCase.getReplacement(element, oldText, findTimeChecker)
+                        searchResults = typoCase.getReplacement(oldText, findTimeChecker)
                     } catch (e: ResolveCancelledException) {
                         return null
                     }
@@ -91,7 +99,7 @@ class TypoResolver private constructor(
                     val replacements = searchResults.sortedBy { project.searcher.distanceProvider.measure(oldText, it.word) }
 
                     project.statistics.onTypoResolverCreated()
-                    return TypoResolver(psiFile, editor, typoCase, element, oldText, replacements, resolveTimeChecker)
+                    return TypoResolver(psiFile, typoCase, replacements, resolveTimeChecker)
                 }
             }
             return null
@@ -104,21 +112,14 @@ class TypoResolver private constructor(
         }
     }
 
-    private fun refreshElementAndCheckResolveCancelled() {
-        checkTime()
-        if (!refreshElement()) throw ResolveCancelledException()
+    private fun checkResolveCancelled() {
         checkTime()
         // todo: refresh statistics
         if (!project.isOpen) throw ResolveCancelledException()
     }
 
-    private val document: Document = editor.document
-    private var elementStartOffset = element.textOffset
-    // todo: make sure distance is calculated once for each word
-
+    //    private val elementStartOffset = element.textOffset
     private val project get() = psiFile.project
-
-    private val appManager = ApplicationManager.getApplication()
 
     fun resolve() = Thread {
         try {
@@ -129,58 +130,10 @@ class TypoResolver private constructor(
     }.start()
 
     private fun doResolve() {
-        if (!getWithWritePriority { typoCase.needToReplace(element, false) }) return
-        // index unzipping laziness is forced here:
-        for (replacement in replacements) {
-            refreshElementAndCheckResolveCancelled()
-            val resolver = getWithWritePriority { typoCase.getResolver(element, replacement) }
-            if (!resolver.isSuccessful) continue
-            checkTime()
-            performCommand("Resolve typo", resolver::resolve)
-            project.statistics.onWordReplaced()
-            return
-        }
-    }
-
-    private fun <T> getWithWritePriority(doGet: () -> T): T {
-        val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
-
-        while (true) {
-            checkTime()
-            if (appManager.isDispatchThread) {
-                return doGet()
-            } else {
-                var result: T? = null
-                val resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
-                    result = doGet()
-                }, indicator)
-                if (resultFound) {
-                    return result!!
-                }
-            }
-        }
-    }
-
-    private fun performCommand(name: String, command: () -> Unit) {
-        appManager.invokeAndWait {
-            appManager.runWriteAction {
-                CommandProcessor
-                        .getInstance()
-                        .executeCommand(project, command, name, document, UndoConfirmationPolicy.DEFAULT, document)
-            }
-        }
-    }
-
-    private fun refreshElement(): Boolean {
-        appManager.invokeAndWait { refreshPsi(editor) }
-        return appManager.runReadAction(Computable {
-            val newElement = psiFile.findElementAt(elementStartOffset)
-            if (newElement != null && newElement.text.startsWith(oldText)) {
-                element = newElement
-                elementStartOffset = element.textOffset
-                true
-            } else false
-        })
+        checkResolveCancelled()
+        if (!checkWithWritePriority({ typoCase.isApplicable(false) }, checkTime)) return
+        checkResolveCancelled()
+        typoCase.resolveAll(replacements)
     }
 
     @TestOnly
@@ -205,4 +158,68 @@ private class TimeLimitsChecker private constructor(private val timeConstraint: 
         if (result && !abortReported) reportAbort()
         if (result) throw ResolveCancelledException()
     }
+}
+
+abstract class TypoCase(
+        private val document: Document,
+        private val checkTime: () -> Unit,
+        private val refreshedElement: () -> PsiElement?) {
+
+    private var theElement: PsiElement? = null
+
+    //todo: ex ok?
+    // should be lazy!!!
+    protected val element
+        get(): PsiElement {
+            if (theElement == null || !theElement!!.isValid) theElement = refreshedElement() ?: throw ResolveCancelledException()
+            return theElement!!
+        }
+
+    protected val project by lazy { element.project }
+
+    private val appManager = ApplicationManager.getApplication()
+    abstract fun triggersResolve(c: Char): Boolean
+    // TypoResolver handles the first case for which isApplicable(element, fast = true) is true
+    abstract fun isApplicable(fast: Boolean = false): Boolean
+
+    abstract fun getReplacement(oldText: String, checkTime: () -> Unit): SearchResults
+
+    protected abstract fun isGoodReplacement(newWord: FoundWord): Boolean
+    protected abstract fun doReplace(newWord: FoundWord)
+
+    fun resolveAll(words: Sequence<FoundWord>): Boolean {
+        // index unzipping laziness is forced here:
+        val replacementWord = words.find { checkWithWritePriority({ isGoodReplacement(it) }, checkTime) } ?: return false
+        doReplace(replacementWord)
+        return true
+    }
+
+    protected fun performReplacement(command: () -> Unit) {
+        checkTime()
+        appManager.invokeAndWait {
+            appManager.runWriteAction {
+                CommandProcessor
+                        .getInstance()
+                        .executeCommand(project, command, "Resolve typo", document, UndoConfirmationPolicy.DEFAULT, document)
+            }
+        }
+        project.statistics.onWordReplaced()
+    }
+}
+
+private fun checkWithWritePriority(doCheck: () -> Boolean, checkTime: () -> Unit): Boolean {
+    val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
+    checkTime()
+
+    if (ApplicationManager.getApplication().isDispatchThread) {
+        return doCheck()
+    }
+
+    var resultFound = false
+    var result = false
+    while (!resultFound) {
+        checkTime()
+        resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({ result = doCheck() }, indicator)
+    }
+    return result
 }

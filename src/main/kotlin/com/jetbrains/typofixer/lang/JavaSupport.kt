@@ -2,9 +2,7 @@ package com.jetbrains.typofixer.lang
 
 import com.intellij.psi.*
 import com.intellij.psi.tree.java.IKeywordElementType
-import com.intellij.util.IncorrectOperationException
 import com.jetbrains.typofixer.search.index.CombinedIndex
-import org.jetbrains.kotlin.psi.psiUtil.getStartOffsetIn
 
 /**
  * @author bronti.
@@ -23,36 +21,33 @@ class JavaSupport : JavaKotlinBaseSupport() {
     override fun isKeyword(element: PsiElement) = element.node.elementType is IKeywordElementType
     override fun isInParameter(element: PsiElement) = element.parent is PsiParameter && isIdentifier(element)
     override fun isUnresolvedReference(element: PsiElement): Boolean {
-        return element is PsiReferenceExpression && element.multiResolve(true).none { it.isAccessible }// todo: accessible
-                || element is PsiReference && element.resolve() == null
+        return when (element) {
+            is PsiReferenceExpression -> element.multiResolve(true).none { it.isAccessible }
+            is PsiReference -> element.resolve() == null
+            else -> throw IllegalStateException()
+        }
     }
 
-    override fun checkedResolveIdentifierReference(text: String, element: PsiElement): Resolver {
-        // todo: maybe copy all psi?
-        val factory = JavaPsiFacade.getElementFactory(element.project)
-        val referenceCopy =
-                if (element.parent.parent != null) {
-                    element.parent.parent.copy()
-                            .children
-                            .find { it.startOffsetInParent == element.parent.startOffsetInParent }
-                            as PsiJavaCodeReferenceElement
-                } else element.parent.copy() as PsiJavaCodeReferenceElement
-
-        val elementCopy = referenceCopy.findElementAt(element.getStartOffsetIn(element.parent))!!
-        val replacement = try {
-            factory.createIdentifier(text)
-        } catch (e: IncorrectOperationException) {
-            return Resolver.UNSUCCESSFUL
-        }
-        try {
-            elementCopy.replace(replacement)
-        } catch (e: IncorrectOperationException) {
-            throw IllegalStateException()
-        }
-
-        if (isUnresolvedReference(referenceCopy)) return Resolver.UNSUCCESSFUL
-        return Resolver { element.replace(replacement) }
-    }
+//    override fun checkedResolveIdentifierReference(text: String, element: PsiElement): Resolver {
+//        // todo: copy psi once!!!!!!!!!!!!!!!
+//        val factory = JavaPsiFacade.getElementFactory(element.project)
+//        val fileCopy = element.containingFile.copy()
+//        val referenceCopy = fileCopy.findReferenceAt(element.startOffset) as PsiJavaCodeReferenceElement
+//        val elementCopy = referenceCopy.findElementAt(element.getStartOffsetIn(element.parent))!!
+//        val replacement = try {
+//            factory.createIdentifier(text)
+//        } catch (e: IncorrectOperationException) {
+//            return Resolver.UNSUCCESSFUL
+//        }
+//        try {
+//            elementCopy.replace(replacement)
+//        } catch (e: IncorrectOperationException) {
+//            throw IllegalStateException()
+//        }
+//
+//        if (isUnresolvedReference(referenceCopy)) return Resolver.UNSUCCESSFUL
+//        return Resolver { element.replace(replacement) }
+//    }
 
     override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
 
