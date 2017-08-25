@@ -38,7 +38,6 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     private inner class UnresolvedIdentifier(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
         : BaseJavaKotlinTypoCase(editor, file, startOffset, oldWord, checkTime) {
 
-        //        private val factory = PsiElementFactory.SERVICE.getInstance(project)!!
         private val referenceCopy get() = elementCopy.parent
 
         override fun checkApplicable(fast: Boolean) =
@@ -48,7 +47,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
                         else isUnresolvedReference(element.parent)
                         )
 
-        override fun doCheckIdentifier(newWord: String) = checkWithWritePriority { !isUnresolvedReference(referenceCopy) }
+        override fun checkResolvedIdentifier(newWord: String) = !isUnresolvedReference(referenceCopy)
     }
 
     private inner class ErrorElement(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
@@ -57,7 +56,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         override fun checkApplicable(fast: Boolean) =
                 super.checkApplicable(fast) && isIdentifier(element) && isErrorElement(element)
 
-        override fun doCheckIdentifier(newWord: String) = false
+        override fun checkResolvedIdentifier(newWord: String) = false
     }
 
     protected abstract inner
@@ -71,16 +70,15 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         override fun getReplacement(checkTime: () -> Unit) =
                 project.searcher.findClosest(file, oldWord, correspondingWordTypes(), checkTime)
 
-        protected open fun doCheckKeyword(newWord: String) = appManager.runReadAction(Computable { isGoodKeyword(elementCopy) })!!
-
-        protected abstract fun doCheckIdentifier(newWord: String): Boolean
+        protected open fun checkResolvedKeyword(newWord: String) = isGoodKeyword(elementCopy)
+        protected abstract fun checkResolvedIdentifier(newWord: String): Boolean
 
         final override fun isGoodReplacement(newWord: FoundWord): Boolean {
             val superResult = super.isGoodReplacement(newWord)
             replaceInDocumentCopy(oldWord, newWord.word)
             val result = when (newWord.type) {
-                FoundWordType.IDENTIFIER -> doCheckIdentifier(newWord.word)
-                FoundWordType.KEYWORD -> doCheckKeyword(newWord.word)
+                FoundWordType.IDENTIFIER -> checkWithWritePriority { checkResolvedIdentifier(newWord.word) }
+                FoundWordType.KEYWORD -> appManager.runReadAction(Computable { checkResolvedKeyword(newWord.word) })
             }
             replaceInDocumentCopy(newWord.word, oldWord)
 

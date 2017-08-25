@@ -1,10 +1,13 @@
 package com.jetbrains.typofixer.lang
 
+import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.util.PsiTreeUtil
+import com.jetbrains.typofixer.TypoCase
 import com.jetbrains.typofixer.search.index.CombinedIndex
+import com.jetbrains.typofixer.searcher
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
 import org.jetbrains.kotlin.lexer.KtKeywordToken
@@ -18,6 +21,14 @@ import org.jetbrains.kotlin.psi.*
 class KotlinSupport : JavaKotlinBaseSupport() {
 
     override fun getLocalDictionaryCollector() = KotlinLocalDictionaryCollector()
+
+    // order matters
+    override fun getTypoCases(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit): List<TypoCase> =
+            super.getTypoCases(editor, file, startOffset, oldWord, checkTime) +
+                    listOf(
+                            BadKeywordInPrimaryConstructorTypoCase(editor, file, startOffset, oldWord, checkTime),
+                            BadKeywordInFunParameterTypoCase(editor, file, startOffset, oldWord, checkTime)
+                    )
 
     override fun isInReference(element: PsiElement) = element.parent is KtReferenceExpression || element.parent is KtReference
     override fun isIdentifier(element: PsiElement) = element.node.elementType == KtTokens.IDENTIFIER
@@ -35,32 +46,34 @@ class KotlinSupport : JavaKotlinBaseSupport() {
             CombinedIndex.IndexType.GLOBAL
     )
 
-//    private abstract class BadKeywordBeforeParameter : TypoCase {
-//        override fun triggersResolve(c: Char) = !identifierChar(c) && c != ':'
-////        override fun isBadlyReplacedKeyword(element: PsiElement) = !isErrorElement(element)
-////        override fun isGoodReplacementForIdentifier(element: PsiElement, newText: String) = false
-////        override fun getReplacement(element: PsiElement, oldWord: String, checkTime: () -> Unit): SearchResults {
-////            val searcher = element.project.searcher
-////            return searcher.findClosestAmongKeywords(oldWord, allowedKeywords, checkTime)
-////        }
-//
-//        abstract val allowedKeywords: Set<String>
-//    }
+    private abstract inner class BadKeywordBeforeParameter(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
+        : BaseJavaKotlinTypoCase(editor, file, startOffset, oldWord, checkTime) {
 
-//    private val BAD_KEYWORD_IN_PRIMARY_CONSTRUCTOR = object : BadKeywordBeforeParameter() {
-//        override fun isApplicable(element: PsiElement, fast: Boolean) = isInParameter(element) && isInPrimaryConstructor(element)
-//        override val allowedKeywords = KEYWORDS_ALLOWED_IN_PRIMARY_CONSTRUCTOR
-//    }
-//    private val BAD_KEYWORD_IN_FUN_PARAMETER = object : BadKeywordBeforeParameter() {
-//        override fun isApplicable(element: PsiElement, fast: Boolean) = isInParameter(element)
-//        override val allowedKeywords = KEYWORDS_ALLOWED_IN_FUN_PARAMETERS
-//    }
+        override fun triggersResolve(c: Char) = !identifierChar(c) && c != ':'
+
+        override fun checkResolvedIdentifier(newWord: String) = false
+        override fun checkResolvedKeyword(newWord: String) = !isErrorElement(elementCopy)
+
+        override fun getReplacement(checkTime: () -> Unit) =
+                project.searcher.findClosestAmongKeywords(oldWord, allowedKeywords, checkTime)
+
+        abstract val allowedKeywords: Set<String>
+    }
+
+    private inner class BadKeywordInPrimaryConstructorTypoCase(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
+        : BadKeywordBeforeParameter(editor, file, startOffset, oldWord, checkTime) {
+        override val allowedKeywords = KEYWORDS_ALLOWED_IN_PRIMARY_CONSTRUCTOR
+        override fun checkApplicable(fast: Boolean) =
+                super.checkApplicable(fast) && isInParameter(element) && isInPrimaryConstructor(element)
+    }
+
+    private inner class BadKeywordInFunParameterTypoCase(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
+        : BadKeywordBeforeParameter(editor, file, startOffset, oldWord, checkTime) {
+        override val allowedKeywords = KEYWORDS_ALLOWED_IN_FUN_PARAMETERS
+        override fun checkApplicable(fast: Boolean) = super.checkApplicable(fast) && isInParameter(element)
+    }
 
     fun isInPrimaryConstructor(element: PsiElement) = PsiTreeUtil.getParentOfType(element, KtPrimaryConstructor::class.java) != null
-//
-//    override fun checkedResolveIdentifierReference(text: String, element: PsiElement): Resolver {
-//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-//    }
 
     class KotlinLocalDictionaryCollector : LocalDictionaryCollector {
         override fun keyWords(element: PsiElement) = KEYWORDS + SOFT_KEYWORDS
