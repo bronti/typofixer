@@ -97,4 +97,10 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             '(',
             "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateMethod66(<caret>)",
             true)
+
+    fun testKotlinMethodReference() = doTest(
+            "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake::publicMethodDanceWithM<caret>",
+            ' ',
+            "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake::publicMethodDanceWithMe <caret>",
+            true)
 }
