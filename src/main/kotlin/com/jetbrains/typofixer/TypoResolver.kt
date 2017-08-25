@@ -101,7 +101,7 @@ class TypoResolver private constructor(
     }.start()
 
     private fun doResolve() {
-        // refreshPsi is necessary here! psiFile.copy() will be called in typoCase after that moment
+        // refreshPsi is necessary here! file.copy() will be called in typoCase after that moment
         refreshPsi(editor)
         checkTime()
         if (!typoCase.isApplicable()) return

@@ -177,8 +177,6 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             var toSynchronize: List<IndexEntry>? = null
             synchronized(this@GlobalInnerIndexBase) {
                 if (shouldCollect(indicator)) {
-                    // todo: value -> values looks terrifying
-                    // todo: valu -> val Oo (I guess it's correct)
                     toSynchronize = index.values.toList()
                 }
             }
@@ -224,5 +222,5 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
     }
 
     @TestOnly
-    override fun contains(str: String) = synchronizedAccess { index[signature.get(str)]?.contains(str) ?: false }
+    override fun contains(str: String) = synchronizedAccess { index[signature.get(str)]?.contains(str) == true }
 }

@@ -39,9 +39,9 @@ class KotlinSupport : JavaKotlinBaseSupport() {
 //        override fun triggersResolve(c: Char) = !identifierChar(c) && c != ':'
 ////        override fun isBadlyReplacedKeyword(element: PsiElement) = !isErrorElement(element)
 ////        override fun isGoodReplacementForIdentifier(element: PsiElement, newText: String) = false
-////        override fun getReplacement(element: PsiElement, oldText: String, checkTime: () -> Unit): SearchResults {
+////        override fun getReplacement(element: PsiElement, oldWord: String, checkTime: () -> Unit): SearchResults {
 ////            val searcher = element.project.searcher
-////            return searcher.findClosestAmongKeywords(oldText, allowedKeywords, checkTime)
+////            return searcher.findClosestAmongKeywords(oldWord, allowedKeywords, checkTime)
 ////        }
 //
 //        abstract val allowedKeywords: Set<String>

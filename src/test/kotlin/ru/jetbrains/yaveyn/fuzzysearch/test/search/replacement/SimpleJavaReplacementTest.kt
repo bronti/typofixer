@@ -66,6 +66,11 @@ class SimpleJavaReplacementTest : BaseReplacementTest() {
             ' ',
             "retrun <caret>")
 
+    fun testReplacementInsideClass() = doTest(
+            "class Some{ privvate<caret>}",
+            ' ',
+            "class Some{ private <caret>}")
+
     fun doTest(input: String, typed: Char, output: String) {
         super.doTest(input, typed, output, false)
     }

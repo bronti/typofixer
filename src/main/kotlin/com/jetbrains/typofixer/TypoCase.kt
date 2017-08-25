@@ -16,9 +16,9 @@ import com.jetbrains.typofixer.search.SearchResults
 
 abstract class TypoCase(
         private val editor: Editor,
-        protected val psiFile: PsiFile,
-        protected val elementStartOffset: Int,
-        protected val oldText: String,
+        protected val file: PsiFile,
+        protected val startOffset: Int,
+        protected val oldWord: String,
         private val checkTime: () -> Unit) {
 
     private val document = editor.document
@@ -37,9 +37,9 @@ abstract class TypoCase(
         val appManager = ApplicationManager.getApplication()
         refreshPsi(editor)
         return appManager.runReadAction(Computable {
-            val newElement = psiFile.findElementAt(elementStartOffset)
+            val newElement = file.findElementAt(startOffset)
             // todo:
-            if (newElement != null && newElement.text.startsWith(oldText) && newElement.textOffset == elementStartOffset) newElement
+            if (newElement != null && newElement.text.startsWith(oldWord) && newElement.textOffset == startOffset) newElement
             else null
         })
     }
@@ -73,14 +73,13 @@ abstract class TypoCase(
 
     protected open fun isGoodReplacement(newWord: FoundWord): Boolean {
         assert(isSetUp)
-        appManager.assertReadAccessAllowed()
         return true
     }
 
     fun resolveAll(words: Sequence<FoundWord>): Boolean {
         assert(isSetUp)
         // index unzipping laziness is forced here:
-        val replacementWord = words.find { checkWithWritePriority { isGoodReplacement(it) } } ?: return false
+        val replacementWord = words.find { isGoodReplacement(it) } ?: return false
         doReplace(replacementWord)
         return true
     }
@@ -89,7 +88,7 @@ abstract class TypoCase(
         assert(isSetUp)
         performReplacement {
             //                element.replace(replacement!!) // caret placement in tests is wrong (why?)
-            editor.document.replaceString(elementStartOffset, elementStartOffset + oldText.length, newWord.word)
+            editor.document.replaceString(startOffset, startOffset + oldWord.length, newWord.word)
         }
     }
 
@@ -108,7 +107,7 @@ abstract class TypoCase(
         project.statistics.onWordReplaced()
     }
 
-    private fun checkWithWritePriority(doCheck: () -> Boolean): Boolean {
+    protected fun checkWithWritePriority(doCheck: () -> Boolean): Boolean {
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
         checkTime()
 

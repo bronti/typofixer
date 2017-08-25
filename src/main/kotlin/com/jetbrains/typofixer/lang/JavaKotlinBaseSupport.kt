@@ -2,11 +2,10 @@ package com.jetbrains.typofixer.lang
 
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.util.Computable
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
-import com.intellij.util.IncorrectOperationException
 import com.jetbrains.typofixer.TypoCase
 import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.search.FoundWordType
@@ -39,7 +38,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     private inner class UnresolvedIdentifier(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
         : BaseJavaKotlinTypoCase(editor, file, startOffset, oldWord, checkTime) {
 
-        private val factory = PsiElementFactory.SERVICE.getInstance(project)!!
+        //        private val factory = PsiElementFactory.SERVICE.getInstance(project)!!
         private val referenceCopy get() = elementCopy.parent
 
         override fun checkApplicable(fast: Boolean) =
@@ -49,15 +48,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
                         else isUnresolvedReference(element.parent)
                         )
 
-        override fun doCheckIdentifier(newWord: String): Boolean {
-            try {
-                val replacement = factory.createIdentifier(newWord)
-                elementCopy.replace(replacement)
-            } catch (e: IncorrectOperationException) {
-                return false
-            }
-            return !isUnresolvedReference(referenceCopy)
-        }
+        override fun doCheckIdentifier(newWord: String) = checkWithWritePriority { !isUnresolvedReference(referenceCopy) }
     }
 
     private inner class ErrorElement(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
@@ -73,26 +64,38 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     class BaseJavaKotlinTypoCase(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
         : TypoCase(editor, file, startOffset, oldWord, checkTime) {
 
-        private val fileCopy by lazy { appManager.runReadAction(Computable { file.copy() })!! }
-        protected val elementCopy get() = fileCopy.findElementAt(elementStartOffset)!!
+        private val fileCopy by lazy { appManager.runReadAction(Computable { file.copy() }) as PsiFile }
+        protected val elementCopy get() = fileCopy.findElementAt(startOffset)!!
 
         override fun triggersResolve(c: Char) = !identifierChar(c)
         override fun getReplacement(checkTime: () -> Unit) =
-                project.searcher.findClosest(psiFile, oldText, correspondingWordTypes(), checkTime)
+                project.searcher.findClosest(file, oldWord, correspondingWordTypes(), checkTime)
 
-        protected open fun doCheckKeyword(newWord: String): Boolean {
-            // todo: resolve to keyword
-            return false
-        }
+        protected open fun doCheckKeyword(newWord: String) = appManager.runReadAction(Computable { isGoodKeyword(elementCopy) })!!
 
         protected abstract fun doCheckIdentifier(newWord: String): Boolean
 
         final override fun isGoodReplacement(newWord: FoundWord): Boolean {
             val superResult = super.isGoodReplacement(newWord)
-
-            return superResult && when (newWord.type) {
+            replaceInDocumentCopy(oldWord, newWord.word)
+            val result = when (newWord.type) {
                 FoundWordType.IDENTIFIER -> doCheckIdentifier(newWord.word)
                 FoundWordType.KEYWORD -> doCheckKeyword(newWord.word)
+            }
+            replaceInDocumentCopy(newWord.word, oldWord)
+
+            return superResult && result
+        }
+
+        private fun replaceInDocumentCopy(oldWord: String, newWord: String) {
+            val documentCopy = appManager.runReadAction(Computable { fileCopy.viewProvider.document!! })
+            // todo: command?
+
+            appManager.invokeAndWait {
+                appManager.runWriteAction {
+                    documentCopy.replaceString(startOffset, startOffset + oldWord.length, newWord)
+                    PsiDocumentManager.getInstance(project).commitDocument(documentCopy)
+                }
             }
         }
     }
