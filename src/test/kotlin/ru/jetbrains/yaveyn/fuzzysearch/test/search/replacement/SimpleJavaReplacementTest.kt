@@ -61,6 +61,11 @@ class SimpleJavaReplacementTest : BaseReplacementTest() {
             ' ',
             "interface <caret>")
 
+    fun testNoReplacementForIncorrectKeyword() = doTest(
+            "retrun<caret>",
+            ' ',
+            "retrun <caret>")
+
     fun doTest(input: String, typed: Char, output: String) {
         super.doTest(input, typed, output, false)
     }

@@ -15,7 +15,7 @@ import com.jetbrains.typofixer.search.SearchResults
 
 
 abstract class TypoCase(
-        protected val editor: Editor,
+        private val editor: Editor,
         protected val psiFile: PsiFile,
         protected val elementStartOffset: Int,
         protected val oldText: String,
@@ -49,14 +49,12 @@ abstract class TypoCase(
             element = getRefreshedElement() ?: throw ResolveCancelledException()
     }
 
-    protected var elementOffsetInParent: Int = 0
     protected val appManager = ApplicationManager.getApplication()!!
 
-    protected var isSetUp = false
+    private var isSetUp = false
     open fun setUp() {
         refreshElement()
         isSetUp = true
-        elementOffsetInParent = element.startOffsetInParent
     }
 
     // TypoResolver handles the first case for which canBeApplicable() is true
@@ -67,8 +65,17 @@ abstract class TypoCase(
     abstract fun triggersResolve(c: Char): Boolean
     abstract fun getReplacement(checkTime: () -> Unit): SearchResults
 
-    protected abstract fun checkApplicable(fast: Boolean = false): Boolean
-    protected abstract fun isGoodReplacement(newWord: FoundWord): Boolean
+    protected open fun checkApplicable(fast: Boolean = false): Boolean {
+        assert(isSetUp)
+        appManager.assertReadAccessAllowed()
+        return true
+    }
+
+    protected open fun isGoodReplacement(newWord: FoundWord): Boolean {
+        assert(isSetUp)
+        appManager.assertReadAccessAllowed()
+        return true
+    }
 
     fun resolveAll(words: Sequence<FoundWord>): Boolean {
         assert(isSetUp)
@@ -86,7 +93,7 @@ abstract class TypoCase(
         }
     }
 
-    protected fun performReplacement(command: () -> Unit) {
+    private fun performReplacement(command: () -> Unit) {
         checkTime()
         appManager.invokeAndWait {
             appManager.runWriteAction {

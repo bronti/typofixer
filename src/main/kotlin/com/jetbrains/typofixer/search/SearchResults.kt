@@ -16,8 +16,8 @@ class SearchResultsBuilder private constructor(
 
     private fun searchResultsBuilderWith(newMinErrorPossible: Int = minErrorPossible,
                                          newError: Int = error,
-                                         newResult: Sequence<String> = result)
-            = SearchResultsBuilder(maxRoundedError, newMinErrorPossible, newError, newResult, measure, type)
+                                         newResult: Sequence<String> = result) =
+            SearchResultsBuilder(maxRoundedError, newMinErrorPossible, newError, newResult, measure, type)
 
     constructor(maxRoundedError: Int, measure: (String) -> Int, type: CombinedIndex.IndexType)
             : this(maxRoundedError, 0, maxRoundedError, emptySequence(), measure, type)

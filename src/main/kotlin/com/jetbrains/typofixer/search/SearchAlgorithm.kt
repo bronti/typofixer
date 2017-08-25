@@ -40,8 +40,8 @@ abstract class DLSearchAlgorithmBase(
         index: CombinedIndex
 ) : SearchAlgorithm(maxRoundedError, DamerauLevenshteinDistance(maxRoundedError), index) {
 
-    private fun getEmptyResultBuilder(str: String, maxRoundedError: Int, type: CombinedIndex.IndexType)
-            = SearchResultsBuilder(maxRoundedError, { distance.roundedMeasure(str, it) }, type)
+    private fun getEmptyResultBuilder(str: String, maxRoundedError: Int, type: CombinedIndex.IndexType) =
+            SearchResultsBuilder(maxRoundedError, { distance.roundedMeasure(str, it) }, type)
 
     // todo: candidates count
     override fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.IndexType, checkTime: () -> Unit): SearchResults {

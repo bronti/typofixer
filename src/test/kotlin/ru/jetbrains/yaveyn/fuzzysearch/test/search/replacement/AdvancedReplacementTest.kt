@@ -91,5 +91,10 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake().publicFieldWantsToSleep <caret>",
             true)
 
-    // todo: test kotlin specific fields (new projectfortesting needed?)
+    // todo:
+    fun testKotlinPrivateMethods() = doTest(
+            "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateMethod66<caret>",
+            '(',
+            "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake().privateMethod66(<caret>)",
+            true)
 }

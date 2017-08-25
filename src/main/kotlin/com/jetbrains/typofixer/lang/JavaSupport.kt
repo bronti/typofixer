@@ -10,11 +10,7 @@ import com.jetbrains.typofixer.search.index.CombinedIndex
 // todo: make base class for java and kotlin
 class JavaSupport : JavaKotlinBaseSupport() {
 
-    override fun correspondingWordTypes() = arrayOf(
-            CombinedIndex.IndexType.KEYWORD,
-            CombinedIndex.IndexType.LOCAL_IDENTIFIER,
-            CombinedIndex.IndexType.GLOBAL
-    )
+    override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
 
     override fun isInReference(element: PsiElement) = element.parent is PsiJavaCodeReferenceElement // todo: what is with PsiReference?
     override fun isIdentifier(element: PsiElement) = element.node.elementType == JavaTokenType.IDENTIFIER
@@ -28,28 +24,11 @@ class JavaSupport : JavaKotlinBaseSupport() {
         }
     }
 
-//    override fun checkedResolveIdentifierReference(text: String, element: PsiElement): Resolver {
-//        // todo: copy psi once!!!!!!!!!!!!!!!
-//        val factory = JavaPsiFacade.getElementFactory(element.project)
-//        val fileCopy = element.containingFile.copy()
-//        val referenceCopy = fileCopy.findReferenceAt(element.startOffset) as PsiJavaCodeReferenceElement
-//        val elementCopy = referenceCopy.findElementAt(element.getStartOffsetIn(element.parent))!!
-//        val replacement = try {
-//            factory.createIdentifier(text)
-//        } catch (e: IncorrectOperationException) {
-//            return Resolver.UNSUCCESSFUL
-//        }
-//        try {
-//            elementCopy.replace(replacement)
-//        } catch (e: IncorrectOperationException) {
-//            throw IllegalStateException()
-//        }
-//
-//        if (isUnresolvedReference(referenceCopy)) return Resolver.UNSUCCESSFUL
-//        return Resolver { element.replace(replacement) }
-//    }
-
-    override fun getLocalDictionaryCollector() = JavaLocalDictionaryCollector()
+    override fun correspondingWordTypes() = arrayOf(
+            CombinedIndex.IndexType.KEYWORD,
+            CombinedIndex.IndexType.LOCAL_IDENTIFIER,
+            CombinedIndex.IndexType.GLOBAL
+    )
 
     class JavaLocalDictionaryCollector : LocalDictionaryCollector {
         // todo: reuse JavaKeywordCompletion?

@@ -15,8 +15,8 @@ interface TypoFixerLanguageSupport {
         fun getSupport(language: Language) = TypoFixerLanguageSupport.Extension.getSupport(language)
     }
 
-    fun getTypoCases(editor: Editor, psiFile: PsiFile, elementStartOffset: Int, oldText: String, checkTime: () -> Unit): List<TypoCase>
     fun getLocalDictionaryCollector(): LocalDictionaryCollector
+    fun getTypoCases(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit): List<TypoCase>
 
     private class Extension : LanguageExtension<TypoFixerLanguageSupport>("com.jetbrains.typofixer.typoFixerLanguageSupport") {
         companion object {
