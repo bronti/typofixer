@@ -129,8 +129,8 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
     inner abstract protected class CollectProjectNamesBase : ReadTask() {
 
-        var done = false
-            protected set
+        private var done = false
+            set
 
         override fun runBackgroundProcess(indicator: ProgressIndicator): Continuation? {
             ApplicationManager.getApplication().runReadAction { performCollection(indicator) }
@@ -152,7 +152,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
 
         abstract fun doCollect(indicator: ProgressIndicator?)
 
-        protected fun isCurrentRefreshingTask() = this === lastRefreshingTask
+        private fun isCurrentRefreshingTask() = this === lastRefreshingTask
 
         // once false -> always false after that
         protected fun shouldCollect(indicator: ProgressIndicator?): Boolean {
@@ -173,7 +173,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
             }
         }
 
-        protected fun onCompletionDone(indicator: ProgressIndicator?) {
+        private fun onCompletionDone(indicator: ProgressIndicator?) {
             var toSynchronize: List<IndexEntry>? = null
             synchronized(this@GlobalInnerIndexBase) {
                 if (shouldCollect(indicator)) {
@@ -184,6 +184,7 @@ abstract class GlobalInnerIndexBase(val project: Project, signature: Signature) 
                 val doCompress = Thread { toSynchronize!!.forEach { it.compress() } }
                 doCompress.priority = Thread.MIN_PRIORITY
                 doCompress.start()
+
             }
 
             // todo: check that index is refreshing after each stub index refreshment

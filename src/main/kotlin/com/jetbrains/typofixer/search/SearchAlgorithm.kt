@@ -22,7 +22,7 @@ abstract class SearchAlgorithm(
 
     // order in wordTypes matters
     fun findClosest(str: String, types: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
-        return types.fold(getEmptyResult()) { acc, type ->
+        return types.fold(SearchResults.empty(maxRoundedError)) { acc, type ->
             checkTime()
             acc.combinedWith(findClosest(str, acc.error, type, checkTime))
         }

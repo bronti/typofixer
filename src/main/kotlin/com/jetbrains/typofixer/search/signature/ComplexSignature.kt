@@ -82,7 +82,7 @@ class ComplexSignature : SignatureBase() {
         }
 
         for (error in resultingRange.indices.reversed()) {
-            for (smallerError in 0..error - 1) {
+            for (smallerError in 0 until error) {
                 resultingRange[error] = resultingRange[error].filter { it !in resultingRange[smallerError] }.toHashSet()
             }
         }
@@ -90,7 +90,7 @@ class ComplexSignature : SignatureBase() {
     }
 
     private fun mutateBase(base: Int, mutate: (Int, Int) -> Int): HashSet<Int> {
-        return HashSet((0..baseShift - 1)
+        return HashSet((0 until baseShift)
                 .mapNotNull {
                     val mutated = mutate(base, it)
                     if (mutated == base) null else mutated

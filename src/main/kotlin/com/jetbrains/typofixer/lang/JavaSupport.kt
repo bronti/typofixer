@@ -31,7 +31,6 @@ class JavaSupport : JavaKotlinBaseSupport() {
     )
 
     class JavaLocalDictionaryCollector : LocalDictionaryCollector {
-        // todo: reuse JavaKeywordCompletion?
         override fun keyWords(element: PsiElement) = javaKeywords
 
         // todo: make it right

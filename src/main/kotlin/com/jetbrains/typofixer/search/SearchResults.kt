@@ -5,14 +5,13 @@ import com.jetbrains.typofixer.search.index.CombinedIndex
 class SearchResultsBuilder private constructor(
         private val maxRoundedError: Int,
         private val minErrorPossible: Int,
-        val error: Int,
+        private val error: Int,
         private val result: Sequence<String>,
-        // todo: Dtring -> String rolls back
         private val measure: (String) -> Int,
         private val type: CombinedIndex.IndexType
 ) {
 
-    val isActive = minErrorPossible == error
+    private val isActive = minErrorPossible == error
 
     private fun searchResultsBuilderWith(newMinErrorPossible: Int = minErrorPossible,
                                          newError: Int = error,
@@ -60,12 +59,15 @@ class SearchResultsBuilder private constructor(
 }
 
 class SearchResults(private val maxRoundedError: Int, val error: Int, private val result: Sequence<FoundWord>) : Sequence<FoundWord> by result {
+    companion object {
+        fun empty(maxRoundedError: Int) = SearchResults(maxRoundedError, maxRoundedError, emptySequence())
+    }
+
     // invalidates this
     fun combinedWith(other: SearchResults): SearchResults {
         assert(maxRoundedError >= other.maxRoundedError)
         if (error == other.error) return SearchResults(maxRoundedError, error, result + other.result)
-        if (error < other.error) return this
-        else return other
+        return if (error < other.error) this else other
     }
 }
 

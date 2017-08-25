@@ -6,8 +6,6 @@ class TypoFixerStatistics {
         private set
     var timesWordReplaced: Int = 0
         private set
-    var timesRolledBack: Int = 0
-        private set
     var timesFindAbortedBecauseOfTimeLimits: Int = 0
         private set
     var timesResolveAbortedBecauseOfTimeLimits: Int = 0
@@ -20,10 +18,6 @@ class TypoFixerStatistics {
 
     fun onWordReplaced() {
         ++timesWordReplaced
-    }
-
-    fun onReplacementRolledBack() {
-        ++timesRolledBack
     }
 
     fun onFindAbortedBecauseOfTimeLimits() {

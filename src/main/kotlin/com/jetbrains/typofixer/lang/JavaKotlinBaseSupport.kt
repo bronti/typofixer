@@ -89,10 +89,10 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 
         private fun replaceInDocumentCopy(oldWord: String, newWord: String) {
             val documentCopy = appManager.runReadAction(Computable { fileCopy.viewProvider.document!! })
-            // todo: command?
 
             appManager.invokeAndWait {
                 appManager.runWriteAction {
+                    // todo: command?
                     documentCopy.replaceString(startOffset, startOffset + oldWord.length, newWord)
                     PsiDocumentManager.getInstance(project).commitDocument(documentCopy)
                 }

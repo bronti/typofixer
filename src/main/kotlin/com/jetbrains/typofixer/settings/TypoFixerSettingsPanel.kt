@@ -56,30 +56,23 @@ class TypoFixerSettingsPanel(val project: Project) {
     fun isModified() = maxResolveDelay != settings.maxMillisForResolve || maxFreezeTime != settings.maxMillisForFind
 
     private lateinit var timesResolverCreatedField: JTextField
-    private lateinit var timesWordReplacedField: JTextField
-    private lateinit var timesRolledBackField: JTextField
     private lateinit var timesFindOutOfTimeField: JTextField
     private lateinit var timesResolveOutOfTimeField: JTextField
     private lateinit var successfulResolvesField: JTextField
 
     private lateinit var timesResolverCreatedText: JLabel
-    private lateinit var timesWordReplacedText: JLabel
-    private lateinit var timesRolledBackText: JLabel
     private lateinit var timesFindOutOfTimeText: JLabel
     private lateinit var timesResolveOutOfTimeText: JLabel
 
     private val internalFields = mapOf(
             timesResolverCreatedField to statistics::timesResolverCreated,
-            timesWordReplacedField to statistics::timesWordReplaced,
-            timesRolledBackField to statistics::timesRolledBack,
             timesFindOutOfTimeField to statistics::timesFindAbortedBecauseOfTimeLimits,
-            timesResolveOutOfTimeField to statistics::timesResolveAbortedBecauseOfTimeLimits
+            timesResolveOutOfTimeField to statistics::timesResolveAbortedBecauseOfTimeLimits,
+            successfulResolvesField to statistics::timesWordReplaced
     )
 
     private val internalTextFields = listOf(
             timesResolverCreatedText,
-            timesWordReplacedText,
-            timesRolledBackText,
             timesFindOutOfTimeText,
             timesResolveOutOfTimeText
     )
@@ -91,6 +84,6 @@ class TypoFixerSettingsPanel(val project: Project) {
         internalFields.forEach { updateStaticticField(it.key, it.value.get()) }
         internalTextFields.forEach { updateTextVisibility(it) }
 
-        updateStaticticField(successfulResolvesField, statistics.timesWordReplaced - statistics.timesRolledBack, false)
+        updateStaticticField(successfulResolvesField, statistics.timesWordReplaced, false)
     }
 }

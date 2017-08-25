@@ -9,7 +9,7 @@ import java.util.*
 
 class LocalInnerIndex(
         signature: Signature,
-        val getWords: (wordsCollector: LocalDictionaryCollector, element: PsiElement) -> Set<String>
+        private val getWords: (wordsCollector: LocalDictionaryCollector, element: PsiElement) -> Set<String>
 ) : InnerIndex(signature) {
 
     private val index = HashMap<Int, HashSet<String>>()
@@ -39,5 +39,5 @@ class LocalInnerIndex(
     }
 
     @TestOnly
-    override fun contains(str: String) = index[signature.get(str)]?.contains(str) ?: false
+    override fun contains(str: String) = index[signature.get(str)]?.contains(str) == true
 }
