@@ -31,8 +31,8 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun findClosest(file: PsiFile?, str: String, indexTypes: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
-    abstract fun findClosestAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults
+    abstract fun find(file: PsiFile?, str: String, indexTypes: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
+    abstract fun findAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults
 
     abstract val distanceProvider: Distance
 
@@ -105,16 +105,16 @@ open class DLSearcher(final override val project: Project) : Searcher() {
         }
     }
 
-    override fun findClosest(file: PsiFile?, str: String, indexTypes: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
+    override fun find(file: PsiFile?, str: String, indexTypes: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
         // todo: checkTime into refreshLocal?
         index.refreshLocal(file)
-        return getSearch(false).findClosest(str, indexTypes, checkTime)
+        return getSearch(false).find(str, indexTypes, checkTime)
     }
 
-    override fun findClosestAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults {
+    override fun findAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults {
         // todo: checkTime into refreshLocal?
         index.refreshLocalWithKeywords(keywords)
-        return getSearch(false).findClosest(str, arrayOf(CombinedIndex.IndexType.KEYWORD), checkTime)
+        return getSearch(false).find(str, listOf(CombinedIndex.IndexType.KEYWORD), checkTime)
     }
 
     private fun updateIndex() {

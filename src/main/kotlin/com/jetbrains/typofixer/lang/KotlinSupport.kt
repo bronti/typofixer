@@ -39,7 +39,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
                 || element is KtReference && element.resolve() == null
     }
 
-    override fun correspondingWordTypes() = arrayOf(
+    override fun correspondingWordTypes() = listOf(
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
             CombinedIndex.IndexType.KOTLIN_SPECIFIC_FIELD,
@@ -55,7 +55,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
         override fun checkResolvedKeyword(newWord: String) = !isErrorElement(elementCopy)
 
         override fun getReplacement(checkTime: () -> Unit) =
-                project.searcher.findClosestAmongKeywords(oldWord, allowedKeywords, checkTime)
+                project.searcher.findAmongKeywords(oldWord, allowedKeywords, checkTime).asSequence().map { it.second }
 
         abstract val allowedKeywords: Set<String>
     }

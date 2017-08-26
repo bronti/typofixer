@@ -24,7 +24,7 @@ class JavaSupport : JavaKotlinBaseSupport() {
         }
     }
 
-    override fun correspondingWordTypes() = arrayOf(
+    override fun correspondingWordTypes() = listOf(
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
             CombinedIndex.IndexType.GLOBAL

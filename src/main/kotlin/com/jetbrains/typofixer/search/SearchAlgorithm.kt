@@ -18,17 +18,9 @@ abstract class SearchAlgorithm(
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
-    protected abstract fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.IndexType, checkTime: () -> Unit): SearchResults
-
+    // todo: Sorted
     // order in wordTypes matters
-    fun findClosest(str: String, types: Array<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
-        return types.fold(SearchResults.empty(maxRoundedError)) { acc, type ->
-            checkTime()
-            acc.combinedWith(findClosest(str, acc.error, type, checkTime))
-        }
-    }
-
-    fun getEmptyResult() = SearchResults(maxRoundedError, maxRoundedError, emptySequence())
+    abstract fun find(str: String, types: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
 
     @TestOnly
     abstract fun findAll(str: String): Sequence<String>
@@ -40,28 +32,24 @@ abstract class DLSearchAlgorithmBase(
         index: CombinedIndex
 ) : SearchAlgorithm(maxRoundedError, DamerauLevenshteinDistance(maxRoundedError), index) {
 
-    private fun getEmptyResultBuilder(str: String, maxRoundedError: Int, type: CombinedIndex.IndexType) =
-            SearchResultsBuilder(maxRoundedError, { distance.roundedMeasure(str, it) }, type)
+    private fun getFromIndex(str: String, types: List<CombinedIndex.IndexType>, checkTime: () -> Unit) =
+            getSignatures(str)
+                    .map { signatures ->
+                        try {
+                            checkTime()
+                            types.asSequence().flatMap { type ->
+                                index.getAll(type, signatures).map { FoundWord(it, FoundWordType.getByIndexType(type)) }
+                            }
+                        } catch (e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
+                            throw ResolveCancelledException()
+                        }
+                    }
+                    .mapIndexed { index, it -> index to it.iterator() }
+                    .toMap()
 
     // todo: candidates count
-    override fun findClosest(str: String, currentBestError: Int, type: CombinedIndex.IndexType, checkTime: () -> Unit): SearchResults {
-        val signaturesByError = getSignatures(str)
-
-        // todo: it -> if in {it: ...}
-        val result = (0..currentBestError).fold(getEmptyResultBuilder(str, currentBestError, type)) { acc: SearchResultsBuilder, error ->
-            checkTime()
-            val signatures = signaturesByError[error]
-
-            val candidates = try {
-                index.getAll(type, signatures)
-            } catch(e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
-                throw ResolveCancelledException()
-            }
-
-            acc.combinedWith(error, candidates)
-        }
-        return result.getResults()
-    }
+    override fun find(str: String, types: List<CombinedIndex.IndexType>, checkTime: () -> Unit) =
+            SearchResults(maxRoundedError, getFromIndex(str, types, checkTime)) { distance.roundedMeasure(str, it) }
 
     @TestOnly
     override fun findAll(str: String): Sequence<String> {

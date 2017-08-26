@@ -11,7 +11,6 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.FoundWord
-import com.jetbrains.typofixer.search.SearchResults
 
 
 abstract class TypoCase(
@@ -63,7 +62,7 @@ abstract class TypoCase(
     fun isApplicable() = checkWithWritePriority { checkApplicable(false) }
 
     abstract fun triggersResolve(c: Char): Boolean
-    abstract fun getReplacement(checkTime: () -> Unit): SearchResults
+    abstract fun getReplacement(checkTime: () -> Unit): Sequence<FoundWord>
 
     protected open fun checkApplicable(fast: Boolean = false): Boolean {
         assert(isSetUp)

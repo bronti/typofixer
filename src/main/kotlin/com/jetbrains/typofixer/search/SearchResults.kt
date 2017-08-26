@@ -2,74 +2,63 @@ package com.jetbrains.typofixer.search
 
 import com.jetbrains.typofixer.search.index.CombinedIndex
 
-class SearchResultsBuilder private constructor(
+class SearchResults(
         private val maxRoundedError: Int,
-        private val minErrorPossible: Int,
-        private val error: Int,
-        private val result: Sequence<String>,
-        private val measure: (String) -> Int,
-        private val type: CombinedIndex.IndexType
+        private val wordsByMinPossibleError: Map<Int, Iterator<FoundWord>>,
+        private val measure: (String) -> Int
 ) {
+    private var wordsByMeasure: Map<Int, Iterator<FoundWord>> = emptyMap()
+    private var currentError = 0
 
-    private val isActive = minErrorPossible == error
-
-    private fun searchResultsBuilderWith(newMinErrorPossible: Int = minErrorPossible,
-                                         newError: Int = error,
-                                         newResult: Sequence<String> = result) =
-            SearchResultsBuilder(maxRoundedError, newMinErrorPossible, newError, newResult, measure, type)
-
-    constructor(maxRoundedError: Int, measure: (String) -> Int, type: CombinedIndex.IndexType)
-            : this(maxRoundedError, 0, maxRoundedError, emptySequence(), measure, type)
-
-    private fun withMinErrorPossible(newMinErrorPossible: Int): SearchResultsBuilder {
-        assert(newMinErrorPossible in minErrorPossible..error)
-        return searchResultsBuilderWith(newMinErrorPossible = newMinErrorPossible)
-    }
-
-    private fun withAddedIfMinPossibleEquals(candidates: Sequence<String>): SearchResultsBuilder {
-        return if (!isActive) {
-            val measured = mutableListOf<Pair<String, Int>>()
-            candidates.forEach { measured.add(it to measure(it)) }
-
-            // hack in case str which is going to be replaced is inside index
-            // (in this case error is still 1 so strings with error == 1 can also be in result)
-            val newMinError = Math.max(measured.map { it.second }.min() ?: maxRoundedError + 1, 1)
-            if (newMinError > error) return this
-            assert(minErrorPossible <= newMinError)
-            val additionalResult = measured.asSequence().filter { it.second == newMinError }.map { it.first }
-            if (newMinError < error) return searchResultsBuilderWith(newError = newMinError, newResult = additionalResult)
-            searchResultsBuilderWith(newResult = result + additionalResult)
-        } else {
-            // laziness here
-            searchResultsBuilderWith(newResult = result + candidates.filter { measure(it) == error })
+    private fun refillMap(minPossibleError: Int) {
+        val additionalWords: HashMap<Int, MutableList<FoundWord>> = hashMapOf()
+        wordsByMinPossibleError.keys.filter { it <= minPossibleError }.sorted().forEach outer@ { index ->
+            val nextWords = wordsByMinPossibleError[index]!!
+            while (nextWords.hasNext()) {
+                val nextWord = nextWords.next()
+                val nextError = measure(nextWord.word)
+                if (additionalWords[nextError] == null) {
+                    additionalWords[nextError] = mutableListOf()
+                }
+                additionalWords[nextError]!!.add(nextWord)
+                if (nextError == minPossibleError) return@outer
+            }
         }
+        val newKeys = wordsByMeasure.keys.toSet() + additionalWords.keys
+
+        fun getOldWords(error: Int) = wordsByMeasure[error]?.asSequence() ?: emptySequence()
+        fun getAdditionalWords(error: Int) = additionalWords[error]?.asSequence() ?: emptySequence()
+
+        wordsByMeasure = newKeys.map { it to (getOldWords(it) + getAdditionalWords(it)).iterator() }.toMap()
     }
 
-    // invalidates this
-    fun combinedWith(newMinErrorPossible: Int, newCandidates: Sequence<String>): SearchResultsBuilder {
-        assert(newMinErrorPossible in minErrorPossible..maxRoundedError)
-        if (error < newMinErrorPossible) return this
-        return withMinErrorPossible(newMinErrorPossible).withAddedIfMinPossibleEquals(newCandidates)
+    private fun next(): Pair<Int, FoundWord>? {
+        if (currentError > maxRoundedError) return null
+        if (wordsByMeasure[currentError]?.hasNext() != true) {
+            refillMap(currentError)
+        }
+        if (wordsByMeasure[currentError]?.hasNext() != true) {
+            ++currentError
+            return next()
+        }
+        return currentError to wordsByMeasure[currentError]!!.next()
     }
 
-    fun getResults(): SearchResults {
-        assert(isActive)
-        return SearchResults(maxRoundedError, error, result.map { FoundWord(it, FoundWordType.getByIndexType(type)) })
-    }
+    // should be called once
+    fun asSequence() = generateSequence(this::next)
+
+
+//    //todo: fix Pair$
+//    fun asSequence() = generateSequence<Pair$<>> { ... }
 }
 
-class SearchResults(private val maxRoundedError: Int, val error: Int, private val result: Sequence<FoundWord>) : Sequence<FoundWord> by result {
-    companion object {
-        fun empty(maxRoundedError: Int) = SearchResults(maxRoundedError, maxRoundedError, emptySequence())
-    }
-
-    // invalidates this
-    fun combinedWith(other: SearchResults): SearchResults {
-        assert(maxRoundedError >= other.maxRoundedError)
-        if (error == other.error) return SearchResults(maxRoundedError, error, result + other.result)
-        return if (error < other.error) this else other
-    }
-}
+// todo: sorted results
+//class SortedSearchResults
+//      private val maxRoundedError: Int,
+//      private val wordsByMinPossibleError: Map<Int, Iterator<FoundWord>>,
+//      private val measure: (String) -> Int,
+//      private val sorter: Sorter
+//) { ... }
 
 class FoundWord(val word: String, val type: FoundWordType)
 
@@ -83,3 +72,4 @@ enum class FoundWordType {
         }
     }
 }
+

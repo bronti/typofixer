@@ -33,7 +33,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     abstract protected fun isUnresolvedReference(element: PsiElement): Boolean
     abstract protected fun isInParameter(element: PsiElement): Boolean
 
-    abstract protected fun correspondingWordTypes(): Array<CombinedIndex.IndexType>
+    abstract protected fun correspondingWordTypes(): List<CombinedIndex.IndexType>
 
     private inner class UnresolvedIdentifier(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
         : BaseJavaKotlinTypoCase(editor, file, startOffset, oldWord, checkTime) {
@@ -68,7 +68,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 
         override fun triggersResolve(c: Char) = !identifierChar(c)
         override fun getReplacement(checkTime: () -> Unit) =
-                project.searcher.findClosest(file, oldWord, correspondingWordTypes(), checkTime)
+                project.searcher.find(file, oldWord, correspondingWordTypes(), checkTime).asSequence().map { it.second }
 
         protected open fun checkResolvedKeyword(newWord: String) = isGoodKeyword(elementCopy)
         protected abstract fun checkResolvedIdentifier(newWord: String): Boolean

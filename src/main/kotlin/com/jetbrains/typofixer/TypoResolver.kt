@@ -6,7 +6,6 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
-import com.jetbrains.typofixer.search.SearchResults
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
 
@@ -66,17 +65,15 @@ class TypoResolver private constructor(
 
                 if (typoCase.canBeApplicable()) {
 
-                    val searchResults: SearchResults
+                    val replacements: Sequence<FoundWord>
                     try {
                         // todo: check validity (?)
-                        searchResults = typoCase.getReplacement(findTimeChecker)
+                        replacements = typoCase.getReplacement(findTimeChecker)
                     } catch (e: ResolveCancelledException) {
                         return null
                     }
 
-                    if (searchResults.none()) return null
-
-                    val replacements = project.sorter.sort(searchResults, oldText)
+//                    if (replacements.none()) return null
 
                     project.statistics.onTypoResolverCreated()
                     return TypoResolver(editor, typoCase, replacements, resolveTimeChecker)
