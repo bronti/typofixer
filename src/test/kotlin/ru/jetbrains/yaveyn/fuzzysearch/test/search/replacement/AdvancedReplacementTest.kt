@@ -103,4 +103,10 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             ' ',
             "fun x() = project.testing.uniquepackagenameololo.UniqueLikeASnowflake::publicMethodDanceWithMe <caret>",
             true)
+
+    fun testError2WithError1Existent() = doTest(
+            "fun packageeee(): Boolean = packagee<caret>",
+            '(',
+            "fun packageeee(): Boolean = packageeee(<caret>)",
+            true)
 }

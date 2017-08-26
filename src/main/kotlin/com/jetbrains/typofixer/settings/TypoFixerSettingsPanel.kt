@@ -34,7 +34,7 @@ class TypoFixerSettingsPanel(val project: Project) {
     private val statistics get() = project.statistics
 
     // todo: resolve for JTextField rolls back
-    private fun updateStaticticField(field: JTextField, stat: Int, internalOnly: Boolean = true) {
+    private fun updateStatisticField(field: JTextField, stat: Int, internalOnly: Boolean = true) {
         if (internalOnly && !ApplicationManager.getApplication().isInternal) {
             field.isVisible = false
         } else {
@@ -67,8 +67,7 @@ class TypoFixerSettingsPanel(val project: Project) {
     private val internalFields = mapOf(
             timesResolverCreatedField to statistics::timesResolverCreated,
             timesFindOutOfTimeField to statistics::timesFindAbortedBecauseOfTimeLimits,
-            timesResolveOutOfTimeField to statistics::timesResolveAbortedBecauseOfTimeLimits,
-            successfulResolvesField to statistics::timesWordReplaced
+            timesResolveOutOfTimeField to statistics::timesResolveAbortedBecauseOfTimeLimits
     )
 
     private val internalTextFields = listOf(
@@ -81,9 +80,9 @@ class TypoFixerSettingsPanel(val project: Project) {
         maxResolveDelay = settings.maxMillisForResolve
         maxFreezeTime = settings.maxMillisForFind
 
-        internalFields.forEach { updateStaticticField(it.key, it.value.get()) }
+        internalFields.forEach { updateStatisticField(it.key, it.value.get()) }
         internalTextFields.forEach { updateTextVisibility(it) }
 
-        updateStaticticField(successfulResolvesField, statistics.timesWordReplaced, false)
+        updateStatisticField(successfulResolvesField, statistics.timesWordReplaced, false)
     }
 }
