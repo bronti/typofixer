@@ -74,6 +74,8 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         protected abstract fun checkResolvedIdentifier(newWord: String): Boolean
 
         final override fun isGoodReplacement(newWord: FoundWord): Boolean {
+            if (newWord.word == oldWord) return false
+            if (!wordContainsOnlyIdentifierChars(newWord.word)) return false
             val superResult = super.isGoodReplacement(newWord)
             replaceInDocumentCopy(oldWord, newWord.word)
             val result = when (newWord.type) {
@@ -84,6 +86,8 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 
             return superResult && result
         }
+
+        private fun wordContainsOnlyIdentifierChars(word: String) = word.all { identifierChar(it) }
 
         private fun replaceInDocumentCopy(oldWord: String, newWord: String) {
             val documentCopy = appManager.runReadAction(Computable { fileCopy.viewProvider.document!! })

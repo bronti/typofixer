@@ -60,7 +60,7 @@ private class SearchResults(
     }
 
 //    //todo: fix Pair$
-//    fun asSequence() = generateSequence<Pair$<>> { ... }
+//    fun asSequence() = generateSequence<Pair> { ... }
 }
 
 class FoundWord(val word: String, val type: FoundWordType)
