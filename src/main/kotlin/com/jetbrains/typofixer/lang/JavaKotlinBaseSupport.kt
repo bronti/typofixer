@@ -68,7 +68,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 
         override fun triggersResolve(c: Char) = !identifierChar(c)
         override fun getReplacement(checkTime: () -> Unit) =
-                project.searcher.find(file, oldWord, correspondingWordTypes(), checkTime).asSequence().map { it.second }
+                project.searcher.find(file, oldWord, correspondingWordTypes(), checkTime).asSequence()
 
         protected open fun checkResolvedKeyword(newWord: String) = isGoodKeyword(elementCopy)
         protected abstract fun checkResolvedIdentifier(newWord: String): Boolean

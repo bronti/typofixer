@@ -155,7 +155,6 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
             searcher
                     .find(null, str, CombinedIndex.IndexType.values().toList(), { /* do nothing */ })
                     .asSequence()
-                    .map { it.second }
                     .sortedBy { project.searcher.distanceProvider.measure(str, it.word) }
                     .toList()
         })

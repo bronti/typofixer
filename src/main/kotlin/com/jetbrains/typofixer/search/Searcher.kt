@@ -31,8 +31,8 @@ abstract class Searcher {
         ACTIVE
     }
 
-    abstract fun find(file: PsiFile?, str: String, indexTypes: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
-    abstract fun findAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults
+    abstract fun find(file: PsiFile?, str: String, indexTypes: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SortedSearchResults
+    abstract fun findAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SortedSearchResults
 
     abstract val distanceProvider: Distance
 
@@ -105,13 +105,13 @@ open class DLSearcher(final override val project: Project) : Searcher() {
         }
     }
 
-    override fun find(file: PsiFile?, str: String, indexTypes: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults {
+    override fun find(file: PsiFile?, str: String, indexTypes: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SortedSearchResults {
         // todo: checkTime into refreshLocal?
         index.refreshLocal(file)
         return getSearch(false).find(str, indexTypes, checkTime)
     }
 
-    override fun findAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SearchResults {
+    override fun findAmongKeywords(str: String, keywords: Set<String>, checkTime: () -> Unit): SortedSearchResults {
         // todo: checkTime into refreshLocal?
         index.refreshLocalWithKeywords(keywords)
         return getSearch(false).find(str, listOf(CombinedIndex.IndexType.KEYWORD), checkTime)

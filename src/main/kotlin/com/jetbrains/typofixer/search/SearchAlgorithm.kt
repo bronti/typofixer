@@ -15,12 +15,13 @@ abstract class SearchAlgorithm(
         val distance: DamerauLevenshteinDistance,
         protected val index: CombinedIndex
 ) {
+    protected val sorter = Sorter(distance)
 
     protected abstract fun getSignatures(str: String): List<Set<Int>>
 
     // todo: Sorted
     // order in wordTypes matters
-    abstract fun find(str: String, types: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SearchResults
+    abstract fun find(str: String, types: List<CombinedIndex.IndexType>, checkTime: () -> Unit): SortedSearchResults
 
     @TestOnly
     abstract fun findAll(str: String): Sequence<String>
@@ -49,7 +50,7 @@ abstract class DLSearchAlgorithmBase(
 
     // todo: candidates count
     override fun find(str: String, types: List<CombinedIndex.IndexType>, checkTime: () -> Unit) =
-            SearchResults(maxRoundedError, getFromIndex(str, types, checkTime)) { distance.roundedMeasure(str, it) }
+            SortedSearchResults(str, maxRoundedError, getFromIndex(str, types, checkTime), distance, sorter)
 
     @TestOnly
     override fun findAll(str: String): Sequence<String> {

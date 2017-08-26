@@ -55,7 +55,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
         override fun checkResolvedKeyword(newWord: String) = !isErrorElement(elementCopy)
 
         override fun getReplacement(checkTime: () -> Unit) =
-                project.searcher.findAmongKeywords(oldWord, allowedKeywords, checkTime).asSequence().map { it.second }
+                project.searcher.findAmongKeywords(oldWord, allowedKeywords, checkTime).asSequence()
 
         abstract val allowedKeywords: Set<String>
     }
