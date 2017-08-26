@@ -76,7 +76,7 @@ class TypoResolver private constructor(
 
                     if (searchResults.none()) return null
 
-                    val replacements = searchResults.sortedBy { project.searcher.distanceProvider.measure(oldText, it.word) }
+                    val replacements = project.sorter.sort(searchResults, oldText)
 
                     project.statistics.onTypoResolverCreated()
                     return TypoResolver(editor, typoCase, replacements, resolveTimeChecker)

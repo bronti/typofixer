@@ -5,6 +5,7 @@ import com.intellij.openapi.util.Computable
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixtureTestCase
 import com.jetbrains.typofixer.search.DLSearcher
+import com.jetbrains.typofixer.search.Searcher
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.searcher
 import org.junit.Ignore
@@ -26,7 +27,7 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
     private val refreshingResults = File(currentTestResultsDir, "refreshing.txt")
     private val timeResults = File(currentTestResultsDir, "time.txt")
 
-    private lateinit var searcher: DLSearcher
+    private lateinit var searcher: Searcher
 
     private val ANSI_RESET = "\u001B[0m"
     private val ANSI_RED = "\u001B[31m"
@@ -113,8 +114,7 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
 
         fun maxTime(words: List<String>): Long {
             val results = words.map { doTimeTest(it) }
-            val maxTime = results.maxBy { it }!!
-            return maxTime
+            return results.maxBy { it }!!
         }
 
         fun flush(title: String, time: Long) {
@@ -150,17 +150,14 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
         checkPrecision(preciseResult, result, str, precs, resultLoggingNeeded)
     }
 
-    private fun doTimeTest(str: String): Long {
-        val time = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
-            measureTimeMillis({
-                searcher
-                        .findClosest(null, str, CombinedIndex.IndexType.values(), { /* do nothing */ })
-                        .sortedBy { project.searcher.distanceProvider.measure(str, it.word) }
-                        .toList()
-            })
+    private fun doTimeTest(str: String) = DumbService.getInstance(project).runReadActionInSmartMode(Computable {
+        measureTimeMillis({
+            searcher
+                    .findClosest(null, str, CombinedIndex.IndexType.values(), { /* do nothing */ })
+                    .sortedBy { project.searcher.distanceProvider.measure(str, it.word) }
+                    .toList()
         })
-        return time
-    }
+    })
 
     private fun checkPrecision(preciseResult: Map<Double, List<String>>,
                                result: Map<Double, List<String>>,
@@ -171,10 +168,11 @@ class GlobalQualityTest : LightPlatformCodeInsightFixtureTestCase() {
                    toOutput: (String) -> String): String {
             val size = getSize(result)
             val preciseSize = getSize(preciseResult)
-            val precision =
-                    if (preciseSize == size) 1.0
-                    else if (preciseSize == 0) throw IllegalStateException()
-                    else size.toDouble() / preciseSize
+            val precision = when (preciseSize) {
+                size -> 1.0
+                0 -> throw IllegalStateException()
+                else -> size.toDouble() / preciseSize
+            }
             val rawOutput = toOutput("${"%.2f".format(precision)} ($size / $preciseSize)")
             print(if (precision < expectedPrecision) (ANSI_RED + rawOutput + ANSI_RESET) else rawOutput)
             return rawOutput

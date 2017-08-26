@@ -23,6 +23,8 @@ import org.jetbrains.annotations.TestOnly
 
 abstract class Searcher {
 
+    abstract val project: Project
+
     enum class Status {
         DUMB_MODE,
         INDEX_REFRESHING,
@@ -37,11 +39,15 @@ abstract class Searcher {
     // internal use only
     abstract fun getStatus(): Status
 
-    @TestOnly
-    abstract fun findAll(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>>
+    abstract fun getStatistics(): Pair<Int, Int>
+
+    @TestOnly abstract fun findAll(str: String, psiFile: PsiFile?, precise: Boolean): Map<Double, List<String>>
+    @TestOnly abstract fun getIndex(): CombinedIndex
+    @TestOnly abstract fun forceGlobalIndexRefreshing()
+    @TestOnly abstract fun forceLocalIndexRefreshing(psiFile: PsiFile?)
 }
 
-open class DLSearcher(val project: Project) : Searcher() {
+open class DLSearcher(final override val project: Project) : Searcher() {
 
     companion object {
         // signature with length
@@ -117,7 +123,7 @@ open class DLSearcher(val project: Project) : Searcher() {
     }
 
     // internal use only
-    fun getStatistics(): Pair<Int, Int> {
+    override fun getStatistics(): Pair<Int, Int> {
         assert(ApplicationManager.getApplication().isInternal)
         return Pair(index.getSize(), index.timesGlobalRefreshRequested)
     }
@@ -136,15 +142,15 @@ open class DLSearcher(val project: Project) : Searcher() {
     }
 
     @TestOnly
-    fun getIndex() = index
+    override fun getIndex() = index
 
     @TestOnly
-    fun forceGlobalIndexRefreshing() {
+    override fun forceGlobalIndexRefreshing() {
         index.waitForGlobalRefreshing()
     }
 
     @TestOnly
-    fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
+    override fun forceLocalIndexRefreshing(psiFile: PsiFile?) {
         index.refreshLocal(psiFile)
     }
 }

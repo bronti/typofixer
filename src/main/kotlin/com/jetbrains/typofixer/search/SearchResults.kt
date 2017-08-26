@@ -74,7 +74,7 @@ class SearchResults(private val maxRoundedError: Int, val error: Int, private va
 class FoundWord(val word: String, val type: FoundWordType)
 
 enum class FoundWordType {
-    KEYWORD, IDENTIFIER;
+    IDENTIFIER, KEYWORD;
 
     companion object {
         fun getByIndexType(type: CombinedIndex.IndexType) = when (type) {
