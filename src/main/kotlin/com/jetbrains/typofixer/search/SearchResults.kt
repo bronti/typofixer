@@ -12,7 +12,7 @@ class SortedSearchResults(
         private val sorter: Sorter
 ) {
     private var isValid = true
-    private val unsortedResult = SearchResults(wordsByMinPossibleError, { distanceProvider.roundedMeasure(base, it) })
+    private val unsortedResult = SearchResults(maxRoundedError, wordsByMinPossibleError, { distanceProvider.roundedMeasure(base, it) })
 
     private fun fordsForRoundedError(error: Int): Sequence<FoundWord> {
         assert(error <= maxRoundedError)
@@ -31,6 +31,7 @@ class SortedSearchResults(
 }
 
 private class SearchResults(
+        private val maxRoundedError: Int,
         private val wordsByMinPossibleError: Map<Int, Iterator<FoundWord>>,
         private val measure: (String) -> Int
 ) {
@@ -43,6 +44,7 @@ private class SearchResults(
             while (nextWords.hasNext()) {
                 val nextWord = nextWords.next()
                 val nextError = measure(nextWord.word)
+                if (nextError > maxRoundedError) continue
                 if (additionalWords[nextError] == null) {
                     additionalWords[nextError] = mutableListOf()
                 }

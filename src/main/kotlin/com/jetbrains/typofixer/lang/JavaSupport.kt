@@ -16,12 +16,10 @@ class JavaSupport : JavaKotlinBaseSupport() {
     override fun isIdentifier(element: PsiElement) = element.node.elementType == JavaTokenType.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is IKeywordElementType
     override fun isInParameter(element: PsiElement) = element.parent is PsiParameter && isIdentifier(element)
-    override fun isUnresolvedReference(element: PsiElement): Boolean {
-        return when (element) {
-            is PsiReferenceExpression -> element.multiResolve(true).none { it.isAccessible }
-            is PsiReference -> element.resolve() == null
-            else -> throw IllegalStateException()
-        }
+    override fun isUnresolvedReference(element: PsiElement) = when (element) {
+        is PsiReferenceExpression -> element.multiResolve(true).none { it.isAccessible }
+        is PsiReference -> element.resolve() == null
+        else -> throw IllegalStateException()
     }
 
     override fun correspondingWordTypes() = listOf(

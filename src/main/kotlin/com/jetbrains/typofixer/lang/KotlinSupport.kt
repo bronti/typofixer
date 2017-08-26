@@ -34,9 +34,10 @@ class KotlinSupport : JavaKotlinBaseSupport() {
     override fun isIdentifier(element: PsiElement) = element.node.elementType == KtTokens.IDENTIFIER
     override fun isKeyword(element: PsiElement) = element.node.elementType is KtKeywordToken
     override fun isInParameter(element: PsiElement) = element.parent is KtParameter && isIdentifier(element)
-    override fun isUnresolvedReference(element: PsiElement): Boolean {
-        return element is KtReferenceExpression && element.resolveMainReferenceToDescriptors().isEmpty()
-                || element is KtReference && element.resolve() == null
+    override fun isUnresolvedReference(element: PsiElement) = when (element) {
+        is KtReferenceExpression -> element.resolveMainReferenceToDescriptors().isEmpty()
+        is KtReference -> element.resolve() == null
+        else -> throw IllegalStateException()
     }
 
     override fun correspondingWordTypes() = listOf(

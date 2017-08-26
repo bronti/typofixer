@@ -8,7 +8,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.WindowManager
 import com.jetbrains.typofixer.search.DLSearcher
 import com.jetbrains.typofixer.search.Searcher
-import com.jetbrains.typofixer.search.Sorter
 import com.jetbrains.typofixer.settings.TypoFixerStatistics
 import com.jetbrains.typofixer.widget.RefreshingIndicator
 
@@ -18,7 +17,6 @@ import com.jetbrains.typofixer.widget.RefreshingIndicator
 val Project.typoFixerComponent get() = getComponent(TypoFixerComponent::class.java)!!
 val Project.statistics get() = typoFixerComponent.statistics
 val Project.searcher get() = typoFixerComponent.searcher
-val Project.sorter get() = typoFixerComponent.sorter
 
 class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 
@@ -27,7 +25,6 @@ class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
     private var isInitialized = false
 
     lateinit var searcher: Searcher private set
-    lateinit var sorter: Sorter private set
 
     // initialized only in internal mode!!!
     private lateinit var statusBarWidget: RefreshingIndicator
@@ -36,7 +33,6 @@ class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 
     override fun initComponent() {
         searcher = DLSearcher(myProject)
-        sorter = Sorter(searcher.distanceProvider)
         if (appManager.isInternal) {
             statusBarWidget = RefreshingIndicator(searcher)
         }

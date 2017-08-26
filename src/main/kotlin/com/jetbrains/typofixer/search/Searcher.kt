@@ -128,7 +128,6 @@ open class DLSearcher(final override val project: Project) : Searcher() {
         return Pair(index.getSize(), index.timesGlobalRefreshRequested)
     }
 
-    // internal use only
     override fun getStatus() = when {
         DumbService.isDumb(project) -> Status.DUMB_MODE
         index.isUsable() -> Status.ACTIVE

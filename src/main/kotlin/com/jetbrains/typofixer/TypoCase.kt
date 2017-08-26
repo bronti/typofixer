@@ -6,6 +6,7 @@ import com.intellij.openapi.command.UndoConfirmationPolicy
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -106,24 +107,30 @@ abstract class TypoCase(
         project.statistics.onWordReplaced()
     }
 
-    protected fun checkWithWritePriority(doCheck: () -> Boolean): Boolean {
+    protected fun checkWithWritePriority(doCheck: () -> Boolean) = checkInSmartMode {
         val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
         checkTime()
 
         if (appManager.isDispatchThread) {
             refreshElement()
-            return doCheck()
+            doCheck()
+        } else {
+            var resultFound = false
+            var result = false
+            while (!resultFound) {
+                checkTime()
+                refreshElement()
+                resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
+                    result = doCheck()
+                }, indicator)
+            }
+            result
         }
+    }
 
-        var resultFound = false
+    private fun checkInSmartMode(doCheck: () -> Boolean): Boolean {
         var result = false
-        while (!resultFound) {
-            checkTime()
-            refreshElement()
-            resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
-                result = doCheck()
-            }, indicator)
-        }
+        DumbService.getInstance(project).repeatUntilPassesInSmartMode { result = doCheck() }
         return result
     }
 }
