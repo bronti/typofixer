@@ -58,9 +58,6 @@ private class SearchResults(
 
         wordsByMeasure = newKeys.map { it to (getOldWords(it) + getAdditionalWords(it)).iterator() }.toMap()
     }
-
-//    //todo: fix Pair$
-//    fun asSequence() = generateSequence<Pair> { ... }
 }
 
 class FoundWord(val word: String, val type: FoundWordType)

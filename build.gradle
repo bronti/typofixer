@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.1.4'
+    ext.kotlin_version = '1.1.4-2'
     ext.kotlin_plugin_version = '1.1.4-release-IJ2017.2-2'
 
     repositories {

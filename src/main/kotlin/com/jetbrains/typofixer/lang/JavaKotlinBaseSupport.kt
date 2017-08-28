@@ -27,11 +27,12 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
 
     protected fun isGoodKeyword(element: PsiElement) = isKeyword(element) && !isErrorElement(element)
 
-    abstract protected fun isInReference(element: PsiElement): Boolean
-    abstract protected fun isIdentifier(element: PsiElement): Boolean
-    abstract protected fun isKeyword(element: PsiElement): Boolean
-    abstract protected fun isUnresolvedReference(element: PsiElement): Boolean
-    abstract protected fun isInParameter(element: PsiElement): Boolean
+    protected abstract fun isInReference(element: PsiElement): Boolean
+    protected abstract fun isIdentifier(element: PsiElement): Boolean
+    protected abstract fun isKeyword(element: PsiElement): Boolean
+    protected abstract fun isUnresolvedReference(element: PsiElement): Boolean
+    protected abstract fun isInParameter(element: PsiElement): Boolean
+    protected abstract fun looksLikeIdentifier(word: String): Boolean
 
     abstract protected fun correspondingWordTypes(): List<CombinedIndex.IndexType>
 
@@ -74,9 +75,11 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         protected abstract fun checkResolvedIdentifier(newWord: String): Boolean
 
         final override fun isGoodReplacement(newWord: FoundWord): Boolean {
-            if (newWord.word == oldWord) return false
-            if (!wordContainsOnlyIdentifierChars(newWord.word)) return false
-            val superResult = super.isGoodReplacement(newWord)
+            if (newWord.word == oldWord ||
+                    !looksLikeIdentifier(newWord.word) ||
+                    super.isGoodReplacement(newWord) ||
+                    appManager.runReadAction(Computable { elementCopy.text != newWord.word })) return false
+
             replaceInDocumentCopy(oldWord, newWord.word)
             val result = when (newWord.type) {
                 FoundWordType.IDENTIFIER -> checkWithWritePriority { checkResolvedIdentifier(newWord.word) }
@@ -84,10 +87,8 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
             }
             replaceInDocumentCopy(newWord.word, oldWord)
 
-            return superResult && result
+            return result
         }
-
-        private fun wordContainsOnlyIdentifierChars(word: String) = word.all { identifierChar(it) }
 
         private fun replaceInDocumentCopy(oldWord: String, newWord: String) {
             val documentCopy = appManager.runReadAction(Computable { fileCopy.viewProvider.document!! })

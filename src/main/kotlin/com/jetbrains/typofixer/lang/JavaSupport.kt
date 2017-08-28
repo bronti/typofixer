@@ -22,6 +22,9 @@ class JavaSupport : JavaKotlinBaseSupport() {
         else -> throw IllegalStateException()
     }
 
+    override fun looksLikeIdentifier(word: String) =
+            word.isNotBlank() && word.all { it.isJavaIdentifierPart() } && word[0].isJavaIdentifierStart()
+
     override fun correspondingWordTypes() = listOf(
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
