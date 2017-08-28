@@ -75,16 +75,14 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         protected abstract fun checkResolvedIdentifier(newWord: String): Boolean
 
         final override fun isGoodReplacement(newWord: FoundWord): Boolean {
-            if (newWord.word == oldWord ||
-                    !looksLikeIdentifier(newWord.word) ||
-                    super.isGoodReplacement(newWord) ||
-                    appManager.runReadAction(Computable { elementCopy.text != newWord.word })) return false
+            if (!super.isGoodReplacement(newWord) || newWord.word == oldWord || !looksLikeIdentifier(newWord.word)) return false
 
             replaceInDocumentCopy(oldWord, newWord.word)
-            val result = when (newWord.type) {
-                FoundWordType.IDENTIFIER -> checkWithWritePriority { checkResolvedIdentifier(newWord.word) }
-                FoundWordType.KEYWORD -> appManager.runReadAction(Computable { checkResolvedKeyword(newWord.word) })
-            }
+            val result = appManager.runReadAction(Computable { elementCopy.text == newWord.word }) &&
+                    when (newWord.type) {
+                        FoundWordType.IDENTIFIER -> checkWithWritePriority { checkResolvedIdentifier(newWord.word) }
+                        FoundWordType.KEYWORD -> appManager.runReadAction(Computable { checkResolvedKeyword(newWord.word) })
+                    }
             replaceInDocumentCopy(newWord.word, oldWord)
 
             return result
