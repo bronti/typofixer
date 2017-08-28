@@ -49,7 +49,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
                         else isUnresolvedReference(element.parent)
                         )
 
-        override fun checkResolvedIdentifier(newWord: String) = !isUnresolvedReference(referenceCopy)
+        override fun checkResolvedIdentifier(newWord: String) = isInReference(elementCopy) && !isUnresolvedReference(referenceCopy)
 
         override fun isGoodReplacement(newWord: FoundWord): Boolean {
             return when {
