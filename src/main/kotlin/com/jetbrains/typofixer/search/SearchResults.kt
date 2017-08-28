@@ -14,7 +14,7 @@ class SortedSearchResults(
     private var isValid = true
     private val unsortedResult = SearchResults(maxRoundedError, wordsByMinPossibleError, { distanceProvider.roundedMeasure(base, it) })
 
-    private fun fordsForRoundedError(error: Int): Sequence<FoundWord> {
+    private fun wordsForRoundedError(error: Int): Sequence<FoundWord> {
         assert(error <= maxRoundedError)
         assert(error >= 0)
         unsortedResult.refillMap(error)
@@ -24,7 +24,7 @@ class SortedSearchResults(
 
     fun asSequence(): Sequence<FoundWord> {
         if (!isValid) throw IllegalStateException("Search result read twice")
-        val result = (0..maxRoundedError).asSequence().flatMap { fordsForRoundedError(it) }
+        val result = (0..maxRoundedError).asSequence().flatMap { wordsForRoundedError(it) }
         isValid = false
         return result
     }
@@ -63,12 +63,16 @@ private class SearchResults(
 class FoundWord(val word: String, val type: FoundWordType)
 
 enum class FoundWordType {
-    IDENTIFIER, KEYWORD;
+    IDENTIFIER_NOT_CLASS, IDENTIFIER_CLASS, KEYWORD;
 
     companion object {
         fun getByIndexType(type: CombinedIndex.IndexType) = when (type) {
             CombinedIndex.IndexType.KEYWORD -> KEYWORD
-            else -> IDENTIFIER
+            CombinedIndex.IndexType.CLASSNAME -> IDENTIFIER_CLASS
+
+            CombinedIndex.IndexType.LOCAL_IDENTIFIER,
+            CombinedIndex.IndexType.KOTLIN_SPECIFIC_FIELD,
+            CombinedIndex.IndexType.NOT_CLASSNAME -> IDENTIFIER_NOT_CLASS
         }
     }
 }

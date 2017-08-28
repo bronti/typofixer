@@ -6,6 +6,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
+import com.jetbrains.typofixer.search.index.GlobalInnerIndex
 import com.jetbrains.typofixer.settings.TypoFixerSettings
 import org.jetbrains.annotations.TestOnly
 
@@ -93,6 +94,8 @@ class TypoResolver private constructor(
         try {
             doResolve()
         } catch (e: ResolveCancelledException) {
+            // do nothing
+        } catch (e: GlobalInnerIndex.TriedToAccessIndexWhileItIsRefreshing) {
             // do nothing
         }
     }.start()

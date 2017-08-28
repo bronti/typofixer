@@ -1,5 +1,6 @@
 package com.jetbrains.typofixer.lang
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.*
 import com.intellij.psi.tree.java.IKeywordElementType
 import com.jetbrains.typofixer.search.index.CombinedIndex
@@ -22,12 +23,18 @@ class JavaSupport : JavaKotlinBaseSupport() {
         else -> throw IllegalStateException()
     }
 
+    override fun canBeReplacedByUnresolvedClassName(referenceElement: PsiElement): Boolean {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        val referenceToClass = referenceElement as? PsiJavaCodeReferenceElement ?: return false
+        return referenceToClass.qualifier == null
+    }
     override fun looksLikeIdentifier(word: String) =
             word.isNotBlank() && word.all { it.isJavaIdentifierPart() } && word[0].isJavaIdentifierStart()
 
     override fun correspondingWordTypes() = listOf(
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
+            CombinedIndex.IndexType.CLASSNAME,
             CombinedIndex.IndexType.NOT_CLASSNAME
     )
 

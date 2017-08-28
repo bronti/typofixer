@@ -1,5 +1,6 @@
 package com.jetbrains.typofixer.lang
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -40,6 +41,10 @@ class KotlinSupport : JavaKotlinBaseSupport() {
         else -> throw IllegalStateException()
     }
 
+    override fun canBeReplacedByUnresolvedClassName(referenceElement: PsiElement): Boolean {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        return referenceElement.parent !is KtDotQualifiedExpression
+    }
     override fun looksLikeIdentifier(word: String) =
             word.isNotBlank() && word.all { it.isJavaIdentifierPart() } && word[0].isJavaIdentifierStart()
 
@@ -47,6 +52,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
             CombinedIndex.IndexType.KOTLIN_SPECIFIC_FIELD,
+            CombinedIndex.IndexType.CLASSNAME,
             CombinedIndex.IndexType.NOT_CLASSNAME
     )
 
