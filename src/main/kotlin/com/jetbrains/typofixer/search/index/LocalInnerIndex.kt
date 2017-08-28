@@ -30,12 +30,12 @@ class LocalInnerIndex(
         index.clear()
         element ?: return
         val collector = TypoFixerLanguageSupport.getSupport(element.language)?.getLocalDictionaryCollector() ?: return
-        getWords(collector, element).addAllToIndex()
+        addAll(getWords(collector, element))
     }
 
     fun refreshWithWords(words: Set<String>) {
         index.clear()
-        words.addAllToIndex()
+        addAll(words)
     }
 
     @TestOnly

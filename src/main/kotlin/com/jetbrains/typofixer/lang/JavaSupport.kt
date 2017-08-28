@@ -28,7 +28,7 @@ class JavaSupport : JavaKotlinBaseSupport() {
     override fun correspondingWordTypes() = listOf(
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
-            CombinedIndex.IndexType.GLOBAL
+            CombinedIndex.IndexType.NOT_CLASSNAME
     )
 
     class JavaLocalDictionaryCollector : LocalDictionaryCollector {

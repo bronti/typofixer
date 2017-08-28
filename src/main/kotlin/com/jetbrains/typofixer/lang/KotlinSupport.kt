@@ -47,7 +47,7 @@ class KotlinSupport : JavaKotlinBaseSupport() {
             CombinedIndex.IndexType.KEYWORD,
             CombinedIndex.IndexType.LOCAL_IDENTIFIER,
             CombinedIndex.IndexType.KOTLIN_SPECIFIC_FIELD,
-            CombinedIndex.IndexType.GLOBAL
+            CombinedIndex.IndexType.NOT_CLASSNAME
     )
 
     private abstract inner class BadKeywordBeforeParameter(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)

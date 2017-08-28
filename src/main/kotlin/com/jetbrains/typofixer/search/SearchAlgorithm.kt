@@ -3,7 +3,7 @@ package com.jetbrains.typofixer.search
 import com.jetbrains.typofixer.ResolveCancelledException
 import com.jetbrains.typofixer.search.distance.DamerauLevenshteinDistance
 import com.jetbrains.typofixer.search.index.CombinedIndex
-import com.jetbrains.typofixer.search.index.GlobalInnerIndexBase
+import com.jetbrains.typofixer.search.index.GlobalInnerIndex
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -41,7 +41,7 @@ abstract class DLSearchAlgorithmBase(
                             types.asSequence().flatMap { type ->
                                 index.getAll(type, signatures).map { FoundWord(it, FoundWordType.getByIndexType(type)) }
                             }
-                        } catch (e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
+                        } catch (e: GlobalInnerIndex.TriedToAccessIndexWhileItIsRefreshing) {
                             throw ResolveCancelledException()
                         }
                     }

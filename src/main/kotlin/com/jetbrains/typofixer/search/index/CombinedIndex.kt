@@ -16,63 +16,66 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     enum class IndexType {
         KEYWORD,
         LOCAL_IDENTIFIER,
+        CLASSNAME,
         KOTLIN_SPECIFIC_FIELD,
-        GLOBAL;
+        NOT_CLASSNAME;
 
         fun isLocal() = this == KEYWORD || this == LOCAL_IDENTIFIER
         fun isGlobal() = !isLocal()
+
+        companion object {
+            fun globalValues() = values().filter(IndexType::isGlobal)
+            fun localValues() = values().filter(IndexType::isLocal)
+        }
     }
 
-    // not concurrent
-    private val keywordsIndex = LocalInnerIndex(signature) { collector, element -> collector.keyWords(element) }
-    // not concurrent
-    private val localIdentifiersIndex = LocalInnerIndex(signature) { collector, element -> collector.localIdentifiers(element.containingFile) }
-    // concurrent
-    private val globalIndex = GlobalInnerIndex(project, signature)
-    // concurrent
-    private val kotlinSpecificFieldsIndex = InnerIndexForKotlinSpecificFields(project, signature)
+    private val indexByType = HashMap<IndexType, InnerIndex>()
 
-    private val IndexType.index
-        get() = when (this) {
-            IndexType.KEYWORD -> keywordsIndex
-            IndexType.LOCAL_IDENTIFIER -> localIdentifiersIndex
-            IndexType.KOTLIN_SPECIFIC_FIELD -> kotlinSpecificFieldsIndex
-            IndexType.GLOBAL -> globalIndex
+    init {
+        indexByType[IndexType.KEYWORD] = LocalInnerIndex(signature) { collector, element -> collector.keyWords(element) }
+        indexByType[IndexType.LOCAL_IDENTIFIER] = LocalInnerIndex(signature) { collector, element -> collector.localIdentifiers(element.containingFile) }
+
+        indexByType[IndexType.CLASSNAME] = GlobalInnerIndex(project, signature, ::ClassNamesCollector)
+        indexByType[IndexType.KOTLIN_SPECIFIC_FIELD] = GlobalInnerIndex(project, signature, ::KotlinGettersSettersCollector)
+        indexByType[IndexType.NOT_CLASSNAME] = GlobalInnerIndex(project, signature, ::AllNamesExceptClassNamesCollector)
     }
+
+    private val IndexType.index get() = indexByType[this]!!
+
     private val indices = IndexType.values().map { it.index }
+    private val globalIndices = IndexType.globalValues().map { it.index as GlobalInnerIndex }
+    private val localIndices = IndexType.localValues().map { it.index as LocalInnerIndex }
 
     fun getSize() = getLocalSize() + getGlobalSize()
-    fun getLocalSize() = localIdentifiersIndex.getSize() + keywordsIndex.getSize()
+    fun getLocalSize() = localIndices.map { it.getSize() }.sum()
     fun getGlobalSize(): Int {
         return try {
-            globalIndex.getSize() + kotlinSpecificFieldsIndex.getSize()
-        } catch (e: GlobalInnerIndexBase.TriedToAccessIndexWhileItIsRefreshing) {
+            globalIndices.map { it.getSize() }.sum()
+        } catch (e: GlobalInnerIndex.TriedToAccessIndexWhileItIsRefreshing) {
             -1
         }
     }
 
-    fun isUsable() = globalIndex.isUsable() && kotlinSpecificFieldsIndex.isUsable()
+    fun isUsable() = globalIndices.all(GlobalInnerIndex::isUsable)
 
     fun getAll(type: IndexType, signatures: Set<Int>) = type.index.getAll(signatures)
 
     // not meant to be called concurrently
     fun refreshLocal(psiFile: PsiFile?) {
         psiFile ?: return
-        keywordsIndex.refresh(psiFile)
-        localIdentifiersIndex.refresh(psiFile)
+        localIndices.forEach { it.refresh(psiFile) }
         project.typoFixerComponent.onSearcherStatusMaybeChanged()
     }
 
     fun refreshLocalWithKeywords(words: Set<String>) {
-        keywordsIndex.refreshWithWords(words)
-        localIdentifiersIndex.clear()
+        localIndices.forEach(LocalInnerIndex::clear)
+        (IndexType.KEYWORD.index as LocalInnerIndex).refreshWithWords(words)
     }
 
     fun refreshGlobal() {
         if (!canRefreshGlobal) return
         ++timesGlobalRefreshRequested
-        globalIndex.refresh()
-        kotlinSpecificFieldsIndex.refresh()
+        globalIndices.forEach(GlobalInnerIndex::refresh)
     }
 
     // internal use only
@@ -88,12 +91,11 @@ class CombinedIndex(val project: Project, val signature: Signature) {
     // can be interrupted by dumb mode
     @TestOnly
     fun waitForGlobalRefreshing() {
-        globalIndex.waitForRefreshing()
-        kotlinSpecificFieldsIndex.waitForRefreshing()
+        globalIndices.forEach(GlobalInnerIndex::waitForRefreshing)
     }
 
     @TestOnly
-    fun addToIndex(words: List<String>) = localIdentifiersIndex.addAll(words.toSet())
+    fun addToIndex(words: List<String>) = (IndexType.LOCAL_IDENTIFIER.index as LocalInnerIndex).addAll(words.toSet())
 
     @TestOnly
     fun getAltogether(signatures: Set<Int>) = indices.asSequence().flatMap { it.getAll(signatures) }
