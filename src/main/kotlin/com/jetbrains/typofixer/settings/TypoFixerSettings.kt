@@ -10,8 +10,8 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 )
 class TypoFixerSettings : PersistentStateComponent<TypoFixerSettings> {
 
-    var maxMillisForFind = 200L
-    var maxMillisForResolve = 1000L
+    var maxMillisForFind = 50L
+    var maxMillisForResolve = 400L
 
     override fun getState(): TypoFixerSettings? = this
 
