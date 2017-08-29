@@ -109,4 +109,19 @@ class AdvancedReplacementTest : BaseReplacementTest() {
             '(',
             "fun packageeee(): Boolean = packageeee(<caret>)",
             true)
+
+    fun testParamInLambda() = doTest(
+            "val k = { id<caret>}",
+            ' ',
+            "val k = { id <caret>}",
+            true)
+
+    fun testParamInLambdaAfterBraces() = doTest(
+            "val k = { ((id<caret>))}",
+            ',',
+            "val k = { ((id,<caret>))}",
+            true)
+
+
+
 }

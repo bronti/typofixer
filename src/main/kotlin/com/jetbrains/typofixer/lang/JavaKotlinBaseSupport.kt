@@ -29,7 +29,7 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     protected abstract fun isInReference(element: PsiElement): Boolean
     protected abstract fun isIdentifier(element: PsiElement): Boolean
     protected abstract fun isKeyword(element: PsiElement): Boolean
-    protected abstract fun isUnresolvedReference(element: PsiElement): Boolean
+    protected abstract fun referenceIsUnresolved(element: PsiElement): Boolean
     protected abstract fun isInParameter(element: PsiElement): Boolean
     protected abstract fun looksLikeIdentifier(word: String): Boolean
     protected abstract fun canBeReplacedByUnresolvedClassName(referenceElement: PsiElement): Boolean
@@ -42,14 +42,12 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
         private val referenceCopy get() = withReadAccess { elementCopy.parent }
         private var nearestUnresolvedClassReplacement: FoundWord? = null
 
-        override fun checkApplicable(fast: Boolean) =
-                super.checkApplicable(fast) &&
-                        isIdentifier(element) && (
-                        if (fast) isInReference(element)
-                        else isUnresolvedReference(element.parent)
-                        )
+        override fun canBeApplicable() = withReadAccess { super.canBeApplicable() && isIdentifier(element) && isInReference(element) }
+        override fun isApplicable() = checkWithWritePriority {
+            super.isApplicable() && isIdentifier(elementCopy) && isInReference(elementCopy) && referenceIsUnresolved(referenceCopy)
+        }
 
-        override fun checkResolvedIdentifier(newWord: String) = isInReference(elementCopy) && !isUnresolvedReference(referenceCopy)
+        override fun checkResolvedIdentifier(newWord: String) = isInReference(elementCopy) && !referenceIsUnresolved(referenceCopy)
 
         override fun isGoodReplacement(newWord: FoundWord): Boolean {
             return when {
@@ -74,8 +72,8 @@ abstract class JavaKotlinBaseSupport : TypoFixerLanguageSupport {
     private inner class ErrorElement(editor: Editor, file: PsiFile, startOffset: Int, oldWord: String, checkTime: () -> Unit)
         : BaseJavaKotlinTypoCase(editor, file, startOffset, oldWord, checkTime) {
 
-        override fun checkApplicable(fast: Boolean) =
-                super.checkApplicable(fast) && isIdentifier(element) && isErrorElement(element)
+        override fun canBeApplicable() = withReadAccess { super.canBeApplicable() && isIdentifier(element) && isErrorElement(element) }
+        override fun isApplicable() = withReadAccess { super.canBeApplicable() && isIdentifier(elementCopy) && isErrorElement(elementCopy) }
 
         override fun checkResolvedIdentifier(newWord: String) = false
     }

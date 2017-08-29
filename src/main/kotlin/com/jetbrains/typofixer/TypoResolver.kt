@@ -74,8 +74,6 @@ class TypoResolver private constructor(
                         return null
                     }
 
-//                    if (replacements.none()) return null
-
                     project.statistics.onTypoResolverCreated()
                     return TypoResolver(editor, typoCase, replacements, resolveTimeChecker)
                 }

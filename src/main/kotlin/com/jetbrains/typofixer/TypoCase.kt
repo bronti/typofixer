@@ -33,18 +33,18 @@ abstract class TypoCase(
     }
 
     // TypoResolver handles the first case for which canBeApplicable() is true
-    fun canBeApplicable() = checkApplicable(true)
-    fun isApplicable() = checkWithWritePriority { checkApplicable(false) }
+    open fun canBeApplicable(): Boolean {
+        assert(isSetUp)
+        return true
+    }
+
+    open fun isApplicable(): Boolean {
+        assert(isSetUp)
+        return true
+    }
 
     abstract fun triggersResolve(c: Char): Boolean
     abstract fun getReplacement(checkTime: () -> Unit): Sequence<FoundWord>
-
-
-    protected open fun checkApplicable(fast: Boolean = false): Boolean {
-        assert(isSetUp)
-        appManager.assertReadAccessAllowed()
-        return true
-    }
 
     protected open fun isGoodReplacement(newWord: FoundWord): Boolean {
         assert(isSetUp)
