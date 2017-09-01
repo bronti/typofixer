@@ -77,11 +77,10 @@ class KotlinSupport : JavaKotlinBaseSupport() {
             functionLiteral ?: return false
             val block = if (functionLiteral.children.isNotEmpty()) functionLiteral.children[0] as? KtBlockExpression else null
             block ?: return false
-            var currentElement = element.parent?.parent
-            while (currentElement is KtParenthesizedExpression) {
-                currentElement = currentElement.parent
-            }
-            return currentElement === block
+            tailrec fun PsiElement.parentWhile(predicate: (PsiElement) -> Boolean): PsiElement? =
+                    if (predicate(this)) this.parent?.parentWhile(predicate)
+                    else this
+            return element.parent?.parent?.parentWhile { it is KtParenthesizedExpression } === block
         })
 
         override fun isApplicable() = false

@@ -5,6 +5,7 @@ import com.intellij.psi.*
 import com.intellij.psi.tree.java.IKeywordElementType
 import com.jetbrains.typofixer.search.index.CombinedIndex
 
+
 /**
  * @author bronti.
  */
