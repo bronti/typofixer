@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.jetbrains.typofixer</id>
     <name>Typo Fixer</name>
-    <version>1.1.1</version>
+    <version>1.1.1-172</version>
     <vendor email="anya.yaveyn@yandex.ru">JetBrains</vendor>
 
     <description><![CDATA[
