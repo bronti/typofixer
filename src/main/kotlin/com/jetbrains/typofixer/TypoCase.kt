@@ -76,7 +76,6 @@ abstract class TypoCase(
     protected fun <T> withReadAccess(access: () -> T): T = appManager.runReadAction<T>(access)
 
     protected fun checkWithWritePriority(doCheck: () -> Boolean) = checkInSmartMode {
-        val indicator = ProgressIndicatorProvider.getInstance().progressIndicator
         checkTime()
 
         if (appManager.isDispatchThread) {
@@ -88,9 +87,9 @@ abstract class TypoCase(
             while (!resultFound) {
                 checkTime()
                 refreshElement()
-                resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
+                resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority {
                     result = doCheck()
-                }, indicator)
+                }
             }
             result
         }

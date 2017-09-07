@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.jetbrains.typofixer</id>
     <name>Typo Fixer</name>
-    <version>1.1.1</version>
+    <version>1.1.1-171</version>
     <vendor email="anya.yaveyn@yandex.ru">JetBrains</vendor>
 
     <description><![CDATA[
@@ -19,7 +19,7 @@
     <depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="162"/>
+    <idea-version since-build="171"/>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
