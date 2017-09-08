@@ -34,10 +34,11 @@ class LocalCombinedIndexTest : LightPlatformCodeInsightFixtureTestCase() {
             ' ',
             "class Some { int someField; void someMethod() { someField <caret>")
 
-    fun testPackage() = doTest(
-            "package some.packagge; import some.packkagge<caret>",
-            '.',
-            "package some.packagge; import some.packagge.<caret>")
+//    // global index
+//    fun testPackage() = doTest(
+//            "package some.packagge; import some.packkagge<caret>",
+//            '.',
+//            "package some.packagge; import some.packagge.<caret>")
 
     private fun doTest(input: String, typed: Char, output: String) {
         myFixture.configureByText("Foo.java", input)
