@@ -1,7 +1,9 @@
 package com.jetbrains.typofixer
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.Application
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.AbstractProjectComponent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -17,6 +19,8 @@ import com.jetbrains.typofixer.widget.RefreshingIndicator
 val Project.typoFixerComponent get() = getComponent(TypoFixerComponent::class.java)!!
 val Project.statistics get() = typoFixerComponent.statistics
 val Project.searcher get() = typoFixerComponent.searcher
+
+fun Application.invokeAndWait(toInvoke: () -> Unit) = this.invokeAndWait(toInvoke, ModalityState.defaultModalityState())
 
 class TypoFixerComponent(project: Project) : AbstractProjectComponent(project) {
 

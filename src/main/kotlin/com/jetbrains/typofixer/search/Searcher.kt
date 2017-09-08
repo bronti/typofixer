@@ -88,6 +88,8 @@ open class DLSearcher(final override val project: Project) : Searcher() {
                 override fun rootsChanged(event: ModuleRootEvent) {
                     updateIndex()
                 }
+
+                override fun beforeRootsChange(event: ModuleRootEvent?) { }
             })
 
             connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {

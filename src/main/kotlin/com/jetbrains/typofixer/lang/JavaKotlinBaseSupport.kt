@@ -6,6 +6,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.TypoCase
+import com.jetbrains.typofixer.invokeAndWait
 import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.search.FoundWordType
 import com.jetbrains.typofixer.search.index.CombinedIndex

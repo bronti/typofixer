@@ -114,15 +114,5 @@ private val javaKeywords = setOf(
         PsiKeyword.WHILE,
         PsiKeyword.TRUE,
         PsiKeyword.FALSE,
-        PsiKeyword.NULL,
-        PsiKeyword.OPEN,
-        PsiKeyword.MODULE,
-        PsiKeyword.REQUIRES,
-        PsiKeyword.EXPORTS,
-        PsiKeyword.OPENS,
-        PsiKeyword.USES,
-        PsiKeyword.PROVIDES,
-        PsiKeyword.TRANSITIVE,
-        PsiKeyword.TO,
-        PsiKeyword.WITH
+        PsiKeyword.NULL
 )

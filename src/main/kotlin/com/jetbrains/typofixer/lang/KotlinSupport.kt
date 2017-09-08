@@ -10,12 +10,15 @@ import com.jetbrains.typofixer.TypoCase
 import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.search.index.CombinedIndex
 import com.jetbrains.typofixer.searcher
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.references.KtReference
-import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
+import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getNonStrictParentOfType
+import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 
 /**
  * @author bronti.
@@ -41,6 +44,11 @@ class KotlinSupport : JavaKotlinBaseSupport() {
         is KtReferenceExpression -> element.resolveMainReferenceToDescriptors().isEmpty()
         is KtReference -> element.resolve() == null
         else -> throw IllegalStateException()
+    }
+
+    private fun KtElement.resolveMainReferenceToDescriptors(): Collection<DeclarationDescriptor> {
+        val bindingContext = analyze(BodyResolveMode.PARTIAL)
+        return mainReference?.resolveToDescriptors(bindingContext) ?: emptyList()
     }
 
     override fun canBeReplacedByUnresolvedClassName(referenceElement: PsiElement): Boolean {

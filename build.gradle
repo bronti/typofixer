@@ -1,6 +1,6 @@
 buildscript {
-    ext.kotlin_version = '1.1.4-2'
-    ext.kotlin_plugin_version = '1.1.4-release-IJ2017.2-2'
+    ext.kotlin_version = '1.1.1'
+    ext.kotlin_plugin_version = '1.1.1-release-IJ2016.1-1'
 
     repositories {
         mavenCentral()
@@ -18,13 +18,13 @@ plugins {
 }
 
 group 'com.jetbrains.typofixer'
-version '1.1.1'
+version '1.1.1-145'
 
 apply plugin: 'java'
 apply plugin: 'kotlin'
 
 intellij {
-    version 'IC-2017.2'
+    version 'IC-2016.1'
     plugins = ["org.jetbrains.kotlin:$kotlin_plugin_version"]
     pluginName 'Typo Fixer'
 }

@@ -1,11 +1,13 @@
 package com.jetbrains.typofixer
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.UndoConfirmationPolicy
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.progress.ProgressIndicatorProvider
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.util.ProgressIndicatorUtils
 import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -88,7 +90,7 @@ abstract class TypoCase(
             while (!resultFound) {
                 checkTime()
                 refreshElement()
-                resultFound = ProgressManager.getInstance().runInReadActionWithWriteActionPriority({
+                resultFound = ProgressIndicatorUtils.runInReadActionWithWriteActionPriority({
                     result = doCheck()
                 }, indicator)
             }
