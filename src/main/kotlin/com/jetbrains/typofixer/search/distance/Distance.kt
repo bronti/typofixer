@@ -53,18 +53,30 @@ class DamerauLevenshteinDistance(private val maxRoundedError: Int) : Distance {
 
         val gapSize = 2 * maxRoundedError + 1
 
-        var prevPrev = Array(gapSize) { Double.MAX_VALUE }
-        var prev = Array(gapSize) { if (it - maxRoundedError >= 0) (it - maxRoundedError) * REMOVE_PENALTY else Double.MAX_VALUE }
-        var curr = Array(gapSize) { Double.MAX_VALUE }
-        var tempArrayHolder: Array<Double>
+        val stepsCount = Math.min(replacement.length, base.length + maxRoundedError)
 
-        for (replacementInd in 1..Math.min(replacement.length, base.length + maxRoundedError)) {
+        fun dynamicallyCalculateDistance(
+                replacementInd: Int,
+                beforePreviousColumn: Array<Double>,
+                previousColumn: Array<Double>
+        ): Double {
+            if (replacementInd == stepsCount + 1) {
+                return Math.min(
+                        previousColumn[maxRoundedError + base.length - replacement.length],
+                        errorBiggerThanMax
+                )
+            }
+            val curr = Array(gapSize) { Double.MAX_VALUE }
             val replacementChar = replacement[replacementInd - 1]
 
             val minK = Math.max(maxRoundedError - replacementInd, 0)
-            val maxK = Math.min(gapSize - 1, (base.length - replacementInd) + (maxRoundedError + 1) - 1)
+            val maxK = Math.min(
+                    gapSize - 1,
+                    (base.length - replacementInd) + (maxRoundedError + 1) - 1
+            )
 
-            curr[minK] = (replacementInd - maxRoundedError + minK) * REPLACE_PENALTY + (maxRoundedError - minK) * ADD_PENALTY
+            curr[minK] = (replacementInd - maxRoundedError + minK) * REPLACE_PENALTY +
+                    (maxRoundedError - minK) * ADD_PENALTY
 
             assert(minK <= maxK)
 
@@ -74,31 +86,32 @@ class DamerauLevenshteinDistance(private val maxRoundedError: Int) : Distance {
                     val baseChar = base[baseInd - 1]
                     // swap
                     if (replacementInd > 1 && baseInd > 1 && baseChar == replacement[replacementInd - 2] && replacementChar == base[baseInd - 2]) {
-                        curr[k] = Math.min(prevPrev[k] + SWAP_PENALTY, curr[k])
+                        curr[k] = Math.min(beforePreviousColumn[k] + SWAP_PENALTY, curr[k])
                     }
                     // remove (from base)
                     if (k > 0) {
                         curr[k] = Math.min(curr[k], curr[k - 1] + REMOVE_PENALTY)
                     }
                     // replace
-                    curr[k] = Math.min(curr[k], prev[k] + charDistance(baseChar, replacementChar))
+                    curr[k] = Math.min(curr[k], previousColumn[k] + charDistance(baseChar, replacementChar))
                 }
                 // add (to base)
                 if (k + 1 < gapSize) {
-                    curr[k] = Math.min(curr[k], prev[k + 1] + ADD_PENALTY)
+                    curr[k] = Math.min(curr[k], previousColumn[k + 1] + ADD_PENALTY)
                 }
             }
             if ((minK..maxK).all { curr[it] >= errorBiggerThanMax }) {
                 return errorBiggerThanMax
             }
-
-            tempArrayHolder = prevPrev
-            prevPrev = prev
-            prev = curr
-            curr = tempArrayHolder
-            curr.fill(Double.MAX_VALUE)
+            return dynamicallyCalculateDistance(replacementInd + 1, previousColumn, curr)
         }
-        return Math.min(prev[maxRoundedError + base.length - replacement.length], errorBiggerThanMax)
+
+        val initialColumn = Array(gapSize) {
+            if (it - maxRoundedError >= 0) (it - maxRoundedError) * REMOVE_PENALTY
+            else Double.MAX_VALUE
+        }
+
+        return dynamicallyCalculateDistance(1, Array(gapSize) { Double.MAX_VALUE }, initialColumn)
     }
 
     override fun roundedMeasure(base: String, replacement: String): Int = Math.round(measure(base, replacement)).toInt()
