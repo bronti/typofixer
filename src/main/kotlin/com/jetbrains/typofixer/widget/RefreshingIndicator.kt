@@ -33,20 +33,15 @@ class RefreshingIndicator(val searcher: Searcher) : CustomStatusBarWidget, Statu
     fun update() {
         if (!searcher.project.isInitialized) return
         myLabel.text = when (searcher.getStatus()) {
-            Searcher.Status.INDEX_REFRESHING -> NOT_ACTIVE_TEXT + " (${searcher.getStatistics().second})"
-            Searcher.Status.DUMB_MODE -> NOT_ACTIVE_TEXT + " (${searcher.getStatistics().second})"
-            Searcher.Status.ACTIVE -> ACTIVE_TEXT + " ${searcher.getStatistics()}"
+            Searcher.Status.INDEX_REFRESHING -> NOT_ACTIVE_TEXT
+            Searcher.Status.DUMB_MODE -> NOT_ACTIVE_TEXT
+            Searcher.Status.ACTIVE -> ACTIVE_TEXT + " ${searcher.getStatistics().first}"
         }
     }
 
-    override fun getPresentation(platformType: StatusBarWidget.PlatformType): StatusBarWidget.WidgetPresentation {
-        return this
-    }
+    override fun getPresentation(platformType: StatusBarWidget.PlatformType) = this
 
-    override fun install(statusBar: StatusBar) {
+    override fun install(statusBar: StatusBar) {  }
 
-    }
-
-    override fun dispose() {
-    }
+    override fun dispose() {  }
 }
