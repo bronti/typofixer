@@ -8,6 +8,7 @@ import com.jetbrains.typofixer.lang.TypoFixerLanguageSupport
 import com.jetbrains.typofixer.search.FoundWord
 import com.jetbrains.typofixer.search.index.GlobalInnerIndex
 import com.jetbrains.typofixer.settings.TypoFixerSettings
+import com.jetbrains.typofixer.settings.TypoFixerStatistics
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -43,12 +44,10 @@ class TypoResolver private constructor(
                 needTimeChecking: Boolean = false
         ): TypoResolver? {
 
-            val project = psiFile.project
-            val settings = TypoFixerSettings.getInstance(project)
-            val statistics = project.statistics
+            val settings = TypoFixerSettings.getInstance()
 
-            val findTimeChecker = getTimeChecker(needTimeChecking, settings.maxMillisForFind, statistics::onFindAbortedBecauseOfTimeLimits)
-            val resolveTimeChecker = getTimeChecker(needTimeChecking, settings.maxMillisForResolve, statistics::onResolveAbortedBecauseOfTimeLimits)
+            val findTimeChecker = getTimeChecker(needTimeChecking, settings.maxMillisForFind, TypoFixerStatistics::onFindAbortedBecauseOfTimeLimits)
+            val resolveTimeChecker = getTimeChecker(needTimeChecking, settings.maxMillisForResolve, TypoFixerStatistics::onResolveAbortedBecauseOfTimeLimits)
 
             val nextCharOffset = editor.caretModel.offset
 
@@ -74,7 +73,7 @@ class TypoResolver private constructor(
                         return null
                     }
 
-                    project.statistics.onTypoResolverCreated()
+                    TypoFixerStatistics.onTypoResolverCreated()
                     return TypoResolver(editor, typoCase, replacements, resolveTimeChecker)
                 }
             }

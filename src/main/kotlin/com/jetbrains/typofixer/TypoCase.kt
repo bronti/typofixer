@@ -11,6 +11,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.jetbrains.typofixer.search.FoundWord
+import com.jetbrains.typofixer.settings.TypoFixerStatistics
 
 
 abstract class TypoCase(
@@ -126,7 +127,7 @@ abstract class TypoCase(
                         .executeCommand(project, command, "Resolve typo", document, UndoConfirmationPolicy.DEFAULT, document)
             }
         }
-        project.statistics.onWordReplaced()
+        TypoFixerStatistics.onWordReplaced()
     }
 
     private fun refreshElement() {

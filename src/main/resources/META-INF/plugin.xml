@@ -31,10 +31,12 @@
         <enterHandlerDelegate implementation="com.jetbrains.typofixer.event.handler.TypoFixerEventHandler"
                               order="first"/>
 
-        <projectConfigurable instance="com.jetbrains.typofixer.settings.TypoFixerConfigurable"
-                             displayName="Typo Fixer" groupId="editor"/>
-        <projectService serviceInterface="com.jetbrains.typofixer.settings.TypoFixerSettings"
-                        serviceImplementation="com.jetbrains.typofixer.settings.TypoFixerSettings"/>
+        <applicationConfigurable instance="com.jetbrains.typofixer.settings.TypoFixerConfigurable"
+                                 displayName="Typo Fixer" groupId="editor"/>
+        <applicationService serviceInterface="com.jetbrains.typofixer.settings.TypoFixerStatisticsComponent"
+                            serviceImplementation="com.jetbrains.typofixer.settings.TypoFixerStatisticsComponent"/>
+        <applicationService serviceInterface="com.jetbrains.typofixer.settings.TypoFixerSettings"
+                            serviceImplementation="com.jetbrains.typofixer.settings.TypoFixerSettings"/>
     </extensions>
 
     <project-components>
