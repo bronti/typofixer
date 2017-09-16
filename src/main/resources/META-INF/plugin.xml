@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.jetbrains.typofixer</id>
     <name>Typo Fixer</name>
-    <version>1.1.1-172</version>
+    <version>1.1.2-172</version>
     <vendor email="anya.yaveyn@yandex.ru">JetBrains</vendor>
 
     <description><![CDATA[
@@ -9,6 +9,7 @@
     ]]></description>
 
     <change-notes><![CDATA[
+      Release 1.1.2: Several bugs are fixed and all statistics are now application-wise.<br>
       Release 1.1.1: Bug with resolving of lambda parameters fixed.<br>
       Release 1.1.0: More typo cases handled due to improvement of resolving algorithm.<br>
       Release 1.0.2: ConcurrentModificationException during index refreshing is fixed.<br>
