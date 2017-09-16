@@ -34,8 +34,8 @@ class TypoFixerEventHandler : TypedHandlerDelegate(), EnterHandlerDelegate {
                                  caretAdvance: Ref<Int>,
                                  dataContext: DataContext,
                                  originalHandler: EditorActionHandler?): EnterHandlerDelegate.Result {
-
-        initiateResolve('\n', psiFile, editor)
+        val enterChar = '\n'
+        initiateResolve(enterChar, psiFile, editor)
 
         caretOffset.set(editor.caretModel.offset)
         return EnterHandlerDelegate.Result.Continue
