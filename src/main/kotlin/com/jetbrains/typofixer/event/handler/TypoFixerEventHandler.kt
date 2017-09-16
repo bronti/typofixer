@@ -54,7 +54,7 @@ class TypoFixerEventHandler : TypedHandlerDelegate(), EnterHandlerDelegate {
     ): TypedHandlerDelegate.Result {
         if (editor == null || psiFile == null) return TypedHandlerDelegate.Result.CONTINUE
 
-        initiateResolve('\n', psiFile, editor)
+        initiateResolve(c, psiFile, editor)
 
         return TypedHandlerDelegate.Result.CONTINUE
     }

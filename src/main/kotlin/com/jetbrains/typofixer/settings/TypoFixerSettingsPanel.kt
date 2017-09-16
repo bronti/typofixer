@@ -2,13 +2,12 @@ package com.jetbrains.typofixer.settings
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
-import com.jetbrains.typofixer.statistics
 import javax.swing.JFormattedTextField
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JTextField
 
-class TypoFixerSettingsPanel(val project: Project) {
+class TypoFixerSettingsPanel {
 
     lateinit var mainPanel: JPanel
     // todo: hardcoded labels (ok? localization?)
@@ -30,8 +29,7 @@ class TypoFixerSettingsPanel(val project: Project) {
         get() = maxFreezeTimeField.getTextValue()
         set(v) = maxFreezeTimeField.setTextValue(v)
 
-    private val settings get() = TypoFixerSettings.getInstance(project)
-    private val statistics get() = project.statistics
+    private val settings get() = TypoFixerSettings.getInstance()
 
     // todo: resolve for JTextField rolls back
     private fun updateStatisticField(field: JTextField, stat: Int, internalOnly: Boolean = true) {
@@ -65,9 +63,9 @@ class TypoFixerSettingsPanel(val project: Project) {
     private lateinit var timesResolveOutOfTimeText: JLabel
 
     private val internalFields = mapOf(
-            timesResolverCreatedField to statistics::timesResolverCreated,
-            timesFindOutOfTimeField to statistics::timesFindAbortedBecauseOfTimeLimits,
-            timesResolveOutOfTimeField to statistics::timesResolveAbortedBecauseOfTimeLimits
+            timesResolverCreatedField to TypoFixerStatistics::timesResolverCreated,
+            timesFindOutOfTimeField to TypoFixerStatistics::timesFindAbortedBecauseOfTimeLimits,
+            timesResolveOutOfTimeField to TypoFixerStatistics::timesResolveAbortedBecauseOfTimeLimits
     )
 
     private val internalTextFields = listOf(
@@ -83,6 +81,6 @@ class TypoFixerSettingsPanel(val project: Project) {
         internalFields.forEach { updateStatisticField(it.key, it.value.get()) }
         internalTextFields.forEach { updateTextVisibility(it) }
 
-        updateStatisticField(successfulResolvesField, statistics.timesWordReplaced, false)
+        updateStatisticField(successfulResolvesField, TypoFixerStatistics.timesWordReplaced, false)
     }
 }

@@ -1,30 +1,55 @@
 package com.jetbrains.typofixer.settings
 
-// not exact because of concurrency
-class TypoFixerStatistics {
-    var timesResolverCreated: Int = 0
-        private set
-    var timesWordReplaced: Int = 0
-        private set
-    var timesFindAbortedBecauseOfTimeLimits: Int = 0
-        private set
-    var timesResolveAbortedBecauseOfTimeLimits: Int = 0
-        private set
+import com.intellij.openapi.components.*
+import com.intellij.util.xmlb.XmlSerializerUtil
 
+object TypoFixerStatistics {
+    private val statisticsComponent get() = TypoFixerStatisticsComponent.getInstance()
+
+    val timesResolverCreated get() = statisticsComponent.timesResolverCreated
+    val timesWordReplaced get() = statisticsComponent.timesWordReplaced
+    val timesFindAbortedBecauseOfTimeLimits get() = statisticsComponent.timesFindAbortedBecauseOfTimeLimits
+    val timesResolveAbortedBecauseOfTimeLimits get() = statisticsComponent.timesResolveAbortedBecauseOfTimeLimits
 
     fun onTypoResolverCreated() {
-        ++timesResolverCreated
+        ++statisticsComponent.timesResolverCreated
     }
 
     fun onWordReplaced() {
-        ++timesWordReplaced
+        ++statisticsComponent.timesWordReplaced
+
     }
 
     fun onFindAbortedBecauseOfTimeLimits() {
-        ++timesFindAbortedBecauseOfTimeLimits
+        ++statisticsComponent.timesFindAbortedBecauseOfTimeLimits
     }
 
     fun onResolveAbortedBecauseOfTimeLimits() {
-        ++timesResolveAbortedBecauseOfTimeLimits
+        ++statisticsComponent.timesResolveAbortedBecauseOfTimeLimits
     }
+}
+
+// not exact because of concurrency
+@State(
+        name = "TypoFixerStatistics",
+        storages = arrayOf(Storage("other.xml"))
+)
+class TypoFixerStatisticsComponent : PersistentStateComponent<TypoFixerStatisticsComponent> {
+
+    override fun getState() = this
+
+    override fun loadState(typingCorrectorStatistics: TypoFixerStatisticsComponent) {
+        XmlSerializerUtil.copyBean(typingCorrectorStatistics, this)
+    }
+
+    companion object {
+        fun getInstance(): TypoFixerStatisticsComponent {
+            return ServiceManager.getService(TypoFixerStatisticsComponent::class.java)
+        }
+    }
+
+    var timesResolverCreated: Int = 0
+    var timesWordReplaced: Int = 0
+    var timesFindAbortedBecauseOfTimeLimits: Int = 0
+    var timesResolveAbortedBecauseOfTimeLimits: Int = 0
 }
